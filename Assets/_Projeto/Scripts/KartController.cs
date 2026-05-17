@@ -8,6 +8,7 @@ public class KartController : MonoBehaviour
 
     [Header("Referências")]
     [SerializeField] private Rigidbody rb;
+    [SerializeField] private KartSuspension suspension;
 
     [Header("Velocidade")]
     [SerializeField] private float maxForwardSpeedKmh = 200f;
@@ -17,6 +18,9 @@ public class KartController : MonoBehaviour
     [SerializeField] private float acceleration = 42f;
     [SerializeField] private float reverseAcceleration = 22f;
     [SerializeField] private float brakeDeceleration = 65f;
+    [SerializeField] private float handbrakeDeceleration = 95f;
+    [SerializeField, Range(0f, 1f)] private float handbrakeThrottleRelief = 0.6f;
+    [SerializeField, Range(0f, 1f)] private float handbrakeDriftRelief = 0.45f;
     [SerializeField] private float naturalDeceleration = 4f;
 
     [Header("Direção")]
@@ -39,9 +43,11 @@ public class KartController : MonoBehaviour
     [SerializeField] private float driftEnterSpeed = 7.5f;
     [SerializeField] private float driftExitSpeed = 12f;
 
-    [SerializeField] private float driftSideSpeedKmh = 32f;
+    [SerializeField] private float driftSideSpeedKmh = 55f;
     [SerializeField] private float driftSideBuildSpeed = 5.5f;
     [SerializeField] private float driftSideReleaseSpeed = 10f;
+    [SerializeField, Range(0f, 1f)] private float driftSideBaseline = 0.3f;
+    [SerializeField, Range(0.5f, 3f)] private float driftSideSteerResponse = 1.4f;
 
     [SerializeField] private float driftSpeedHoldAcceleration = 36f;
     [SerializeField] private float driftEntrySpeedRetention = 0.98f;
@@ -110,10 +116,30 @@ public class KartController : MonoBehaviour
     public float Speed01 => Mathf.Clamp01(Mathf.Abs(ForwardSpeed) / GetCurrentMaxForwardSpeedMps());
     public bool IsBoosting => Time.time < boostEndTime;
 
+    public float SlipAngleDeg
+    {
+        get
+        {
+            Vector3 flatVelocity = rb.linearVelocity;
+            flatVelocity.y = 0f;
+
+            if (flatVelocity.sqrMagnitude < 0.25f)
+                return 0f;
+
+            Vector3 flatForward = transform.forward;
+            flatForward.y = 0f;
+
+            return Vector3.SignedAngle(flatForward, flatVelocity, Vector3.up);
+        }
+    }
+
     private void Awake()
     {
         if (rb == null)
             rb = GetComponent<Rigidbody>();
+
+        if (suspension == null)
+            suspension = GetComponent<KartSuspension>();
 
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
@@ -322,6 +348,13 @@ public class KartController : MonoBehaviour
 
     private void CheckGround()
     {
+        if (suspension != null)
+        {
+            isGrounded = suspension.IsAnyWheelGrounded;
+            groundNormal = suspension.AverageGroundNormal;
+            return;
+        }
+
         Vector3 origin = transform.position + Vector3.up * 0.35f;
 
         float sphereRadius = 0.35f;
@@ -384,7 +417,9 @@ public class KartController : MonoBehaviour
             }
         }
 
-        if (throttleInput <= 0f && brakeInput <= 0f && driftBlend <= 0.01f)
+        ApplyHandbrakeForce(forwardSpeed);
+
+        if (throttleInput <= 0f && brakeInput <= 0f && !handbrakeInput && driftBlend <= 0.01f)
         {
             Vector3 flatVelocity = rb.linearVelocity;
             flatVelocity.y = 0f;
@@ -395,6 +430,35 @@ public class KartController : MonoBehaviour
                 rb.AddForce(resistance, ForceMode.Acceleration);
             }
         }
+    }
+
+    private void ApplyHandbrakeForce(float forwardSpeed)
+    {
+        if (!handbrakeInput || isBurningOut)
+            return;
+
+        float throttleScale = 1f - handbrakeThrottleRelief * throttleInput;
+        float driftScale = 1f - handbrakeDriftRelief * driftBlend;
+        float intensity = handbrakeDeceleration * throttleScale * driftScale;
+
+        if (Mathf.Abs(forwardSpeed) > 1f)
+        {
+            float brakeSign = forwardSpeed > 0f ? -1f : 1f;
+            rb.AddForce(transform.forward * intensity * brakeSign, ForceMode.Acceleration);
+            return;
+        }
+
+        if (throttleInput > 0.1f || driftBlend > 0.05f)
+            return;
+
+        Vector3 localVelocity = transform.InverseTransformDirection(rb.linearVelocity);
+        float step = intensity * Time.fixedDeltaTime;
+
+        localVelocity.x = Mathf.MoveTowards(localVelocity.x, 0f, step);
+        localVelocity.z = Mathf.MoveTowards(localVelocity.z, 0f, step);
+
+        rb.linearVelocity = transform.TransformDirection(localVelocity);
+        rb.angularVelocity = Vector3.MoveTowards(rb.angularVelocity, Vector3.zero, step);
     }
 
     private void ApplyBurnoutHold()
@@ -512,7 +576,14 @@ public class KartController : MonoBehaviour
         float currentForwardSpeed = Mathf.Max(Mathf.Abs(localVelocity.z), 0.1f);
         float speedFactor = Mathf.Clamp01(currentForwardSpeed / GetCurrentMaxForwardSpeedMps());
 
-        float targetSideSpeed = -driftDirection * driftSideSpeedKmh * KmhToMps * speedFactor;
+        float steerIntoDrift = Mathf.Clamp01(steerInput * driftDirection);
+        float steerSlideScale = Mathf.Lerp(
+            driftSideBaseline,
+            1f,
+            Mathf.Pow(steerIntoDrift, 1f / Mathf.Max(0.01f, driftSideSteerResponse))
+        );
+
+        float targetSideSpeed = -driftDirection * driftSideSpeedKmh * KmhToMps * speedFactor * steerSlideScale;
 
         float sideBuildRate = Mathf.Max(driftSideBuildSpeed, driftLateralGrip);
 

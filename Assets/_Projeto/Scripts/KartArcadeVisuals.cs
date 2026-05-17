@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class KartArcadeVisuals : MonoBehaviour
 {
@@ -24,11 +25,12 @@ public class KartArcadeVisuals : MonoBehaviour
     [SerializeField] private float brakePitchAngle = 5f;
     [SerializeField] private float driftLeanMultiplier = 1.35f;
     [SerializeField] private float bodyVerticalBounce = 0.018f;
-    [SerializeField] private float bodyLiftOnLean = 0.008f;
+    [SerializeField] private float bodyLiftOnLean = 0.035f;
     [SerializeField] private float bodyLiftOnPitch = 0.004f;
     [SerializeField] private float accelerationCompression = 0.035f;
     [SerializeField] private float brakeCompression = 0.045f;
-    [SerializeField] private float driftCompression = 0.035f;
+    [FormerlySerializedAs("driftCompression")]
+    [SerializeField] private float driftBodyLift = 0.04f;
     [SerializeField] private float suspensionResponse = 9f;
     [SerializeField] private float visualSmooth = 12f;
 
@@ -137,7 +139,7 @@ public class KartArcadeVisuals : MonoBehaviour
             brakeLoad = Mathf.Max(brakeLoad, 0.7f * speedFactor);
 
         if (kart.IsBurningOut)
-            accelerationLoad = Mathf.Max(accelerationLoad, 0.45f);
+            accelerationLoad = Mathf.Max(accelerationLoad, 0.18f);
 
         float targetPitch = (brakePitchAngle * brakeLoad) - (accelerationPitchAngle * accelerationLoad);
 
@@ -152,10 +154,10 @@ public class KartArcadeVisuals : MonoBehaviour
 
         float targetVerticalOffset =
             bounce +
-            protectiveLift -
+            protectiveLift +
+            (driftFactor * driftBodyLift) -
             (accelerationLoad * accelerationCompression) -
-            (brakeLoad * brakeCompression) -
-            (driftFactor * driftCompression);
+            (brakeLoad * brakeCompression);
 
         bodyVerticalOffset = Mathf.Lerp(
             bodyVerticalOffset,
@@ -181,17 +183,17 @@ public class KartArcadeVisuals : MonoBehaviour
             float noiseB = Mathf.Cos(Time.time * burnoutShakeFrequency * 0.73f);
 
             Vector3 shakeOffset = new Vector3(
-                noiseA * burnoutShakePosition,
-                noiseB * burnoutShakePosition * 0.28f,
-                noiseB * burnoutShakePosition
+                0f,
+                Mathf.Abs(noiseB) * burnoutShakePosition * 0.5f,
+                0f
             );
 
             targetPosition += shakeOffset;
 
             targetRotation *= Quaternion.Euler(
-                noiseB * burnoutShakeRotation,
-                noiseA * burnoutShakeRotation,
-                noiseA * burnoutShakeRotation * 0.25f
+                noiseA * burnoutShakeRotation * 0.5f,
+                0f,
+                noiseB * burnoutShakeRotation * 0.2f
             );
         }
 

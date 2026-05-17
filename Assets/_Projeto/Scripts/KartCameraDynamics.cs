@@ -1,46 +1,73 @@
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class KartCameraDynamics : MonoBehaviour
 {
-    [Header("Referências")]
+    [Header("Referencias")]
     [SerializeField] private KartController kart;
     [SerializeField] private Transform cameraFollowTarget;
+    [SerializeField] private Transform cameraLookTarget;
+    [SerializeField] private CinemachineCamera virtualCamera;
 
-    [Header("Posição Base")]
-    [SerializeField] private Vector3 baseLocalPosition = new Vector3(0f, 1.2f, 0.8f);
+    [Header("Chase Central")]
+    [SerializeField] private Vector3 baseFollowLocalPosition = new Vector3(0f, 1.15f, 0.75f);
+    [SerializeField] private Vector3 baseLookLocalPosition = new Vector3(0f, 1.05f, 3.2f);
+    [SerializeField] private float speedPullback = -0.65f;
+    [SerializeField] private float speedHeightLift = 0.1f;
+    [SerializeField] private float speedLookAhead = 1.25f;
 
-    [Header("Aceleração / Freada")]
+    [Header("Aceleracao / Freada")]
     [SerializeField] private float accelerationBackOffset = -0.35f;
     [SerializeField] private float brakeForwardOffset = 0.45f;
     [SerializeField] private float brakeUpOffset = 0.15f;
 
-    [Header("Drift Cinematográfico")]
-    [SerializeField] private float driftSideOffset = 3.2f;
-    [SerializeField] private float driftYawAngle = 42f;
-    [SerializeField] private float driftForwardOffset = 1.1f;
-    [SerializeField] private float driftHeightOffset = 0.25f;
+    [Header("Antecipacao de Curva")]
+    [SerializeField] private float turnLookAheadOffset = 0f;
+    [SerializeField] private float driftLookAheadOffset = 0f;
+    [SerializeField] private float driftPullback = -0.2f;
+    [SerializeField] private float driftHeightLift = 0.08f;
+
+    [Header("Drift Camera (olhar pra frente)")]
+    [SerializeField, Range(0f, 1f)] private float driftLookYawFactor = 0.7f;
+    [SerializeField] private float driftLookYawMax = 35f;
+    [SerializeField, Range(0f, 1f)] private float driftFollowYawFactor = 0.45f;
+    [SerializeField] private float driftFollowYawMax = 25f;
+    [SerializeField] private float driftYawSmooth = 8f;
+
+    [Header("FOV de Velocidade")]
+    [SerializeField] private float baseFieldOfView = 64f;
+    [SerializeField] private float speedFieldOfView = 74f;
+    [SerializeField] private float boostFieldOfViewBonus = 4f;
+    [SerializeField] private float driftFieldOfViewBonus = 2f;
+    [SerializeField] private float fieldOfViewSmooth = 6f;
 
     [Header("Mouse")]
-    [SerializeField] private bool requireRightMouseButton = false;
+    [SerializeField] private bool requireRightMouseButton = true;
     [SerializeField] private float mouseSensitivityX = 0.18f;
     [SerializeField] private float mouseSensitivityY = 0.08f;
-    [SerializeField] private float maxMouseYaw = 120f;
-    [SerializeField] private float minMousePitchOffset = -0.7f;
-    [SerializeField] private float maxMousePitchOffset = 0.9f;
-    [SerializeField] private float mouseReturnSpeed = 3.5f;
+    [SerializeField] private float maxMouseYaw = 55f;
+    [SerializeField] private float minMousePitchOffset = -0.35f;
+    [SerializeField] private float maxMousePitchOffset = 0.45f;
+    [SerializeField] private float mouseReturnSpeed = 6f;
 
-    [Header("Oscilação")]
-    [SerializeField] private float speedBobAmount = 0.06f;
-    [SerializeField] private float speedBobFrequency = 9f;
+    [Header("Oscilacao")]
+    [SerializeField] private float speedShakeAmount = 0.025f;
+    [SerializeField] private float driftShakeAmount = 0.018f;
+    [SerializeField] private float burnoutShakeAmount = 0.045f;
+    [SerializeField] private float shakeFrequency = 18f;
 
-    [Header("Suavização")]
-    [SerializeField] private float positionSmooth = 12f;
-    [SerializeField] private float rotationSmooth = 11f;
+    [Header("Suavizacao")]
+    [SerializeField] private float followSmooth = 10f;
+    [SerializeField] private float lookSmooth = 8f;
+    [SerializeField] private float rotationSmooth = 12f;
 
     private float mouseYaw;
     private float mousePitchOffset;
     private int lastDriftDirection = 1;
+    private float currentFieldOfView;
+    private float currentDriftFollowYaw;
+    private float currentDriftLookYaw;
 
     private void Awake()
     {
@@ -48,12 +75,19 @@ public class KartCameraDynamics : MonoBehaviour
             kart = GetComponent<KartController>();
 
         if (cameraFollowTarget == null)
-        {
-            Transform foundTarget = transform.Find("CameraFollowTarget");
+            cameraFollowTarget = transform.Find("CameraFollowTarget");
 
-            if (foundTarget != null)
-                cameraFollowTarget = foundTarget;
-        }
+        if (cameraLookTarget == null)
+            cameraLookTarget = transform.Find("CameraLookTarget");
+
+        if (virtualCamera == null)
+            virtualCamera = FindAnyObjectByType<CinemachineCamera>();
+
+        currentFieldOfView = virtualCamera != null
+            ? virtualCamera.Lens.FieldOfView
+            : baseFieldOfView;
+
+        LinkVirtualCameraTargets();
     }
 
     private void LateUpdate()
@@ -62,6 +96,7 @@ public class KartCameraDynamics : MonoBehaviour
             return;
 
         UpdateMouseCamera();
+        LinkVirtualCameraTargets();
 
         float speed01 = kart.Speed01;
         float driftBlend = kart.DriftBlend;
@@ -69,47 +104,90 @@ public class KartCameraDynamics : MonoBehaviour
         if (kart.DriftDirection != 0)
             lastDriftDirection = kart.DriftDirection;
 
-        Vector3 targetPosition = baseLocalPosition;
+        Vector3 followPosition = baseFollowLocalPosition;
+        Vector3 lookPosition = baseLookLocalPosition;
+
+        followPosition.z += speedPullback * speed01;
+        followPosition.y += speedHeightLift * speed01;
+        lookPosition.z += speedLookAhead * speed01;
 
         if (kart.ThrottleInput > 0f)
-            targetPosition.z += accelerationBackOffset * speed01;
+            followPosition.z += accelerationBackOffset * speed01;
 
         if (kart.BrakeInput > 0f && kart.ForwardSpeed > 2f)
         {
-            targetPosition.z += brakeForwardOffset;
-            targetPosition.y += brakeUpOffset;
+            followPosition.z += brakeForwardOffset * speed01;
+            followPosition.y += brakeUpOffset * speed01;
         }
 
         if (driftBlend > 0.01f)
         {
-            targetPosition.x += -lastDriftDirection * driftSideOffset * driftBlend;
-            targetPosition.z += driftForwardOffset * driftBlend;
-            targetPosition.y += driftHeightOffset * driftBlend;
+            followPosition.z += driftPullback * driftBlend;
+            followPosition.y += driftHeightLift * driftBlend;
+            lookPosition.x += lastDriftDirection * driftLookAheadOffset * driftBlend;
         }
 
-        targetPosition.y += mousePitchOffset;
+        lookPosition.x += kart.TurnInput * turnLookAheadOffset * speed01;
+        followPosition.y += mousePitchOffset;
+        followPosition += CalculateShake(speed01, driftBlend);
 
-        float bob = Mathf.Sin(Time.time * speedBobFrequency) * speedBobAmount * speed01;
-        targetPosition.y += bob;
+        UpdateDriftYaw(driftBlend);
+
+        Quaternion driftLookRotation = Quaternion.Euler(0f, currentDriftLookYaw, 0f);
+        Vector3 rotatedLookPosition = driftLookRotation * lookPosition;
 
         cameraFollowTarget.localPosition = Vector3.Lerp(
             cameraFollowTarget.localPosition,
-            targetPosition,
-            Time.deltaTime * positionSmooth
+            followPosition,
+            Time.deltaTime * followSmooth
         );
-
-        float driftYaw = driftBlend > 0.01f
-            ? lastDriftDirection * driftYawAngle * driftBlend
-            : 0f;
-
-        float targetYaw = driftYaw + mouseYaw;
-
-        Quaternion targetRotation = Quaternion.Euler(0f, targetYaw, 0f);
 
         cameraFollowTarget.localRotation = Quaternion.Slerp(
             cameraFollowTarget.localRotation,
-            targetRotation,
+            Quaternion.Euler(0f, mouseYaw + currentDriftFollowYaw, 0f),
             Time.deltaTime * rotationSmooth
+        );
+
+        if (cameraLookTarget != null)
+        {
+            cameraLookTarget.localPosition = Vector3.Lerp(
+                cameraLookTarget.localPosition,
+                rotatedLookPosition,
+                Time.deltaTime * lookSmooth
+            );
+
+            cameraLookTarget.localRotation = Quaternion.identity;
+        }
+
+        UpdateFieldOfView(speed01, driftBlend);
+    }
+
+    private void UpdateDriftYaw(float driftBlend)
+    {
+        float slip = kart.SlipAngleDeg;
+
+        float lookTarget = Mathf.Clamp(
+            -slip * driftLookYawFactor,
+            -driftLookYawMax,
+            driftLookYawMax
+        ) * driftBlend;
+
+        float followTarget = Mathf.Clamp(
+            slip * driftFollowYawFactor,
+            -driftFollowYawMax,
+            driftFollowYawMax
+        ) * driftBlend;
+
+        currentDriftLookYaw = Mathf.Lerp(
+            currentDriftLookYaw,
+            lookTarget,
+            Time.deltaTime * driftYawSmooth
+        );
+
+        currentDriftFollowYaw = Mathf.Lerp(
+            currentDriftFollowYaw,
+            followTarget,
+            Time.deltaTime * driftYawSmooth
         );
     }
 
@@ -137,5 +215,59 @@ public class KartCameraDynamics : MonoBehaviour
 
         mouseYaw = Mathf.Lerp(mouseYaw, 0f, Time.deltaTime * mouseReturnSpeed);
         mousePitchOffset = Mathf.Lerp(mousePitchOffset, 0f, Time.deltaTime * mouseReturnSpeed);
+    }
+
+    private void LinkVirtualCameraTargets()
+    {
+        if (virtualCamera == null)
+            return;
+
+        virtualCamera.Follow = cameraFollowTarget;
+
+        if (cameraLookTarget != null)
+            virtualCamera.LookAt = cameraLookTarget;
+    }
+
+    private Vector3 CalculateShake(float speed01, float driftBlend)
+    {
+        float shakeAmount = speedShakeAmount * speed01;
+        shakeAmount += driftShakeAmount * driftBlend;
+
+        if (kart.IsBurningOut)
+            shakeAmount += burnoutShakeAmount;
+
+        if (shakeAmount <= 0.0001f)
+            return Vector3.zero;
+
+        float time = Time.time * shakeFrequency;
+
+        return new Vector3(
+            Mathf.Sin(time * 1.27f) * shakeAmount,
+            Mathf.Cos(time * 1.63f) * shakeAmount * 0.45f,
+            0f
+        );
+    }
+
+    private void UpdateFieldOfView(float speed01, float driftBlend)
+    {
+        if (virtualCamera == null)
+            return;
+
+        float targetFieldOfView = Mathf.Lerp(baseFieldOfView, speedFieldOfView, speed01);
+
+        if (kart.IsBoosting)
+            targetFieldOfView += boostFieldOfViewBonus;
+
+        targetFieldOfView += driftFieldOfViewBonus * driftBlend;
+
+        currentFieldOfView = Mathf.Lerp(
+            currentFieldOfView,
+            targetFieldOfView,
+            Time.deltaTime * fieldOfViewSmooth
+        );
+
+        LensSettings lens = virtualCamera.Lens;
+        lens.FieldOfView = currentFieldOfView;
+        virtualCamera.Lens = lens;
     }
 }
