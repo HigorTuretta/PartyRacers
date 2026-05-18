@@ -17904,6 +17904,7 @@ MonoBehaviour:
   maxForwardSpeedKmh: 200
   maxReverseSpeedKmh: 35
   acceleration: 35
+  accelerationLaunchKmh: 45
   reverseAcceleration: 22
   brakeDeceleration: 65
   handbrakeDeceleration: 95
@@ -17915,6 +17916,7 @@ MonoBehaviour:
   lowSpeedTurnRate: 95
   highSpeedTurnRate: 145
   highSpeedSteerReduction: 0.55
+  groundGraceTime: 0.12
   driftMinActivationSpeedKmh: 35
   driftMinMaintainSpeedKmh: 22
   driftMinimumSteerToStart: 0.35
@@ -17943,6 +17945,9 @@ MonoBehaviour:
   groundDamping: 0.05
   airDamping: 0.02
   centerOfMassOffset: {x: 0, y: -0.35, z: 0}
+  landingAbsorption: 0.7
+  maxGroundedUpwardVelocity: 2.5
+  steerInputCurve: 0.85
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
@@ -17969,10 +17974,10 @@ GameObject:
   - component: {fileID: 6385260788072205334}
   - component: {fileID: 2388191343288074420}
   - component: {fileID: 8383108158275830439}
-  - component: {fileID: 3335546308242197151}
   - component: {fileID: 4924673133745436795}
   - component: {fileID: 5241871308550537180}
   - component: {fileID: 8647568641333485564}
+  - component: {fileID: 8647568641333485565}
   m_Layer: 0
   m_Name: PlayerKart_Local
   m_TagString: Untagged
@@ -17980,30 +17985,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &3335546308242197151
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3259704614519656147}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5521c843d8c1ec4d8d2523d75c399c1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KartDriftParticles
-  kart: {fileID: 3054301517751986155}
-  rearLeftSmoke: {fileID: 0}
-  rearRightSmoke: {fileID: 0}
-  minSpeedKmh: 18
-  minDriftBlend: 0.12
-  maxRateOverDistance: 38
-  maxRateOverTime: 16
-  smokeSmooth: 10
-  minStartSize: 0.65
-  maxStartSize: 1.35
-  minStartSpeed: 0.15
-  maxStartSpeed: 0.8
 --- !u!1001 &3403728872048366188
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18163,10 +18144,10 @@ MonoBehaviour:
   highSpeedSpacing: 0.4
   puffsPerWheel: 2
   maxSpawnStepsPerFrame: 4
-  minStartScale: 0.22
-  maxStartScale: 0.45
-  minEndScale: 0.85
-  maxEndScale: 1.1
+  minStartScale: 0.12
+  maxStartScale: 0.18
+  minEndScale: 0.4
+  maxEndScale: 0.8
   minLifetime: 0.55
   maxLifetime: 0.95
   horizontalScatter: 0.38
@@ -18175,9 +18156,9 @@ MonoBehaviour:
   backwardVelocity: 0.45
   upwardVelocity: 0.22
   sideVelocity: 0.28
-  burnoutSizeMultiplier: 1.15
-  burnoutUpwardMultiplier: 1.35
-  burnoutScatterMultiplier: 1.2
+  burnoutSizeMultiplier: 0.6
+  burnoutUpwardMultiplier: 1
+  burnoutScatterMultiplier: 0.4
 --- !u!114 &5241871308550537180
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18558,6 +18539,11 @@ MonoBehaviour:
   minMousePitchOffset: -0.6
   maxMousePitchOffset: 0.8
   mouseReturnSpeed: 4
+  velocityLookAheadStrength: 0.35
+  velocityLookAheadSmooth: 5
+  steerBankAngle: 3
+  driftBankAngle: 5
+  bankSmooth: 8
   speedShakeAmount: 0.012
   driftShakeAmount: 0.008
   burnoutShakeAmount: 0.012
@@ -18623,6 +18609,7 @@ MonoBehaviour:
   wheelRadius: 0.25
   springStrength: 160000
   springDamping: 16000
+  compressionDampRatio: 0.18
   driveVisualOffset: 0
   visualMaxTravel: 0.12
   visualSmooth: 22
@@ -18662,6 +18649,26 @@ MonoBehaviour:
     isGrounded: 0
     hitPoint: {x: 0, y: 0, z: 0}
     hitNormal: {x: 0, y: 0, z: 0}
+--- !u!114 &8647568641333485565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3259704614519656147}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7319809369609d446a908ca9072ae806, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartCollision
+  minImpactSpeed: 2.5
+  minWallNormalXZ: 0.45
+  speedRetentionAlongWall: 0.7
+  bounceBackFraction: 0.3
+  angularYSurvival: 0.04
+  maxUpwardVelocityAfterHit: 1.5
+  postHitDuration: 0.3
+  postHitAngularDamp: 9
 --- !u!1001 &8754183624735006247
 PrefabInstance:
   m_ObjectHideFlags: 0

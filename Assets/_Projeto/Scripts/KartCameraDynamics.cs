@@ -37,9 +37,9 @@ public class KartCameraDynamics : MonoBehaviour
 
     [Header("FOV de Velocidade")]
     [SerializeField] private float baseFieldOfView = 64f;
-    [SerializeField] private float speedFieldOfView = 74f;
-    [SerializeField] private float boostFieldOfViewBonus = 4f;
-    [SerializeField] private float driftFieldOfViewBonus = 2f;
+    [SerializeField] private float speedFieldOfView = 80f;
+    [SerializeField] private float boostFieldOfViewBonus = 5f;
+    [SerializeField] private float driftFieldOfViewBonus = 3f;
     [SerializeField] private float fieldOfViewSmooth = 6f;
 
     [Header("Mouse")]
@@ -50,6 +50,15 @@ public class KartCameraDynamics : MonoBehaviour
     [SerializeField] private float minMousePitchOffset = -0.35f;
     [SerializeField] private float maxMousePitchOffset = 0.45f;
     [SerializeField] private float mouseReturnSpeed = 6f;
+
+    [Header("Antecipacao de Velocidade Lateral")]
+    [SerializeField] private float velocityLookAheadStrength = 0.35f;
+    [SerializeField] private float velocityLookAheadSmooth = 5f;
+
+    [Header("Inclinacao de Curva")]
+    [SerializeField] private float steerBankAngle = 3f;
+    [SerializeField] private float driftBankAngle = 5f;
+    [SerializeField] private float bankSmooth = 8f;
 
     [Header("Oscilacao")]
     [SerializeField] private float speedShakeAmount = 0.025f;
@@ -68,6 +77,8 @@ public class KartCameraDynamics : MonoBehaviour
     private float currentFieldOfView;
     private float currentDriftFollowYaw;
     private float currentDriftLookYaw;
+    private Vector3 smoothedVelocityLookOffset;
+    private float currentBankAngle;
 
     private void Awake()
     {
@@ -128,8 +139,19 @@ public class KartCameraDynamics : MonoBehaviour
         }
 
         lookPosition.x += kart.TurnInput * turnLookAheadOffset * speed01;
+
+        // look-ahead lateral baseado na velocidade real do kart (util no drift)
+        Vector3 localVelocity = transform.InverseTransformDirection(kart.Rigidbody.linearVelocity);
+        Vector3 velocityLookTarget = new Vector3(localVelocity.x * velocityLookAheadStrength, 0f, 0f);
+        smoothedVelocityLookOffset = Vector3.Lerp(smoothedVelocityLookOffset, velocityLookTarget, Time.deltaTime * velocityLookAheadSmooth);
+        lookPosition += smoothedVelocityLookOffset;
+
         followPosition.y += mousePitchOffset;
         followPosition += CalculateShake(speed01, driftBlend);
+
+        // inclinacao suave em curvas e drift
+        float targetBank = -(kart.TurnInput * steerBankAngle + kart.DriftDirection * driftBankAngle * driftBlend) * speed01;
+        currentBankAngle = Mathf.Lerp(currentBankAngle, targetBank, Time.deltaTime * bankSmooth);
 
         UpdateDriftYaw(driftBlend);
 
@@ -144,7 +166,7 @@ public class KartCameraDynamics : MonoBehaviour
 
         cameraFollowTarget.localRotation = Quaternion.Slerp(
             cameraFollowTarget.localRotation,
-            Quaternion.Euler(0f, mouseYaw + currentDriftFollowYaw, 0f),
+            Quaternion.Euler(0f, mouseYaw + currentDriftFollowYaw, currentBankAngle),
             Time.deltaTime * rotationSmooth
         );
 
@@ -242,8 +264,8 @@ public class KartCameraDynamics : MonoBehaviour
         float time = Time.time * shakeFrequency;
 
         return new Vector3(
-            Mathf.Sin(time * 1.27f) * shakeAmount,
-            Mathf.Cos(time * 1.63f) * shakeAmount * 0.45f,
+            (Mathf.PerlinNoise(time * 0.73f, 0f)          - 0.5f) * 2f * shakeAmount,
+            (Mathf.PerlinNoise(0f,           time * 0.91f) - 0.5f) * 2f * shakeAmount * 0.45f,
             0f
         );
     }

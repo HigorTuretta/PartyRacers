@@ -16,6 +16,11 @@ public class DriftPuffBubble : MonoBehaviour
     [Header("Forma")]
     [SerializeField] private float squashVariation = 0.22f;
 
+    [Header("Cloud Mesh")]
+    [SerializeField] private bool generateCloudMesh = true;
+    [SerializeField] private float cloudBumpStrength = 0.22f;
+    [SerializeField] private float cloudNoiseScale = 2.5f;
+
     private float timer;
     private Vector3 currentVelocity;
     private Vector3 randomRotationSpeed;
@@ -25,13 +30,13 @@ public class DriftPuffBubble : MonoBehaviour
         float customLifetime,
         float customStartScale,
         float customEndScale,
-        Vector3 customVelocity)
+        Vector3 customVelocity,
+        bool isBurnout = false)
     {
         lifetime = customLifetime;
         startScale = customStartScale;
         endScale = customEndScale;
         currentVelocity = customVelocity;
-
         timer = 0f;
 
         scaleMultiplier = new Vector3(
@@ -40,10 +45,11 @@ public class DriftPuffBubble : MonoBehaviour
             Random.Range(1f - squashVariation, 1f + squashVariation)
         );
 
+        float rotSpeed = isBurnout ? 8f : 45f;
         randomRotationSpeed = new Vector3(
-            Random.Range(-45f, 45f),
-            Random.Range(-45f, 45f),
-            Random.Range(-45f, 45f)
+            Random.Range(-rotSpeed, rotSpeed),
+            Random.Range(-rotSpeed, rotSpeed),
+            Random.Range(-rotSpeed, rotSpeed)
         );
 
         transform.localScale = Vector3.one * startScale;
@@ -51,6 +57,9 @@ public class DriftPuffBubble : MonoBehaviour
 
     private void Awake()
     {
+        if (generateCloudMesh)
+            ApplyCloudMesh();
+
         if (currentVelocity == Vector3.zero)
             currentVelocity = initialVelocity;
 
@@ -67,6 +76,15 @@ public class DriftPuffBubble : MonoBehaviour
         );
     }
 
+    private void ApplyCloudMesh()
+    {
+        MeshFilter mf = GetComponent<MeshFilter>();
+        if (mf == null) return;
+
+        float seed = Random.Range(0f, 100f);
+        mf.mesh = CloudMeshGenerator.Generate(cloudBumpStrength, cloudNoiseScale, seed);
+    }
+
     private void Update()
     {
         timer += Time.deltaTime;
@@ -76,7 +94,7 @@ public class DriftPuffBubble : MonoBehaviour
         transform.position += currentVelocity * Time.deltaTime;
         currentVelocity = Vector3.Lerp(currentVelocity, Vector3.zero, damping * Time.deltaTime);
 
-        float grow = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.28f));
+        float grow   = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.28f));
         float shrink = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.72f, 1f, t));
 
         float scale = Mathf.Lerp(startScale, endScale, grow);

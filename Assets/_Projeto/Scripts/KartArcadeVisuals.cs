@@ -143,7 +143,7 @@ public class KartArcadeVisuals : MonoBehaviour
 
         float targetPitch = (brakePitchAngle * brakeLoad) - (accelerationPitchAngle * accelerationLoad);
 
-        float bounce = Mathf.Sin(Time.time * 18f) * bodyVerticalBounce * speedFactor;
+        float bounce = (Mathf.PerlinNoise(Time.time * 2.8f, 0f) - 0.5f) * 2f * bodyVerticalBounce * speedFactor;
 
         float leanLift = Mathf.Abs(targetRoll) / Mathf.Max(1f, turnLeanAngle);
         float pitchLift = Mathf.Abs(targetPitch) / Mathf.Max(1f, brakePitchAngle);

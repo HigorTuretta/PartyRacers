@@ -15,7 +15,9 @@ public class KartController : MonoBehaviour
     [SerializeField] private float maxReverseSpeedKmh = 35f;
 
     [Header("Aceleração e Freio")]
-    [SerializeField] private float acceleration = 42f;
+    [SerializeField] private float acceleration = 28f;
+    // Velocidade em km/h até onde a aceleração cresce progressivamente (evita start instantâneo)
+    [SerializeField] private float accelerationLaunchKmh = 45f;
     [SerializeField] private float reverseAcceleration = 22f;
     [SerializeField] private float brakeDeceleration = 65f;
     [SerializeField] private float handbrakeDeceleration = 95f;
@@ -24,18 +26,20 @@ public class KartController : MonoBehaviour
     [SerializeField] private float naturalDeceleration = 4f;
 
     [Header("Direção")]
-    [SerializeField] private float minSteerSpeedKmh = 6f;
-    [SerializeField] private float fullSteerSpeedKmh = 35f;
-    [SerializeField] private float lowSpeedTurnRate = 95f;
+    [SerializeField] private float minSteerSpeedKmh = 2f;
+    [SerializeField] private float fullSteerSpeedKmh = 10f;
+    [SerializeField] private float lowSpeedTurnRate = 160f;
     [SerializeField] private float highSpeedTurnRate = 145f;
-    [SerializeField] private float highSpeedSteerReduction = 0.55f;
+    [SerializeField] private float highSpeedSteerReduction = 0.65f;
+    // Tempo de graça após perder o chão antes de cortar steering/grip (evita perda de controle em zebras)
+    [SerializeField] private float groundGraceTime = 0.12f;
 
     [Header("Drift Arcade - Ativação")]
     [SerializeField] private float driftMinActivationSpeedKmh = 35f;
     [SerializeField] private float driftMinMaintainSpeedKmh = 22f;
     [SerializeField] private float driftMinimumSteerToStart = 0.35f;
     [SerializeField] private float driftMinimumSteerToMaintain = 0.12f;
-    [SerializeField] private float driftReleaseGraceTime = 0.05f;
+    [SerializeField] private float driftReleaseGraceTime = 0.12f;
 
     [Header("Drift Arcade - Feeling Sabão")]
     [SerializeField] private float driftTurnMultiplier = 1.65f;
@@ -69,6 +73,13 @@ public class KartController : MonoBehaviour
     [SerializeField] private float groundDamping = 0.1f;
     [SerializeField] private float airDamping = 0.02f;
     [SerializeField] private Vector3 centerOfMassOffset = new Vector3(0f, -0.45f, 0f);
+    // Absorve essa fração da velocidade descendente no frame em que o kart pousa
+    [SerializeField, Range(0f, 1f)] private float landingAbsorption = 0.70f;
+    // Velocidade vertical máxima permitida enquanto o kart está no chão (evita quique de mola)
+    [SerializeField] private float maxGroundedUpwardVelocity = 2.5f;
+
+    [Header("Input")]
+    [SerializeField, Range(0.5f, 2f)] private float steerInputCurve = 0.85f;
 
     [Header("Boost")]
     [SerializeField] private float boostSpeedMultiplier = 1f;
@@ -95,6 +106,11 @@ public class KartController : MonoBehaviour
     private bool wantsDrift;
 
     private Vector3 groundNormal = Vector3.up;
+    private float lastGroundedTime;
+    private bool prevGrounded;
+
+    // True enquanto grounded OU dentro do grace period pós-ground (para steering e grip)
+    private bool IsEffectivelyGrounded => isGrounded || (Time.time - lastGroundedTime < groundGraceTime);
 
     public float MoveInput => moveInput;
     public float TurnInput => steerInput;
@@ -160,7 +176,7 @@ public class KartController : MonoBehaviour
             return;
         }
 
-        ReadKeyboardInput();
+        ReadInput();
         UpdateBurnoutState();
         UpdateDriftState();
         UpdateDriftBlend();
@@ -170,12 +186,45 @@ public class KartController : MonoBehaviour
     {
         CheckGround();
 
+        AbsorbLandingImpact();
+        ClampGroundedUpwardVelocity();
+
+        prevGrounded = isGrounded;
+
         ApplyDrive();
         ApplySteering();
         ApplyLateralGripAndSlide();
         ApplyExtraGravityAndDownforce();
         ApplyDamping();
         ClampForwardSpeed();
+    }
+
+    private void AbsorbLandingImpact()
+    {
+        if (!isGrounded || prevGrounded)
+            return;
+
+        float yVel = rb.linearVelocity.y;
+        if (yVel >= -0.5f)
+            return;
+
+        Vector3 vel = rb.linearVelocity;
+        vel.y = yVel * (1f - landingAbsorption);
+        rb.linearVelocity = vel;
+    }
+
+    private void ClampGroundedUpwardVelocity()
+    {
+        if (!isGrounded)
+            return;
+
+        float yVel = rb.linearVelocity.y;
+        if (yVel <= maxGroundedUpwardVelocity)
+            return;
+
+        Vector3 vel = rb.linearVelocity;
+        vel.y = maxGroundedUpwardVelocity;
+        rb.linearVelocity = vel;
     }
 
     public void SetControlEnabled(bool enabled)
@@ -202,29 +251,58 @@ public class KartController : MonoBehaviour
         rb.AddForce(transform.forward * instantPush, ForceMode.VelocityChange);
     }
 
-    private void ReadKeyboardInput()
+    private void ReadInput()
     {
         ClearInput();
 
         Keyboard keyboard = Keyboard.current;
+        Gamepad gamepad = Gamepad.current;
 
-        if (keyboard == null)
-            return;
+        // --- Throttle / Brake ---
+        if (gamepad != null)
+        {
+            float rt = gamepad.rightTrigger.ReadValue();
+            float lt = gamepad.leftTrigger.ReadValue();
 
-        if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
-            throttleInput = 1f;
+            if (rt > 0.05f) throttleInput = rt;
+            if (lt > 0.05f) brakeInput = lt;
+        }
 
-        if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
-            brakeInput = 1f;
+        if (keyboard != null)
+        {
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                throttleInput = 1f;
 
-        if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-            steerInput -= 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                brakeInput = 1f;
+        }
 
-        if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-            steerInput += 1f;
+        // --- Steer: gamepad analogue tem prioridade se significativo ---
+        float gamepadSteerRaw = gamepad != null ? gamepad.leftStick.x.ReadValue() : 0f;
+        bool gamepadSteering = gamepad != null && Mathf.Abs(gamepadSteerRaw) > 0.05f;
 
-        handbrakeInput = keyboard.spaceKey.isPressed;
-        handbrakePressedThisFrame = keyboard.spaceKey.wasPressedThisFrame;
+        if (gamepadSteering)
+        {
+            float abs = Mathf.Abs(gamepadSteerRaw);
+            steerInput = Mathf.Sign(gamepadSteerRaw) * Mathf.Pow(abs, steerInputCurve);
+        }
+        else if (keyboard != null)
+        {
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                steerInput -= 1f;
+
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                steerInput += 1f;
+        }
+
+        // --- Handbrake ---
+        bool gamepadHB = gamepad != null && gamepad.buttonSouth.isPressed;
+        bool keyboardHB = keyboard != null && keyboard.spaceKey.isPressed;
+
+        handbrakeInput = gamepadHB || keyboardHB;
+        handbrakePressedThisFrame =
+            (gamepad != null && gamepad.buttonSouth.wasPressedThisFrame) ||
+            (keyboard != null && keyboard.spaceKey.wasPressedThisFrame);
 
         moveInput = throttleInput - brakeInput;
     }
@@ -352,26 +430,26 @@ public class KartController : MonoBehaviour
         {
             isGrounded = suspension.IsAnyWheelGrounded;
             groundNormal = suspension.AverageGroundNormal;
-            return;
-        }
-
-        Vector3 origin = transform.position + Vector3.up * 0.35f;
-
-        float sphereRadius = 0.35f;
-        float minGroundNormalY = 0.55f;
-
-        if (Physics.SphereCast(origin, sphereRadius, Vector3.down, out RaycastHit hit, groundCheckDistance))
-        {
-            bool validGround = hit.normal.y >= minGroundNormalY;
-
-            isGrounded = validGround;
-            groundNormal = validGround ? hit.normal : Vector3.up;
         }
         else
         {
-            isGrounded = false;
-            groundNormal = Vector3.up;
+            Vector3 origin = transform.position + Vector3.up * 0.35f;
+
+            if (Physics.SphereCast(origin, 0.35f, Vector3.down, out RaycastHit hit, groundCheckDistance))
+            {
+                bool validGround = hit.normal.y >= 0.55f;
+                isGrounded = validGround;
+                groundNormal = validGround ? hit.normal : Vector3.up;
+            }
+            else
+            {
+                isGrounded = false;
+                groundNormal = Vector3.up;
+            }
         }
+
+        if (isGrounded)
+            lastGroundedTime = Time.time;
     }
 
     private void ApplyDrive()
@@ -396,7 +474,13 @@ public class KartController : MonoBehaviour
             }
 
             float speedFactor = Mathf.Clamp01(forwardSpeed / GetCurrentMaxForwardSpeedMps());
-            float accelerationCurve = 1f - Mathf.Pow(speedFactor, 1.35f);
+
+            // Rampa progressiva: começa em 15% da força e cresce até 100% ao atingir accelerationLaunchKmh
+            float launchRamp = Mathf.SmoothStep(0.15f, 1f, Mathf.Clamp01(SpeedKmh / accelerationLaunchKmh));
+            // Drop-off no topo: força decresce conforme se aproxima da velocidade máxima
+            float topEndDropoff = 1f - Mathf.Pow(speedFactor, 1.35f);
+            float accelerationCurve = launchRamp * topEndDropoff;
+
             float finalAcceleration = acceleration * boostAccelerationMultiplier * accelerationCurve;
 
             rb.AddForce(transform.forward * finalAcceleration, ForceMode.Acceleration);
@@ -508,7 +592,7 @@ public class KartController : MonoBehaviour
 
     private void ApplySteering()
     {
-        if (!canControl || !isGrounded)
+        if (!canControl || !IsEffectivelyGrounded)
             return;
 
         if (isBurningOut)
@@ -549,7 +633,7 @@ public class KartController : MonoBehaviour
 
     private void ApplyLateralGripAndSlide()
     {
-        if (!isGrounded)
+        if (!IsEffectivelyGrounded)
             return;
 
         Vector3 localVelocity = transform.InverseTransformDirection(rb.linearVelocity);

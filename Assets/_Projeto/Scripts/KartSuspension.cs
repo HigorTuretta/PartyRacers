@@ -35,7 +35,10 @@ public class KartSuspension : MonoBehaviour
 
     [Header("Mola")]
     [SerializeField] private float springStrength = 100000f;
-    [SerializeField] private float springDamping = 8000f;
+    [SerializeField] private float springDamping = 14000f;
+    // Fração do damping aplicada na COMPRESSÃO (0 = sem amortecimento no impacto, 1 = simétrico)
+    // Molas reais têm compressão suave e rebound firme
+    [SerializeField, Range(0f, 1f)] private float compressionDampRatio = 0.18f;
 
     [Header("Visual")]
     [Tooltip("Move o visualOffsetTarget pra cima/baixo conforme a compressão. Desligue se houver conflito.")]
@@ -142,7 +145,13 @@ public class KartSuspension : MonoBehaviour
             float compressionVelocity = (compression - wheel.previousCompression) / Mathf.Max(0.0001f, Time.fixedDeltaTime);
 
             float springForce = springStrength * compressionRatio;
-            float dampForce = springDamping * compressionVelocity;
+
+            // Damping assimétrico: compressão rápida (impacto/zebra) usa fração reduzida
+            // para não amplificar a força de impacto; rebound usa damping completo para
+            // segurar o kart contra a mola.
+            float dampRatio = compressionVelocity > 0f ? compressionDampRatio : 1f;
+            float dampForce = springDamping * compressionVelocity * dampRatio;
+
             float totalForce = Mathf.Max(0f, springForce + dampForce);
 
             rb.AddForceAtPosition(chassisUp * totalForce, anchorPosition);

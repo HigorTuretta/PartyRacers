@@ -234,7 +234,8 @@ public class KartDriftPuffTrail : MonoBehaviour
             lifetime,
             startScale,
             endScale,
-            velocity
+            velocity,
+            isBurnout
         );
     }
 }
