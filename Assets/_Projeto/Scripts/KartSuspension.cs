@@ -34,23 +34,35 @@ public class KartSuspension : MonoBehaviour
     [SerializeField] private float wheelRadius = 0.3f;
 
     [Header("Mola")]
-    [SerializeField] private float springStrength = 100000f;
-    [SerializeField] private float springDamping = 14000f;
-    // Fração do damping aplicada na COMPRESSÃO (0 = sem amortecimento no impacto, 1 = simétrico)
-    // Molas reais têm compressão suave e rebound firme
-    [SerializeField, Range(0f, 1f)] private float compressionDampRatio = 0.18f;
+    [SerializeField] private float springStrength = 14000f;
+    [SerializeField] private float springDamping = 2400f;
+    [SerializeField, Range(0f, 1f)] private float compressionDampRatio = 0.50f;
 
     [Header("Visual")]
     [Tooltip("Move o visualOffsetTarget pra cima/baixo conforme a compressão. Desligue se houver conflito.")]
     [SerializeField] private bool driveVisualOffset = true;
-    [SerializeField] private float visualMaxTravel = 0.12f;
+    [Tooltip("Travel visual máximo quando a mola está COMPRIMIDA (roda subindo em direção ao chassi).")]
+    [SerializeField] private float visualMaxCompression = 0.08f;
+    [Tooltip("Travel visual máximo quando a mola está ESTICADA (roda descendo afastando do chassi). Maior = roda pendurada mais visível no ar.")]
+    [SerializeField] private float visualMaxExtension = 0.24f;
     [SerializeField] private float visualSmooth = 22f;
 
     [Header("Estabilizadores")]
-    [Tooltip("Aplica torque corretivo para o carro tender a ficar paralelo ao chão (anti-capotamento).")]
-    [SerializeField] private float uprightAssist = 18f;
-    [Tooltip("Quanto da gravidade artificial extra aplicar quando todas as rodas estão no chão.")]
-    [SerializeField] private float stickToGroundForce = 12f;
+    [Tooltip("Torque corretivo para alinhar o chassi à normal do terreno (funciona sem lock de rotação).")]
+    [SerializeField] private float uprightAssist = 40f;
+    [Tooltip("Força extra que cola o kart ao terreno (na direção da normal do chão).")]
+    [SerializeField] private float stickToGroundForce = 8f;
+
+    [Header("Barra Anti-Roll")]
+    [Tooltip("Índice no array Wheels de cada roda. FL=0 FR=1 RL=2 RR=3 por padrão.")]
+    [SerializeField] private int frontLeftIdx = 0;
+    [SerializeField] private int frontRightIdx = 1;
+    [SerializeField] private int rearLeftIdx = 2;
+    [SerializeField] private int rearRightIdx = 3;
+    [Tooltip("Resistência ao tombamento no eixo dianteiro.")]
+    [SerializeField] private float antiRollFront = 8000f;
+    [Tooltip("Resistência ao tombamento no eixo traseiro.")]
+    [SerializeField] private float antiRollRear = 6000f;
 
     [Header("Debug")]
     [SerializeField] private bool drawDebugGizmos = true;
@@ -110,6 +122,8 @@ public class KartSuspension : MonoBehaviour
 
         ApplyUprightAssist();
         ApplyStickToGround();
+        ApplyAntiRoll(frontLeftIdx, frontRightIdx, antiRollFront);
+        ApplyAntiRoll(rearLeftIdx, rearRightIdx, antiRollRear);
     }
 
     private void LateUpdate()
@@ -127,13 +141,18 @@ public class KartSuspension : MonoBehaviour
         Vector3 chassisUp = rb.transform.up;
         Vector3 anchorPosition = wheel.wheelPivot.position + chassisUp * anchorOffsetUp;
         Vector3 rayDirection = -chassisUp;
-        float maxRayLength = restLength + wheelRadius;
+
+        // SphereCast em vez de Raycast: muito mais robusto em terreno irregular
+        // (não cai entre arestas do mesh, detecta declives próximos antes do raio puro)
+        const float castRadius = 0.12f;
+        float maxRayLength = restLength + wheelRadius - castRadius;
 
         wheel.previousCompression = wheel.currentCompression;
 
-        if (Physics.Raycast(anchorPosition, rayDirection, out RaycastHit hit, maxRayLength, groundMask, QueryTriggerInteraction.Ignore))
+        if (Physics.SphereCast(anchorPosition, castRadius, rayDirection, out RaycastHit hit, maxRayLength, groundMask, QueryTriggerInteraction.Ignore))
         {
-            float distanceToWheelGround = hit.distance - wheelRadius;
+            // hit.distance é o quanto o CENTRO da esfera viajou. Soma castRadius p/ o contato real.
+            float distanceToWheelGround = hit.distance + castRadius - wheelRadius;
             float compression = Mathf.Clamp(restLength - distanceToWheelGround, 0f, restLength);
 
             wheel.currentCompression = compression;
@@ -160,9 +179,10 @@ public class KartSuspension : MonoBehaviour
         {
             wheel.isGrounded = false;
             wheel.hitNormal = Vector3.up;
+            // Decay rápido para 0 quando no ar: a roda visualmente "cai" pra posição esticada
             wheel.currentCompression = Mathf.MoveTowards(
                 wheel.currentCompression, 0f,
-                restLength * 4f * Time.fixedDeltaTime
+                restLength * 6f * Time.fixedDeltaTime
             );
         }
     }
@@ -183,7 +203,33 @@ public class KartSuspension : MonoBehaviour
         if (!IsAnyWheelGrounded || stickToGroundForce <= 0f) return;
 
         float groundedRatio = GroundedWheelCount / (float)wheels.Length;
-        rb.AddForce(-rb.transform.up * stickToGroundForce * groundedRatio, ForceMode.Acceleration);
+        rb.AddForce(-AverageGroundNormal * stickToGroundForce * groundedRatio, ForceMode.Acceleration);
+    }
+
+    private void ApplyAntiRoll(int leftIdx, int rightIdx, float strength)
+    {
+        if (leftIdx >= wheels.Length || rightIdx >= wheels.Length) return;
+
+        Wheel left = wheels[leftIdx];
+        Wheel right = wheels[rightIdx];
+
+        if (left == null || right == null) return;
+
+        float leftTravel = left.isGrounded
+            ? left.currentCompression / Mathf.Max(0.0001f, restLength)
+            : -1f;
+        float rightTravel = right.isGrounded
+            ? right.currentCompression / Mathf.Max(0.0001f, restLength)
+            : -1f;
+
+        if (!left.isGrounded && !right.isGrounded) return;
+
+        float antiRollForce = (leftTravel - rightTravel) * strength;
+
+        if (left.isGrounded && left.wheelPivot != null)
+            rb.AddForceAtPosition(rb.transform.up * -antiRollForce, left.wheelPivot.position);
+        if (right.isGrounded && right.wheelPivot != null)
+            rb.AddForceAtPosition(rb.transform.up * antiRollForce, right.wheelPivot.position);
     }
 
     private void UpdateWheelVisual(Wheel wheel)
@@ -193,9 +239,14 @@ public class KartSuspension : MonoBehaviour
         Transform target = wheel.visualOffsetTarget != null ? wheel.visualOffsetTarget : wheel.wheelPivot;
         if (target == null) return;
 
-        float restCompression = restLength * 0.5f;
+        // Posição "neutra" = compressão de equilíbrio (~55% com nossos valores).
+        // Acima disso a roda sobe (suspensão comprimida); abaixo desce (suspensão esticada).
+        float restCompression = restLength * 0.55f;
         float travelDelta = wheel.currentCompression - restCompression;
-        travelDelta = Mathf.Clamp(travelDelta, -visualMaxTravel, visualMaxTravel);
+
+        // Travel ASSIMÉTRICO: extensão (roda no ar / mola esticada) muito maior que compressão.
+        // travelDelta positivo = comprimido (roda sobe pra chassi). negativo = esticado (roda desce).
+        travelDelta = Mathf.Clamp(travelDelta, -visualMaxExtension, visualMaxCompression);
 
         Transform parent = target.parent;
         Vector3 worldOffset = rb.transform.up * travelDelta;

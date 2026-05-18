@@ -68,15 +68,34 @@ public class KartController : MonoBehaviour
 
     [Header("Estabilidade")]
     [SerializeField] private float groundCheckDistance = 1.25f;
-    [SerializeField] private float extraGravity = 35f;
-    [SerializeField] private float speedDownforce = 0.35f;
-    [SerializeField] private float groundDamping = 0.1f;
-    [SerializeField] private float airDamping = 0.02f;
-    [SerializeField] private Vector3 centerOfMassOffset = new Vector3(0f, -0.45f, 0f);
-    // Absorve essa fração da velocidade descendente no frame em que o kart pousa
-    [SerializeField, Range(0f, 1f)] private float landingAbsorption = 0.70f;
-    // Velocidade vertical máxima permitida enquanto o kart está no chão (evita quique de mola)
-    [SerializeField] private float maxGroundedUpwardVelocity = 2.5f;
+    [SerializeField] private float extraGravity = 22f;
+    [SerializeField] private float speedDownforce = 0.30f;
+    [SerializeField] private float groundDamping = 0.08f;
+    [SerializeField] private float airDamping = 0.01f;
+    [SerializeField] private Vector3 centerOfMassOffset = new Vector3(0f, -0.55f, 0f);
+    [SerializeField, Range(0f, 1f)] private float landingAbsorption = 0.45f;
+    [SerializeField] private float maxGroundedUpwardVelocity = 5f;
+
+    [Header("Ar / Queda")]
+    [Tooltip("Torque que endireita o kart no ar quando muito inclinado (acima do deadzone).")]
+    [SerializeField] private float airStabilizationTorque = 5f;
+    [Tooltip("Inclinação mínima (graus) antes do auto-nível agir. Maior = mais liberdade de voo.")]
+    [SerializeField] private float airStabilizationDeadzone = 55f;
+    [Tooltip("Torque de pitch (W = mergulho/front-flip, S = empina/back-flip). Estilo GTA V.")]
+    [SerializeField] private float airPitchControl = 22f;
+    [Tooltip("Torque de roll (A/D inclina lateralmente o carro no ar).")]
+    [SerializeField] private float airRollControl = 14f;
+    [Tooltip("Torque de yaw (A/D = rotação horizontal no ar para mudar direção).")]
+    [SerializeField] private float airYawControl = 12f;
+    [SerializeField] private float groundAngularDamping = 4f;
+    [Tooltip("Damping da rotação no ar. Menor = giros duram mais, mais arcade.")]
+    [SerializeField] private float airAngularDamping = 0.4f;
+
+    [Header("Morro")]
+    [Tooltip("Fração da componente gravitacional compensada em subidas. >1 ajuda a manter velocidade.")]
+    [SerializeField, Range(0f, 2.5f)] private float slopeCompensation = 1.3f;
+    [Tooltip("Empurrão extra para frente quando subindo (na direção do movimento na rampa).")]
+    [SerializeField, Range(0f, 30f)] private float uphillAssistForce = 8f;
 
     [Header("Input")]
     [SerializeField, Range(0.5f, 2f)] private float steerInputCurve = 0.85f;
@@ -160,8 +179,7 @@ public class KartController : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.centerOfMass += centerOfMassOffset;
-
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        rb.angularDamping = groundAngularDamping;
     }
 
     private void Update()
@@ -195,6 +213,7 @@ public class KartController : MonoBehaviour
         ApplySteering();
         ApplyLateralGripAndSlide();
         ApplyExtraGravityAndDownforce();
+        ApplyAirStabilization();
         ApplyDamping();
         ClampForwardSpeed();
     }
@@ -215,16 +234,21 @@ public class KartController : MonoBehaviour
 
     private void ClampGroundedUpwardVelocity()
     {
-        if (!isGrounded)
-            return;
+        if (!isGrounded) return;
 
-        float yVel = rb.linearVelocity.y;
-        if (yVel <= maxGroundedUpwardVelocity)
-            return;
+        // CRÍTICO: medimos a velocidade na direção da NORMAL do terreno, NÃO no eixo Y do mundo.
+        // Em rampas, o eixo Y do mundo é uma componente legítima do movimento ao longo da rampa
+        // (carro a 55 m/s subindo rampa de 15° tem Y = 14.4 m/s naturalmente).
+        // Usar groundNormal isola o "quique de mola" real (perpendicular à superfície) do
+        // movimento de subida (paralelo à superfície). Em movimento natural na rampa, este
+        // valor é ~0 mesmo em alta velocidade.
+        float velAlongNormal = Vector3.Dot(rb.linearVelocity, groundNormal);
 
-        Vector3 vel = rb.linearVelocity;
-        vel.y = maxGroundedUpwardVelocity;
-        rb.linearVelocity = vel;
+        if (velAlongNormal <= maxGroundedUpwardVelocity) return;
+
+        // Remove APENAS o excesso na direção da normal — preserva intacto o movimento ao longo da rampa
+        float excess = velAlongNormal - maxGroundedUpwardVelocity;
+        rb.linearVelocity -= groundNormal * excess;
     }
 
     public void SetControlEnabled(bool enabled)
@@ -454,7 +478,7 @@ public class KartController : MonoBehaviour
 
     private void ApplyDrive()
     {
-        if (!canControl || !isGrounded)
+        if (!canControl || !IsEffectivelyGrounded)
             return;
 
         if (isBurningOut)
@@ -465,39 +489,46 @@ public class KartController : MonoBehaviour
 
         float forwardSpeed = ForwardSpeed;
 
+        // Direção de aceleração projetada na superfície do terreno para seguir rampas corretamente
+        Vector3 slopeFwd = Vector3.ProjectOnPlane(transform.forward, groundNormal);
+        Vector3 driveDir = slopeFwd.sqrMagnitude > 0.001f ? slopeFwd.normalized : transform.forward;
+
         if (throttleInput > 0f)
         {
             if (forwardSpeed < -0.5f)
             {
-                rb.AddForce(transform.forward * brakeDeceleration, ForceMode.Acceleration);
+                rb.AddForce(driveDir * brakeDeceleration, ForceMode.Acceleration);
                 return;
             }
 
             float speedFactor = Mathf.Clamp01(forwardSpeed / GetCurrentMaxForwardSpeedMps());
 
-            // Rampa progressiva: começa em 15% da força e cresce até 100% ao atingir accelerationLaunchKmh
             float launchRamp = Mathf.SmoothStep(0.15f, 1f, Mathf.Clamp01(SpeedKmh / accelerationLaunchKmh));
-            // Drop-off no topo: força decresce conforme se aproxima da velocidade máxima
-            float topEndDropoff = 1f - Mathf.Pow(speedFactor, 1.35f);
+            // Curva mais plana: motor mantém quase força máxima até 70% e cai só nos últimos 30%
+            float topEndDropoff = speedFactor < 0.7f
+                ? 1f
+                : 1f - Mathf.Pow((speedFactor - 0.7f) / 0.3f, 1.5f);
             float accelerationCurve = launchRamp * topEndDropoff;
 
             float finalAcceleration = acceleration * boostAccelerationMultiplier * accelerationCurve;
 
-            rb.AddForce(transform.forward * finalAcceleration, ForceMode.Acceleration);
+            rb.AddForce(driveDir * finalAcceleration, ForceMode.Acceleration);
 
             if (driftBlend > 0.01f)
                 ApplyDriftSpeedHold();
+
+            ApplySlopeCompensation(driveDir);
         }
 
         if (brakeInput > 0f)
         {
             if (forwardSpeed > 1.5f)
             {
-                rb.AddForce(-transform.forward * brakeDeceleration, ForceMode.Acceleration);
+                rb.AddForce(-driveDir * brakeDeceleration, ForceMode.Acceleration);
             }
             else
             {
-                rb.AddForce(-transform.forward * reverseAcceleration, ForceMode.Acceleration);
+                rb.AddForce(-driveDir * reverseAcceleration, ForceMode.Acceleration);
             }
         }
 
@@ -505,14 +536,10 @@ public class KartController : MonoBehaviour
 
         if (throttleInput <= 0f && brakeInput <= 0f && !handbrakeInput && driftBlend <= 0.01f)
         {
-            Vector3 flatVelocity = rb.linearVelocity;
-            flatVelocity.y = 0f;
-
-            if (flatVelocity.sqrMagnitude > 0.1f)
-            {
-                Vector3 resistance = -flatVelocity.normalized * naturalDeceleration;
-                rb.AddForce(resistance, ForceMode.Acceleration);
-            }
+            // Desaceleração natural na direção do movimento projetado no terreno
+            Vector3 coastDir = Vector3.ProjectOnPlane(rb.linearVelocity, groundNormal);
+            if (coastDir.sqrMagnitude > 0.1f)
+                rb.AddForce(-coastDir.normalized * naturalDeceleration, ForceMode.Acceleration);
         }
     }
 
@@ -572,6 +599,25 @@ public class KartController : MonoBehaviour
             transform.forward * Random.Range(-burnoutShakeForce, burnoutShakeForce);
 
         rb.AddForce(shake, ForceMode.Acceleration);
+    }
+
+    private void ApplySlopeCompensation(Vector3 driveDir)
+    {
+        if (!IsEffectivelyGrounded || slopeCompensation <= 0f) return;
+
+        // Calcula a componente da gravidade que se opõe ao driveDir usando o groundNormal real,
+        // independente de quanto o chassi inclinou fisicamente.
+        float totalGravityMag = Physics.gravity.magnitude + extraGravity;
+        float gravAlongDrive = Vector3.Dot(Vector3.down * totalGravityMag, driveDir);
+
+        // Só compensa em subida (gravidade opondo o movimento)
+        if (gravAlongDrive >= 0f) return;
+
+        // Compensação gravitacional + assistência adicional proporcional à inclinação
+        float slopeIntensity = -gravAlongDrive / Mathf.Max(0.01f, totalGravityMag); // 0..1
+        float compensation = (-gravAlongDrive) * slopeCompensation + uphillAssistForce * slopeIntensity;
+
+        rb.AddForce(driveDir * compensation, ForceMode.Acceleration);
     }
 
     private void ApplyDriftSpeedHold()
@@ -696,17 +742,48 @@ public class KartController : MonoBehaviour
         if (!isGrounded)
             return;
 
-        float downforce = Speed01 * speedDownforce * extraGravity;
+        // Downforce ao longo da normal do terreno: cola o carro na pista sem criar componente
+        // contrária ao movimento em rampas (ao contrário de aplicar Vector3.down direto).
+        float downforce = Speed01 * speedDownforce * Physics.gravity.magnitude;
+        rb.AddForce(-groundNormal * downforce, ForceMode.Acceleration);
+    }
 
-        // Importante:
-        // Não usamos -groundNormal aqui, porque em zebras inclinadas isso cria força lateral
-        // e dá a sensação de que a direção está sendo puxada.
-        rb.AddForce(Vector3.down * downforce, ForceMode.Acceleration);
+    private void ApplyAirStabilization()
+    {
+        if (isGrounded) return;
+
+        // Auto-nivelar SUAVE: só age quando muito inclinado (deadzone), preservando voos naturais
+        float tiltAngle = Vector3.Angle(transform.up, Vector3.up);
+        if (tiltAngle > airStabilizationDeadzone)
+        {
+            float overTilt = (tiltAngle - airStabilizationDeadzone) / Mathf.Max(1f, 90f - airStabilizationDeadzone);
+            Vector3 levelTorque = Vector3.Cross(transform.up, Vector3.up) * airStabilizationTorque * Mathf.Clamp01(overTilt);
+            rb.AddTorque(levelTorque, ForceMode.Acceleration);
+        }
+
+        // Controle do jogador no ar (estilo GTA V / NFS arcade)
+        if (!canControl) return;
+
+        // Pitch: W = mergulha nariz (front-flip), S = empina nariz (back-flip).
+        // Sinal negativo no torque: torque positivo em transform.right = nariz pra cima,
+        // mas o jogador espera W (acelerar) = inclinar pra frente, então invertemos.
+        float pitchInput = throttleInput - brakeInput;
+        if (Mathf.Abs(pitchInput) > 0.05f)
+            rb.AddTorque(transform.right * -pitchInput * airPitchControl, ForceMode.Acceleration);
+
+        // Roll + Yaw com steerInput. A/D inclina e gira simultaneamente — mais reativo,
+        // permite curvas reais no ar (ajustar direção pra próximo trecho da pista).
+        if (Mathf.Abs(steerInput) > 0.05f)
+        {
+            rb.AddTorque(transform.forward * -steerInput * airRollControl, ForceMode.Acceleration);
+            rb.AddTorque(transform.up * steerInput * airYawControl, ForceMode.Acceleration);
+        }
     }
 
     private void ApplyDamping()
     {
         rb.linearDamping = isGrounded ? groundDamping : airDamping;
+        rb.angularDamping = isGrounded ? groundAngularDamping : airAngularDamping;
     }
 
     private void ClampForwardSpeed()
