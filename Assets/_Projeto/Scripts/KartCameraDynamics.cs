@@ -11,11 +11,11 @@ public class KartCameraDynamics : MonoBehaviour
     [SerializeField] private CinemachineCamera virtualCamera;
 
     [Header("Chase Central")]
-    [SerializeField] private Vector3 baseFollowLocalPosition = new Vector3(0f, 1.15f, 0.75f);
-    [SerializeField] private Vector3 baseLookLocalPosition = new Vector3(0f, 1.05f, 3.2f);
-    [SerializeField] private float speedPullback = -0.65f;
-    [SerializeField] private float speedHeightLift = 0.1f;
-    [SerializeField] private float speedLookAhead = 1.25f;
+    [SerializeField] private Vector3 baseFollowLocalPosition = new Vector3(0f, 1.08f, 0.72f);
+    [SerializeField] private Vector3 baseLookLocalPosition = new Vector3(0f, 1.02f, 3.45f);
+    [SerializeField] private float speedPullback = -0.85f;
+    [SerializeField] private float speedHeightLift = 0.16f;
+    [SerializeField] private float speedLookAhead = 1.55f;
 
     [Header("Aceleracao / Freada")]
     [SerializeField] private float accelerationBackOffset = -0.35f;
@@ -23,24 +23,24 @@ public class KartCameraDynamics : MonoBehaviour
     [SerializeField] private float brakeUpOffset = 0.15f;
 
     [Header("Antecipacao de Curva")]
-    [SerializeField] private float turnLookAheadOffset = 0f;
-    [SerializeField] private float driftLookAheadOffset = 0f;
-    [SerializeField] private float driftPullback = -0.2f;
-    [SerializeField] private float driftHeightLift = 0.08f;
+    [SerializeField] private float turnLookAheadOffset = 0.35f;
+    [SerializeField] private float driftLookAheadOffset = 0.85f;
+    [SerializeField] private float driftPullback = -0.55f;
+    [SerializeField] private float driftHeightLift = 0.18f;
 
     [Header("Drift Camera (olhar pra frente)")]
-    [SerializeField, Range(0f, 1f)] private float driftLookYawFactor = 0.7f;
-    [SerializeField] private float driftLookYawMax = 35f;
-    [SerializeField, Range(0f, 1f)] private float driftFollowYawFactor = 0.45f;
-    [SerializeField] private float driftFollowYawMax = 25f;
-    [SerializeField] private float driftYawSmooth = 8f;
+    [SerializeField, Range(0f, 1f)] private float driftLookYawFactor = 0.88f;
+    [SerializeField] private float driftLookYawMax = 44f;
+    [SerializeField, Range(0f, 1f)] private float driftFollowYawFactor = 0.58f;
+    [SerializeField] private float driftFollowYawMax = 34f;
+    [SerializeField] private float driftYawSmooth = 12f;
 
     [Header("FOV de Velocidade")]
-    [SerializeField] private float baseFieldOfView = 64f;
-    [SerializeField] private float speedFieldOfView = 80f;
-    [SerializeField] private float boostFieldOfViewBonus = 5f;
-    [SerializeField] private float driftFieldOfViewBonus = 3f;
-    [SerializeField] private float fieldOfViewSmooth = 6f;
+    [SerializeField] private float baseFieldOfView = 61f;
+    [SerializeField] private float speedFieldOfView = 72f;
+    [SerializeField] private float boostFieldOfViewBonus = 6f;
+    [SerializeField] private float driftFieldOfViewBonus = 5f;
+    [SerializeField] private float fieldOfViewSmooth = 8f;
 
     [Header("Mouse")]
     [SerializeField] private bool requireRightMouseButton = true;
@@ -52,17 +52,17 @@ public class KartCameraDynamics : MonoBehaviour
     [SerializeField] private float mouseReturnSpeed = 6f;
 
     [Header("Antecipacao de Velocidade Lateral")]
-    [SerializeField] private float velocityLookAheadStrength = 0.35f;
-    [SerializeField] private float velocityLookAheadSmooth = 5f;
+    [SerializeField] private float velocityLookAheadStrength = 0.58f;
+    [SerializeField] private float velocityLookAheadSmooth = 7f;
 
     [Header("Inclinacao de Curva")]
-    [SerializeField] private float steerBankAngle = 3f;
-    [SerializeField] private float driftBankAngle = 5f;
-    [SerializeField] private float bankSmooth = 8f;
+    [SerializeField] private float steerBankAngle = 3.5f;
+    [SerializeField] private float driftBankAngle = 8f;
+    [SerializeField] private float bankSmooth = 10f;
 
     [Header("Oscilacao")]
-    [SerializeField] private float speedShakeAmount = 0.025f;
-    [SerializeField] private float driftShakeAmount = 0.018f;
+    [SerializeField] private float speedShakeAmount = 0.018f;
+    [SerializeField] private float driftShakeAmount = 0.026f;
     [SerializeField] private float burnoutShakeAmount = 0.045f;
     [SerializeField] private float shakeFrequency = 18f;
 
@@ -150,7 +150,8 @@ public class KartCameraDynamics : MonoBehaviour
         followPosition += CalculateShake(speed01, driftBlend);
 
         // inclinacao suave em curvas e drift
-        float targetBank = -(kart.TurnInput * steerBankAngle + kart.DriftDirection * driftBankAngle * driftBlend) * speed01;
+        float driftBankDirection = kart.DriftDirection != 0 ? kart.DriftDirection : lastDriftDirection;
+        float targetBank = -(kart.TurnInput * steerBankAngle + driftBankDirection * driftBankAngle * driftBlend) * speed01;
         currentBankAngle = Mathf.Lerp(currentBankAngle, targetBank, Time.deltaTime * bankSmooth);
 
         UpdateDriftYaw(driftBlend);

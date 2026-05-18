@@ -93,7 +93,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
+  m_LightingDataAsset: {fileID: 112000004, guid: 38658f651f4d276489a1a013ddda4865, type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -1970,8 +1970,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1764155428}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.16018225, y: 0, z: 0, w: 0.9870875}
-  m_LocalPosition: {x: 28, y: 26.096, z: 156.8}
+  m_LocalRotation: {x: 0.11326595, y: 0.69797623, z: -0.11326595, w: 0.69797623}
+  m_LocalPosition: {x: -63.14, y: 3.3200002, z: -29.47}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2109,8 +2109,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2121750342}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.16018225, y: 0, z: 0, w: 0.9870875}
-  m_LocalPosition: {x: 28, y: 26.096, z: 156.8}
+  m_LocalRotation: {x: 0.11326595, y: 0.69797623, z: -0.11326595, w: 0.69797623}
+  m_LocalPosition: {x: -63.14, y: 3.3200002, z: -29.47}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2288,8 +2288,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3259704614519656147}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 28, y: 22.896, z: 162}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -57.94, y: 0.12, z: -29.47}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2298,7 +2298,7 @@ Transform:
   - {fileID: 3442681982394865506}
   - {fileID: 8870346950286449182}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!1 &919132147873981586
 GameObject:
   m_ObjectHideFlags: 0
@@ -2607,43 +2607,81 @@ MonoBehaviour:
   rb: {fileID: 4339835325583883533}
   suspension: {fileID: 8647568641333485564}
   maxForwardSpeedKmh: 200
-  maxReverseSpeedKmh: 35
-  acceleration: 35
+  maxReverseSpeedKmh: 70
+  acceleration: 20
   accelerationLaunchKmh: 45
   reverseAcceleration: 22
-  brakeDeceleration: 65
+  brakeDeceleration: 35
   handbrakeDeceleration: 95
   handbrakeThrottleRelief: 0.6
   handbrakeDriftRelief: 0.45
   naturalDeceleration: 4
-  minSteerSpeedKmh: 6
+  minSteerSpeedKmh: 0.5
   fullSteerSpeedKmh: 35
   lowSpeedTurnRate: 95
   highSpeedTurnRate: 145
   highSpeedSteerReduction: 0.55
   groundGraceTime: 0.12
+  hardTurnSpeedLossMinKmh: 45
+  hardTurnSteerThreshold: 0.82
+  hardTurnSpeedLoss: 8
+  hardTurnMaxLossAtSpeed01: 0.8
+  hardTurnHoldTime: 0.22
+  hardTurnStressFadeSpeed: 8
+  hardTurnMinSlipAngleDeg: 5.5
+  hardTurnFullSlipAngleDeg: 14
+  hardTurnMinLateralSpeed: 1.8
+  hardTurnFullLateralSpeed: 6.5
+  launchSlipAccelerationThreshold: 2.5
+  brakeSlipAccelerationThreshold: 14
+  abruptSlipFadeSpeed: 7.5
+  abruptSlipMaxSpeedKmh: 95
   driftMinActivationSpeedKmh: 35
   driftMinMaintainSpeedKmh: 22
   driftMinimumSteerToStart: 0.35
-  driftMinimumSteerToMaintain: 0.15
-  driftReleaseGraceTime: 0.12
-  driftTurnMultiplier: 1.45
-  driftSteerAssist: 0.45
-  driftEnterSpeed: 5.5
-  driftExitSpeed: 7.5
-  driftSideSpeedKmh: 32
-  driftSideBuildSpeed: 5.5
-  driftSideReleaseSpeed: 10
-  driftSideBaseline: 0.3
-  driftSideSteerResponse: 1.4
-  driftSpeedHoldAcceleration: 36
-  driftEntrySpeedRetention: 0.98
+  driftMinimumSteerToMaintain: 0.1
+  driftReleaseGraceTime: 0.35
+  driftSwitchSteerThreshold: 0.58
+  driftSwitchHoldTime: 0.12
+  driftSwitchCooldown: 0.1
+  driftSwitchSpeedRetention: 0.96
+  driftCounterExitThreshold: 0.34
+  driftCounterExitHoldTime: 0.14
+  driftTurnMultiplier: 1.65
+  driftSteerAssist: 0.62
+  driftYawAssist: 24
+  driftDirectSteerScale: 0.34
+  driftCounterSteerAssistScale: 0.35
+  driftSteerDeadzone: 0.12
+  driftSteerResponseCurve: 1.75
+  driftSteerInputSmooth: 10
+  driftThrottleYawDamp: 0.35
+  driftCounterYawDamp: 0.55
+  driftBrakeYawBoost: 0.45
+  driftHandbrakeYawBoost: 0.25
+  driftEnterSpeed: 9.5
+  driftExitSpeed: 8
+  driftSideSpeedKmh: 72
+  driftSideBuildSpeed: 8.5
+  driftSideSwitchSpeed: 18
+  driftSideReleaseSpeed: 8
+  driftSideBaseline: 0.42
+  driftSideSteerResponse: 1.15
+  driftSteerFineSlideInfluence: 0.45
+  driftBrakeSlideBoost: 0.36
+  driftHandbrakeSlideBoost: 0.28
+  driftThrottleGrip: 0.32
+  driftCounterSteerGrip: 0.42
+  driftBrakeSpeedDamping: 0.35
+  driftHandbrakeSpeedDamping: 0.45
+  driftSpeedHoldAcceleration: 48
+  driftEntrySpeedRetention: 0.97
   burnoutMaxSpeedKmh: 18
   burnoutHoldDeceleration: 90
   burnoutCreepSpeedKmh: 4
   burnoutShakeForce: 0.35
   normalLateralGrip: 9
-  driftLateralGrip: 2.2
+  driftLateralGrip: 1.65
   groundCheckDistance: 1.25
   extraGravity: 15
   speedDownforce: 0.2
@@ -2653,8 +2691,14 @@ MonoBehaviour:
   landingAbsorption: 0.7
   maxGroundedUpwardVelocity: 2.5
   airStabilizationTorque: 22
+  airStabilizationDeadzone: 35
+  airPitchControl: 8
+  airRollControl: 4
+  airYawControl: 3
   groundAngularDamping: 10
   airAngularDamping: 3
+  slopeCompensation: 1.5
+  uphillAssistForce: 8
   steerInputCurve: 0.85
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
@@ -2683,6 +2727,7 @@ GameObject:
   - component: {fileID: 2388191343288074420}
   - component: {fileID: 8383108158275830439}
   - component: {fileID: 4924673133745436795}
+  - component: {fileID: 7766112233445566778}
   - component: {fileID: 5241871308550537180}
   - component: {fileID: 8647568641333485564}
   - component: {fileID: 8647568641333485565}
@@ -2782,6 +2827,9 @@ MonoBehaviour:
   burnoutMaxSpeedKmh: 18
   burnoutSpawnInterval: 0.055
   burnoutPuffsPerWheel: 3
+  minStressFactor: 0.32
+  stressSpawnInterval: 0.075
+  stressPuffsPerWheel: 1
   lowSpeedSpacing: 0.75
   highSpeedSpacing: 0.4
   puffsPerWheel: 2
@@ -2801,6 +2849,32 @@ MonoBehaviour:
   burnoutSizeMultiplier: 0.6
   burnoutUpwardMultiplier: 1
   burnoutScatterMultiplier: 0.4
+--- !u!114 &7766112233445566778
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3259704614519656147}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d84f4bd8087a4c66b4be7ad545f630e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartTireMarks
+  kart: {fileID: 3054301517751986155}
+  rearLeftPoint: {fileID: 366665470}
+  rearRightPoint: {fileID: 2873994}
+  minIntensity: 0.25
+  minSpeedKmh: 8
+  markWidth: 0.16
+  markLifetime: 8
+  groundOffset: 0.025
+  markColor: {r: 0.02, g: 0.018, b: 0.015, a: 0.55}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundRayDistance: 1.4
+  validGroundNormalY: 0.25
 --- !u!114 &5241871308550537180
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2997,13 +3071,15 @@ MonoBehaviour:
   turnLeanAngle: 3
   accelerationPitchAngle: 2
   brakePitchAngle: 5
-  driftLeanMultiplier: 1.15
-  bodyVerticalBounce: 0.01
-  bodyLiftOnLean: 0.012
+  driftLeanMultiplier: 1.35
+  driftCounterLeanAngle: 5.5
+  driftNoseDiveAngle: 1.2
+  bodyVerticalBounce: 0.014
+  bodyLiftOnLean: 0.018
   bodyLiftOnPitch: 0.003
   accelerationCompression: 0.035
   brakeCompression: 0.045
-  driftBodyLift: 0.008
+  driftBodyLift: 0.035
   suspensionResponse: 9
   visualSmooth: 10
   wheelSpinSpeed: 900
@@ -3086,28 +3162,28 @@ MonoBehaviour:
   cameraFollowTarget: {fileID: 2117963842719702329}
   cameraLookTarget: {fileID: 3442681982394865506}
   virtualCamera: {fileID: 1764155431}
-  baseFollowLocalPosition: {x: 0, y: 1, z: 0.75}
-  baseLookLocalPosition: {x: 0, y: 1, z: 3.2}
-  speedPullback: -0.65
-  speedHeightLift: 0.1
-  speedLookAhead: 1.25
+  baseFollowLocalPosition: {x: 0, y: 1.08, z: 0.72}
+  baseLookLocalPosition: {x: 0, y: 1.02, z: 3.45}
+  speedPullback: -0.85
+  speedHeightLift: 0.16
+  speedLookAhead: 1.55
   accelerationBackOffset: -0.35
   brakeForwardOffset: 0.45
   brakeUpOffset: 0.15
-  turnLookAheadOffset: 0
-  driftLookAheadOffset: 0
-  driftPullback: -0.2
-  driftHeightLift: 0.08
-  driftLookYawFactor: 0.7
-  driftLookYawMax: 35
-  driftFollowYawFactor: 0.45
-  driftFollowYawMax: 25
-  driftYawSmooth: 8
-  baseFieldOfView: 60
-  speedFieldOfView: 55
-  boostFieldOfViewBonus: 4
-  driftFieldOfViewBonus: 2
-  fieldOfViewSmooth: 6
+  turnLookAheadOffset: 0.35
+  driftLookAheadOffset: 0.85
+  driftPullback: -0.55
+  driftHeightLift: 0.18
+  driftLookYawFactor: 0.88
+  driftLookYawMax: 44
+  driftFollowYawFactor: 0.58
+  driftFollowYawMax: 34
+  driftYawSmooth: 12
+  baseFieldOfView: 61
+  speedFieldOfView: 72
+  boostFieldOfViewBonus: 6
+  driftFieldOfViewBonus: 5
+  fieldOfViewSmooth: 8
   requireRightMouseButton: 1
   mouseSensitivityX: 0.12
   mouseSensitivityY: 0.06
@@ -3115,13 +3191,13 @@ MonoBehaviour:
   minMousePitchOffset: -0.6
   maxMousePitchOffset: 0.8
   mouseReturnSpeed: 4
-  velocityLookAheadStrength: 0.35
-  velocityLookAheadSmooth: 5
-  steerBankAngle: 3
-  driftBankAngle: 5
-  bankSmooth: 8
-  speedShakeAmount: 0.012
-  driftShakeAmount: 0.008
+  velocityLookAheadStrength: 0.58
+  velocityLookAheadSmooth: 7
+  steerBankAngle: 3.5
+  driftBankAngle: 8
+  bankSmooth: 10
+  speedShakeAmount: 0.018
+  driftShakeAmount: 0.026
   burnoutShakeAmount: 0.012
   shakeFrequency: 18
   followSmooth: 10
@@ -3187,7 +3263,8 @@ MonoBehaviour:
   springDamping: 16000
   compressionDampRatio: 0.18
   driveVisualOffset: 0
-  visualMaxTravel: 0.12
+  visualMaxCompression: 0.08
+  visualMaxExtension: 0.24
   visualSmooth: 22
   uprightAssist: 18
   stickToGroundForce: 12
@@ -3245,12 +3322,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KartCollision
   minImpactSpeed: 2.5
   minWallNormalXZ: 0.45
+  maxGroundNormalY: 0.55
   speedRetentionAlongWall: 0.7
   bounceBackFraction: 0.3
   angularYSurvival: 0.04
   maxUpwardVelocityAfterHit: 1.5
   postHitDuration: 0.3
   postHitAngularDamp: 9
+  initialGroundScanRadius: 250
+  forwardScanDistance: 14
+  forwardScanRadius: 0.7
+  minVelocityForScan: 1.5
 --- !u!4 &8870346950286449182
 Transform:
   m_ObjectHideFlags: 0

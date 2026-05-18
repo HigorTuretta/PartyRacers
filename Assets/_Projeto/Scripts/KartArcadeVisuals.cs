@@ -24,6 +24,8 @@ public class KartArcadeVisuals : MonoBehaviour
     [SerializeField] private float accelerationPitchAngle = 2f;
     [SerializeField] private float brakePitchAngle = 5f;
     [SerializeField] private float driftLeanMultiplier = 1.35f;
+    [SerializeField] private float driftCounterLeanAngle = 5.5f;
+    [SerializeField] private float driftNoseDiveAngle = 1.2f;
     [SerializeField] private float bodyVerticalBounce = 0.018f;
     [SerializeField] private float bodyLiftOnLean = 0.035f;
     [SerializeField] private float bodyLiftOnPitch = 0.004f;
@@ -129,6 +131,7 @@ public class KartArcadeVisuals : MonoBehaviour
         float leanMultiplier = Mathf.Lerp(1f, driftLeanMultiplier, driftFactor);
 
         float targetRoll = kart.TurnInput * turnLeanAngle * speedFactor * leanMultiplier;
+        targetRoll -= kart.DriftSignedAmount * driftCounterLeanAngle * speedFactor;
         float accelerationLoad = Mathf.Clamp01(Mathf.Max(0f, localAcceleration.z) / 14f);
         float brakeLoad = Mathf.Clamp01(Mathf.Max(0f, -localAcceleration.z) / 18f);
 
@@ -142,6 +145,7 @@ public class KartArcadeVisuals : MonoBehaviour
             accelerationLoad = Mathf.Max(accelerationLoad, 0.18f);
 
         float targetPitch = (brakePitchAngle * brakeLoad) - (accelerationPitchAngle * accelerationLoad);
+        targetPitch += driftFactor * driftNoseDiveAngle * speedFactor;
 
         float bounce = (Mathf.PerlinNoise(Time.time * 2.8f, 0f) - 0.5f) * 2f * bodyVerticalBounce * speedFactor;
 

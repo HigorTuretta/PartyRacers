@@ -34,27 +34,67 @@ public class KartController : MonoBehaviour
     // Tempo de graça após perder o chão antes de cortar steering/grip (evita perda de controle em zebras)
     [SerializeField] private float groundGraceTime = 0.12f;
 
+    [Header("Curva Arcade - Pneus")]
+    [SerializeField] private float hardTurnSpeedLossMinKmh = 45f;
+    [SerializeField, Range(0f, 1f)] private float hardTurnSteerThreshold = 0.82f;
+    [SerializeField] private float hardTurnSpeedLoss = 8f;
+    [SerializeField, Range(0.1f, 1f)] private float hardTurnMaxLossAtSpeed01 = 0.8f;
+    [SerializeField] private float hardTurnHoldTime = 0.22f;
+    [SerializeField] private float hardTurnStressFadeSpeed = 8f;
+    [SerializeField] private float hardTurnMinSlipAngleDeg = 5.5f;
+    [SerializeField] private float hardTurnFullSlipAngleDeg = 14f;
+    [SerializeField] private float hardTurnMinLateralSpeed = 1.8f;
+    [SerializeField] private float hardTurnFullLateralSpeed = 6.5f;
+    [SerializeField] private float launchSlipAccelerationThreshold = 2.5f;
+    [SerializeField] private float brakeSlipAccelerationThreshold = 14f;
+    [SerializeField] private float abruptSlipFadeSpeed = 7.5f;
+    [SerializeField] private float abruptSlipMaxSpeedKmh = 95f;
+
     [Header("Drift Arcade - Ativação")]
     [SerializeField] private float driftMinActivationSpeedKmh = 35f;
     [SerializeField] private float driftMinMaintainSpeedKmh = 22f;
     [SerializeField] private float driftMinimumSteerToStart = 0.35f;
     [SerializeField] private float driftMinimumSteerToMaintain = 0.12f;
-    [SerializeField] private float driftReleaseGraceTime = 0.12f;
+    [SerializeField] private float driftReleaseGraceTime = 0.35f;
+    [SerializeField] private float driftSwitchSteerThreshold = 0.58f;
+    [SerializeField] private float driftSwitchHoldTime = 0.12f;
+    [SerializeField] private float driftSwitchCooldown = 0.1f;
+    [SerializeField, Range(0.75f, 1f)] private float driftSwitchSpeedRetention = 0.96f;
+    [SerializeField] private float driftCounterExitThreshold = 0.34f;
+    [SerializeField] private float driftCounterExitHoldTime = 0.14f;
 
     [Header("Drift Arcade - Feeling Sabão")]
     [SerializeField] private float driftTurnMultiplier = 1.65f;
-    [SerializeField] private float driftSteerAssist = 0.5f;
-    [SerializeField] private float driftEnterSpeed = 7.5f;
-    [SerializeField] private float driftExitSpeed = 12f;
+    [SerializeField] private float driftSteerAssist = 0.62f;
+    [SerializeField] private float driftYawAssist = 24f;
+    [SerializeField, Range(0f, 1f)] private float driftDirectSteerScale = 0.34f;
+    [SerializeField, Range(0f, 1f)] private float driftCounterSteerAssistScale = 0.35f;
+    [SerializeField] private float driftSteerDeadzone = 0.12f;
+    [SerializeField] private float driftSteerResponseCurve = 1.75f;
+    [SerializeField] private float driftSteerInputSmooth = 10f;
+    [SerializeField, Range(0f, 1f)] private float driftThrottleYawDamp = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float driftCounterYawDamp = 0.55f;
+    [SerializeField] private float driftBrakeYawBoost = 0.45f;
+    [SerializeField] private float driftHandbrakeYawBoost = 0.25f;
+    [SerializeField] private float driftEnterSpeed = 9.5f;
+    [SerializeField] private float driftExitSpeed = 8f;
 
-    [SerializeField] private float driftSideSpeedKmh = 55f;
-    [SerializeField] private float driftSideBuildSpeed = 5.5f;
-    [SerializeField] private float driftSideReleaseSpeed = 10f;
-    [SerializeField, Range(0f, 1f)] private float driftSideBaseline = 0.3f;
-    [SerializeField, Range(0.5f, 3f)] private float driftSideSteerResponse = 1.4f;
+    [SerializeField] private float driftSideSpeedKmh = 72f;
+    [SerializeField] private float driftSideBuildSpeed = 8.5f;
+    [SerializeField] private float driftSideSwitchSpeed = 18f;
+    [SerializeField] private float driftSideReleaseSpeed = 8f;
+    [SerializeField, Range(0f, 1f)] private float driftSideBaseline = 0.42f;
+    [SerializeField, Range(0.5f, 3f)] private float driftSideSteerResponse = 1.15f;
+    [SerializeField, Range(0f, 1f)] private float driftSteerFineSlideInfluence = 0.45f;
+    [SerializeField] private float driftBrakeSlideBoost = 0.36f;
+    [SerializeField] private float driftHandbrakeSlideBoost = 0.28f;
+    [SerializeField, Range(0f, 1f)] private float driftThrottleGrip = 0.32f;
+    [SerializeField, Range(0f, 1f)] private float driftCounterSteerGrip = 0.42f;
+    [SerializeField, Range(0f, 1f)] private float driftBrakeSpeedDamping = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float driftHandbrakeSpeedDamping = 0.45f;
 
-    [SerializeField] private float driftSpeedHoldAcceleration = 36f;
-    [SerializeField] private float driftEntrySpeedRetention = 0.98f;
+    [SerializeField] private float driftSpeedHoldAcceleration = 48f;
+    [SerializeField] private float driftEntrySpeedRetention = 0.97f;
 
     [Header("Burnout / Queimar Pneu")]
     [SerializeField] private float burnoutMaxSpeedKmh = 18f;
@@ -122,11 +162,22 @@ public class KartController : MonoBehaviour
 
     private float driftReleaseTimer;
     private float driftEntryForwardSpeed;
+    private float driftSwitchTimer;
+    private float driftSwitchHoldTimer;
+    private float driftCounterExitTimer;
+    private float driftControlInput;
     private bool wantsDrift;
 
     private Vector3 groundNormal = Vector3.up;
     private float lastGroundedTime;
     private bool prevGrounded;
+    private Vector3 previousLocalVelocity;
+    private Vector3 localAcceleration;
+    private float hardTurnStress01;
+    private float hardTurnStressCharge;
+    private float launchSlip01;
+    private float brakeSlip01;
+    private float tireStress01;
 
     // True enquanto grounded OU dentro do grace period pós-ground (para steering e grip)
     private bool IsEffectivelyGrounded => isGrounded || (Time.time - lastGroundedTime < groundGraceTime);
@@ -141,6 +192,12 @@ public class KartController : MonoBehaviour
     public bool IsBurningOut => isBurningOut;
     public float DriftBlend => driftBlend;
     public int DriftDirection => driftDirection;
+    public float DriftSignedAmount => driftDirection * driftBlend;
+    public float DriftControlInput => driftBlend > 0.01f ? driftControlInput : steerInput;
+    public float TireStress01 => tireStress01;
+    public float HardTurnStress01 => hardTurnStress01;
+    public float LaunchSlip01 => launchSlip01;
+    public float BrakeSlip01 => brakeSlip01;
     public bool IsGrounded => isGrounded;
 
     public Rigidbody Rigidbody => rb;
@@ -180,6 +237,7 @@ public class KartController : MonoBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.centerOfMass += centerOfMassOffset;
         rb.angularDamping = groundAngularDamping;
+        previousLocalVelocity = transform.InverseTransformDirection(rb.linearVelocity);
     }
 
     private void Update()
@@ -206,16 +264,21 @@ public class KartController : MonoBehaviour
 
         AbsorbLandingImpact();
         ClampGroundedUpwardVelocity();
+        UpdateDriftControlInput();
+        UpdateLocalAcceleration();
+        UpdateTireStressSignals();
 
         prevGrounded = isGrounded;
 
         ApplyDrive();
         ApplySteering();
+        ApplyHardTurnSpeedLoss();
         ApplyLateralGripAndSlide();
         ApplyExtraGravityAndDownforce();
         ApplyAirStabilization();
         ApplyDamping();
         ClampForwardSpeed();
+        CapturePostPhysicsVelocity();
     }
 
     private void AbsorbLandingImpact()
@@ -263,6 +326,9 @@ public class KartController : MonoBehaviour
 
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+            previousLocalVelocity = Vector3.zero;
+            localAcceleration = Vector3.zero;
+            ClearTireStressSignals();
         }
     }
 
@@ -353,6 +419,9 @@ public class KartController : MonoBehaviour
 
     private void UpdateDriftState()
     {
+        if (driftSwitchTimer > 0f)
+            driftSwitchTimer -= Time.deltaTime;
+
         if (isBurningOut)
         {
             BeginDriftExit();
@@ -382,7 +451,7 @@ public class KartController : MonoBehaviour
 
         wantsDrift = true;
         isDrifting = true;
-        driftDirection = steerInput >= 0f ? 1 : -1;
+        SetDriftDirection(steerInput >= 0f ? 1 : -1);
         driftReleaseTimer = 0f;
 
         driftEntryForwardSpeed = Mathf.Max(ForwardSpeed, 0f);
@@ -393,19 +462,54 @@ public class KartController : MonoBehaviour
         bool tooSlow = SpeedKmh < driftMinMaintainSpeedKmh;
         bool airborne = !isGrounded;
 
-        float steerInDriftDirection = steerInput * driftDirection;
-
-        bool steeringSameDirection = steerInDriftDirection >= driftMinimumSteerToMaintain;
-        bool steeringOppositeDirection = steerInDriftDirection < -0.15f;
-        bool steeringReleased = Mathf.Abs(steerInput) < driftMinimumSteerToMaintain;
-
-        if (tooSlow || airborne || steeringOppositeDirection)
+        if (tooSlow || airborne)
         {
             BeginDriftExit();
             return;
         }
 
-        if (steeringReleased || !steeringSameDirection)
+        float absSteer = Mathf.Abs(steerInput);
+
+        int steerDirection = steerInput >= 0f ? 1 : -1;
+        bool isCounterSteering = steerDirection != driftDirection
+            && absSteer >= driftCounterExitThreshold;
+        bool hasSideSwitchIntent = handbrakeInput || brakeInput > 0.15f;
+        bool wantsSideSwitch = isCounterSteering
+            && hasSideSwitchIntent
+            && absSteer >= driftSwitchSteerThreshold
+            && driftSwitchTimer <= 0f;
+
+        if (wantsSideSwitch)
+        {
+            driftSwitchHoldTimer += Time.deltaTime;
+
+            if (driftSwitchHoldTimer >= driftSwitchHoldTime)
+            {
+                SetDriftDirection(steerDirection);
+                driftSwitchHoldTimer = 0f;
+            }
+
+            driftReleaseTimer = 0f;
+            return;
+        }
+
+        driftSwitchHoldTimer = 0f;
+
+        if (isCounterSteering && !hasSideSwitchIntent)
+        {
+            driftCounterExitTimer += Time.deltaTime;
+
+            if (driftCounterExitTimer >= driftCounterExitHoldTime)
+                BeginDriftExit();
+
+            return;
+        }
+
+        driftCounterExitTimer = 0f;
+
+        bool hasDriftInput = handbrakeInput || absSteer >= driftMinimumSteerToMaintain;
+
+        if (!hasDriftInput)
         {
             driftReleaseTimer += Time.deltaTime;
 
@@ -418,12 +522,31 @@ public class KartController : MonoBehaviour
         driftReleaseTimer = 0f;
     }
 
+    private void SetDriftDirection(int direction)
+    {
+        if (direction == 0 || direction == driftDirection)
+            return;
+
+        driftDirection = direction;
+        driftSwitchTimer = driftSwitchCooldown;
+        driftSwitchHoldTimer = 0f;
+        driftCounterExitTimer = 0f;
+        driftReleaseTimer = 0f;
+
+        float currentForwardSpeed = Mathf.Max(ForwardSpeed, 0f);
+        float retainedEntrySpeed = driftEntryForwardSpeed * driftSwitchSpeedRetention;
+        driftEntryForwardSpeed = Mathf.Max(retainedEntrySpeed, currentForwardSpeed, driftMinMaintainSpeedKmh * KmhToMps);
+    }
+
     private void BeginDriftExit()
     {
         wantsDrift = false;
         isDrifting = false;
         driftDirection = 0;
         driftReleaseTimer = 0f;
+        driftSwitchTimer = 0f;
+        driftSwitchHoldTimer = 0f;
+        driftCounterExitTimer = 0f;
     }
 
     private void ForceEndDrift()
@@ -434,6 +557,10 @@ public class KartController : MonoBehaviour
         driftBlend = 0f;
         driftReleaseTimer = 0f;
         driftEntryForwardSpeed = 0f;
+        driftSwitchTimer = 0f;
+        driftSwitchHoldTimer = 0f;
+        driftCounterExitTimer = 0f;
+        driftControlInput = 0f;
     }
 
     private void UpdateDriftBlend()
@@ -446,6 +573,168 @@ public class KartController : MonoBehaviour
             targetBlend,
             blendSpeed * Time.deltaTime
         );
+    }
+
+    private void UpdateDriftControlInput()
+    {
+        if (driftBlend <= 0.01f)
+        {
+            driftControlInput = Mathf.MoveTowards(
+                driftControlInput,
+                steerInput,
+                driftSteerInputSmooth * Time.fixedDeltaTime
+            );
+            return;
+        }
+
+        float targetInput = ShapeDriftSteerInput(steerInput);
+        driftControlInput = Mathf.Lerp(
+            driftControlInput,
+            targetInput,
+            Mathf.Clamp01(driftSteerInputSmooth * Time.fixedDeltaTime)
+        );
+    }
+
+    private float ShapeDriftSteerInput(float input)
+    {
+        float absInput = Mathf.Abs(input);
+
+        if (absInput <= driftSteerDeadzone)
+            return 0f;
+
+        float normalizedInput = Mathf.InverseLerp(driftSteerDeadzone, 1f, absInput);
+        float shapedInput = Mathf.Pow(normalizedInput, Mathf.Max(0.1f, driftSteerResponseCurve));
+
+        return Mathf.Sign(input) * shapedInput;
+    }
+
+    private void UpdateLocalAcceleration()
+    {
+        Vector3 currentLocalVelocity = transform.InverseTransformDirection(rb.linearVelocity);
+        localAcceleration = (currentLocalVelocity - previousLocalVelocity) / Mathf.Max(Time.fixedDeltaTime, 0.001f);
+    }
+
+    private void CapturePostPhysicsVelocity()
+    {
+        previousLocalVelocity = transform.InverseTransformDirection(rb.linearVelocity);
+    }
+
+    private void UpdateTireStressSignals()
+    {
+        if (!canControl || !isGrounded)
+        {
+            ClearTireStressSignals();
+            return;
+        }
+
+        hardTurnStress01 = CalculateHardTurnStress();
+        launchSlip01 = CalculateLaunchSlip();
+        brakeSlip01 = CalculateBrakeSlip();
+
+        tireStress01 = Mathf.Max(
+            Mathf.Clamp01(driftBlend),
+            isBurningOut ? 1f : 0f,
+            hardTurnStress01,
+            launchSlip01,
+            brakeSlip01
+        );
+    }
+
+    private void ClearTireStressSignals()
+    {
+        hardTurnStress01 = 0f;
+        hardTurnStressCharge = 0f;
+        launchSlip01 = 0f;
+        brakeSlip01 = 0f;
+        tireStress01 = 0f;
+    }
+
+    private float CalculateHardTurnStress()
+    {
+        if (isBurningOut || driftBlend > 0.05f)
+        {
+            DecayHardTurnCharge();
+            return 0f;
+        }
+
+        float absSteer = Mathf.Abs(steerInput);
+        if (absSteer <= hardTurnSteerThreshold)
+        {
+            DecayHardTurnCharge();
+            return 0f;
+        }
+
+        float speedKmh = SpeedKmh;
+        if (speedKmh < hardTurnSpeedLossMinKmh)
+        {
+            DecayHardTurnCharge();
+            return 0f;
+        }
+
+        hardTurnStressCharge = Mathf.MoveTowards(
+            hardTurnStressCharge,
+            1f,
+            Time.fixedDeltaTime / Mathf.Max(0.01f, hardTurnHoldTime)
+        );
+
+        float steerStress = Mathf.InverseLerp(hardTurnSteerThreshold, 1f, absSteer);
+        float maxLossSpeedKmh = maxForwardSpeedKmh * hardTurnMaxLossAtSpeed01;
+        float speedStress = Mathf.InverseLerp(hardTurnSpeedLossMinKmh, maxLossSpeedKmh, speedKmh);
+        float slipStress = Mathf.InverseLerp(hardTurnMinSlipAngleDeg, hardTurnFullSlipAngleDeg, Mathf.Abs(SlipAngleDeg));
+        float lateralSpeed = Mathf.Abs(transform.InverseTransformDirection(rb.linearVelocity).x);
+        float lateralStress = Mathf.InverseLerp(hardTurnMinLateralSpeed, hardTurnFullLateralSpeed, lateralSpeed);
+        float scrubStress = Mathf.Max(slipStress, lateralStress);
+        float sustainedStress = Mathf.SmoothStep(0f, 1f, hardTurnStressCharge);
+
+        return Mathf.Clamp01(steerStress * speedStress * scrubStress * sustainedStress);
+    }
+
+    private void DecayHardTurnCharge()
+    {
+        hardTurnStressCharge = Mathf.MoveTowards(
+            hardTurnStressCharge,
+            0f,
+            hardTurnStressFadeSpeed * Time.fixedDeltaTime
+        );
+    }
+
+    private float CalculateLaunchSlip()
+    {
+        if (isBurningOut || driftBlend > 0.1f || throttleInput < 0.35f)
+            return 0f;
+
+        if (SpeedKmh > abruptSlipMaxSpeedKmh)
+            return 0f;
+
+        float accelerationStress = Mathf.InverseLerp(
+            launchSlipAccelerationThreshold,
+            launchSlipAccelerationThreshold + abruptSlipFadeSpeed,
+            localAcceleration.z
+        );
+
+        float lowSpeedBias = 1f - Mathf.InverseLerp(12f, 65f, SpeedKmh);
+        float throttleStress = Mathf.InverseLerp(0.35f, 1f, throttleInput);
+
+        return Mathf.Clamp01(accelerationStress * lowSpeedBias * throttleStress);
+    }
+
+    private float CalculateBrakeSlip()
+    {
+        if (isBurningOut || driftBlend > 0.1f)
+            return 0f;
+
+        float brakeIntent = Mathf.Max(brakeInput, handbrakeInput ? 0.75f : 0f);
+        if (brakeIntent <= 0.2f)
+            return 0f;
+
+        float speedStress = Mathf.InverseLerp(18f, abruptSlipMaxSpeedKmh, SpeedKmh);
+        float decelerationStress = Mathf.InverseLerp(
+            brakeSlipAccelerationThreshold,
+            brakeSlipAccelerationThreshold + abruptSlipFadeSpeed,
+            -localAcceleration.z
+        );
+
+        return Mathf.Clamp01(decelerationStress * speedStress * Mathf.InverseLerp(0.2f, 1f, brakeIntent));
     }
 
     private void CheckGround()
@@ -524,7 +813,8 @@ public class KartController : MonoBehaviour
         {
             if (forwardSpeed > 1.5f)
             {
-                rb.AddForce(-driveDir * brakeDeceleration, ForceMode.Acceleration);
+                float driftBrakeScale = Mathf.Lerp(1f, driftBrakeSpeedDamping, driftBlend);
+                rb.AddForce(-driveDir * brakeDeceleration * driftBrakeScale, ForceMode.Acceleration);
             }
             else
             {
@@ -551,6 +841,7 @@ public class KartController : MonoBehaviour
         float throttleScale = 1f - handbrakeThrottleRelief * throttleInput;
         float driftScale = 1f - handbrakeDriftRelief * driftBlend;
         float intensity = handbrakeDeceleration * throttleScale * driftScale;
+        intensity *= Mathf.Lerp(1f, driftHandbrakeSpeedDamping, driftBlend);
 
         if (Mathf.Abs(forwardSpeed) > 1f)
         {
@@ -661,13 +952,40 @@ public class KartController : MonoBehaviour
 
         float driftTurnBonus = Mathf.Lerp(1f, driftTurnMultiplier, driftBlend);
         finalTurnRate *= driftTurnBonus;
+        float driftYawPedalScale = 1f
+            + brakeInput * driftBrakeYawBoost
+            + (handbrakeInput ? driftHandbrakeYawBoost : 0f)
+            - throttleInput * driftThrottleYawDamp;
+        finalTurnRate += driftYawAssist * driftBlend * Mathf.Max(0.35f, driftYawPedalScale);
 
         float finalSteerInput = steerInput;
 
         if (driftBlend > 0.01f && driftDirection != 0)
         {
-            float assist = driftDirection * driftSteerAssist * driftBlend;
-            finalSteerInput = Mathf.Clamp(steerInput + assist, -1f, 1f);
+            float steerIntoDrift = Mathf.Clamp01(driftControlInput * driftDirection);
+            float counterSteer = Mathf.Clamp01(-driftControlInput * driftDirection);
+            bool straighteningDrift = counterSteer > 0.01f && brakeInput <= 0.15f && !handbrakeInput;
+            float assistScale = 1f
+                + steerIntoDrift * 0.35f
+                + brakeInput * driftBrakeYawBoost
+                + (handbrakeInput ? driftHandbrakeYawBoost : 0f)
+                - throttleInput * driftThrottleYawDamp
+                - counterSteer * driftCounterYawDamp;
+
+            assistScale = Mathf.Clamp(assistScale, 0.2f, 1.8f);
+
+            float assist = driftDirection * driftSteerAssist * driftBlend * assistScale;
+            assist *= Mathf.Lerp(1f, driftCounterSteerAssistScale, counterSteer);
+            float directSteer = driftControlInput * driftDirectSteerScale;
+
+            if (straighteningDrift)
+            {
+                float straightenDamp = Mathf.Lerp(1f, 0.2f, counterSteer);
+                assist *= straightenDamp;
+                directSteer *= Mathf.Lerp(1f, 0.25f, counterSteer);
+            }
+
+            finalSteerInput = Mathf.Clamp(directSteer + assist, -1f, 1f);
         }
 
         float directionSign = ForwardSpeed >= -0.5f ? 1f : -1f;
@@ -675,6 +993,21 @@ public class KartController : MonoBehaviour
 
         Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
         rb.MoveRotation(rb.rotation * turnRotation);
+    }
+
+    private void ApplyHardTurnSpeedLoss()
+    {
+        if (hardTurnStress01 <= 0f)
+            return;
+
+        if (!canControl || !IsEffectivelyGrounded || isBurningOut || driftBlend > 0.05f)
+            return;
+
+        Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, groundNormal);
+        if (planarVelocity.sqrMagnitude < 1f)
+            return;
+
+        rb.AddForce(-planarVelocity.normalized * hardTurnSpeedLoss * hardTurnStress01, ForceMode.Acceleration);
     }
 
     private void ApplyLateralGripAndSlide()
@@ -703,19 +1036,44 @@ public class KartController : MonoBehaviour
             return;
         }
 
+        if (driftDirection == 0)
+        {
+            localVelocity.x = Mathf.Lerp(
+                localVelocity.x,
+                0f,
+                driftSideReleaseSpeed * Time.fixedDeltaTime
+            );
+
+            rb.linearVelocity = transform.TransformDirection(localVelocity);
+            return;
+        }
+
         float currentForwardSpeed = Mathf.Max(Mathf.Abs(localVelocity.z), 0.1f);
         float speedFactor = Mathf.Clamp01(currentForwardSpeed / GetCurrentMaxForwardSpeedMps());
 
-        float steerIntoDrift = Mathf.Clamp01(steerInput * driftDirection);
-        float steerSlideScale = Mathf.Lerp(
-            driftSideBaseline,
-            1f,
-            Mathf.Pow(steerIntoDrift, 1f / Mathf.Max(0.01f, driftSideSteerResponse))
-        );
+        float steerIntoDrift = Mathf.Clamp01(driftControlInput * driftDirection);
+        float counterSteer = Mathf.Clamp01(-driftControlInput * driftDirection);
+        float shapedSteerSlide = Mathf.Pow(steerIntoDrift, 1f / Mathf.Max(0.01f, driftSideSteerResponse));
+        float pedalSlide =
+            brakeInput * driftBrakeSlideBoost +
+            (handbrakeInput ? driftHandbrakeSlideBoost : 0f) -
+            throttleInput * driftThrottleGrip -
+            counterSteer * driftCounterSteerGrip;
+
+        float steerSlideScale = driftSideBaseline
+            + shapedSteerSlide * driftSteerFineSlideInfluence
+            + pedalSlide;
+
+        steerSlideScale = Mathf.Clamp(steerSlideScale, 0.12f, 1.22f);
 
         float targetSideSpeed = -driftDirection * driftSideSpeedKmh * KmhToMps * speedFactor * steerSlideScale;
 
         float sideBuildRate = Mathf.Max(driftSideBuildSpeed, driftLateralGrip);
+        bool crossingSides = Mathf.Abs(localVelocity.x) > 0.25f
+            && Mathf.Sign(localVelocity.x) != Mathf.Sign(targetSideSpeed);
+
+        if (crossingSides)
+            sideBuildRate = Mathf.Max(sideBuildRate, driftSideSwitchSpeed);
 
         localVelocity.x = Mathf.Lerp(
             localVelocity.x,

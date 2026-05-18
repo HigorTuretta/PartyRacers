@@ -17,6 +17,11 @@ public class KartDriftPuffTrail : MonoBehaviour
     [SerializeField] private float burnoutSpawnInterval = 0.055f;
     [SerializeField] private int burnoutPuffsPerWheel = 3;
 
+    [Header("Ativacao - Stress de Pneu")]
+    [SerializeField] private float minStressFactor = 0.32f;
+    [SerializeField] private float stressSpawnInterval = 0.075f;
+    [SerializeField] private int stressPuffsPerWheel = 1;
+
     [Header("Densidade do Trail")]
     [SerializeField] private float lowSpeedSpacing = 0.75f;
     [SerializeField] private float highSpeedSpacing = 0.28f;
@@ -52,6 +57,7 @@ public class KartDriftPuffTrail : MonoBehaviour
     private float distanceAccumulator;
     private bool wasEmittingDrift;
     private float burnoutTimer;
+    private float stressTimer;
 
     private void Awake()
     {
@@ -76,6 +82,17 @@ public class KartDriftPuffTrail : MonoBehaviour
         }
 
         burnoutTimer = 0f;
+
+        bool shouldEmitStress = ShouldEmitStress();
+
+        if (shouldEmitStress)
+        {
+            UpdateStressTrail();
+            ResetDriftDistanceTracking();
+            return;
+        }
+
+        stressTimer = 0f;
 
         bool shouldEmitDrift = ShouldEmitDrift();
 
@@ -112,6 +129,21 @@ public class KartDriftPuffTrail : MonoBehaviour
         return kart.IsBurningOut && kart.SpeedKmh <= burnoutMaxSpeedKmh;
     }
 
+    private bool ShouldEmitStress()
+    {
+        if (!kart.IsGrounded)
+            return false;
+
+        if (kart.IsBurningOut || kart.DriftBlend >= minDriftBlend)
+            return false;
+
+        bool abruptSlip = kart.LaunchSlip01 >= minStressFactor || kart.BrakeSlip01 >= minStressFactor;
+        if (kart.SpeedKmh < 8f && !abruptSlip)
+            return false;
+
+        return kart.TireStress01 >= minStressFactor;
+    }
+
     private void UpdateBurnoutTrail()
     {
         burnoutTimer += Time.deltaTime;
@@ -120,6 +152,17 @@ public class KartDriftPuffTrail : MonoBehaviour
         {
             SpawnBurnoutStep();
             burnoutTimer -= burnoutSpawnInterval;
+        }
+    }
+
+    private void UpdateStressTrail()
+    {
+        stressTimer += Time.deltaTime;
+
+        while (stressTimer >= stressSpawnInterval)
+        {
+            SpawnStressStep();
+            stressTimer -= stressSpawnInterval;
         }
     }
 
@@ -176,6 +219,12 @@ public class KartDriftPuffTrail : MonoBehaviour
         SpawnPuffCluster(rearRightPoint, burnoutPuffsPerWheel, true);
     }
 
+    private void SpawnStressStep()
+    {
+        SpawnPuffCluster(rearLeftPoint, stressPuffsPerWheel, false);
+        SpawnPuffCluster(rearRightPoint, stressPuffsPerWheel, false);
+    }
+
     private void SpawnPuffCluster(Transform spawnPoint, int count, bool isBurnout)
     {
         for (int i = 0; i < count; i++)
@@ -188,6 +237,7 @@ public class KartDriftPuffTrail : MonoBehaviour
     {
         float speedFactor = Mathf.Clamp01(kart.Speed01);
         float driftFactor = Mathf.Clamp01(kart.DriftBlend);
+        float stressFactor = Mathf.Clamp01(kart.TireStress01);
 
         float scatterMultiplier = isBurnout ? burnoutScatterMultiplier : 1f;
 
@@ -210,6 +260,7 @@ public class KartDriftPuffTrail : MonoBehaviour
 
         float scaleBoost = Mathf.Lerp(0.9f, 1.25f, speedFactor);
         scaleBoost *= Mathf.Lerp(0.95f, 1.2f, driftFactor);
+        scaleBoost *= Mathf.Lerp(1f, 1.15f, stressFactor);
 
         if (isBurnout)
             scaleBoost *= burnoutSizeMultiplier;

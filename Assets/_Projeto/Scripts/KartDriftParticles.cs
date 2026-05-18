@@ -50,7 +50,7 @@ public class KartDriftParticles : MonoBehaviour
         currentRateDistance = Mathf.Lerp(currentRateDistance, targetRateDistance, Time.deltaTime * smokeSmooth);
         currentRateTime = Mathf.Lerp(currentRateTime, targetRateTime, Time.deltaTime * smokeSmooth);
 
-        float sizeFactor = Mathf.Clamp01((kart.DriftBlend * 0.85f) + (kart.Speed01 * 0.35f));
+        float sizeFactor = Mathf.Clamp01((kart.TireStress01 * 0.85f) + (kart.Speed01 * 0.35f));
         float currentSize = Mathf.Lerp(minStartSize, maxStartSize, sizeFactor);
         float currentSpeed = Mathf.Lerp(minStartSpeed, maxStartSpeed, sizeFactor);
 
@@ -63,16 +63,17 @@ public class KartDriftParticles : MonoBehaviour
         if (!kart.IsGrounded)
             return 0f;
 
-        if (kart.SpeedKmh < minSpeedKmh)
+        if (kart.SpeedKmh < minSpeedKmh && !kart.IsBurningOut)
             return 0f;
 
-        if (kart.DriftBlend < minDriftBlend)
+        float tireStress = kart.TireStress01;
+
+        if (tireStress < minDriftBlend)
             return 0f;
 
-        float driftFactor = kart.DriftBlend;
         float speedFactor = kart.Speed01;
 
-        return Mathf.Clamp01((driftFactor * 0.9f) + (speedFactor * 0.25f));
+        return Mathf.Clamp01((tireStress * 0.9f) + (speedFactor * 0.25f));
     }
 
     private void UpdateParticleSystem(ParticleSystem ps, float rateTime, float rateDistance, float startSize, float startSpeed)
