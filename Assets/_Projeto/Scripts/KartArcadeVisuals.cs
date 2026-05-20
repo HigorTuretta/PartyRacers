@@ -243,7 +243,7 @@ public class KartArcadeVisuals : MonoBehaviour
             return;
 
         Quaternion steerRotation = canSteer ? Quaternion.Euler(0f, steerAmount, 0f) : Quaternion.identity;
-        Quaternion spinRotation = Quaternion.AngleAxis(spinAmount, wheelSpinAxis);
+        Quaternion spinRotation = Quaternion.AngleAxis(spinAmount * wheel.SpinSign, wheelSpinAxis);
 
         wheel.Transform.localRotation = wheel.BaseLocalRotation * steerRotation * spinRotation;
     }
@@ -273,25 +273,31 @@ public class KartArcadeVisuals : MonoBehaviour
         if (wheel == null)
             return null;
 
-        if (!createRuntimeWheelPivots)
-            return new WheelVisual(wheel);
+        Transform pivot;
+        if (!createRuntimeWheelPivots || wheel.parent == null)
+        {
+            pivot = wheel;
+        }
+        else
+        {
+            Vector3 pivotWorldPosition = GetRendererBoundsCenter(wheel);
+            GameObject pivotObject = new GameObject($"{wheel.name}_{wheelName}_RuntimePivot");
+            pivot = pivotObject.transform;
+            pivot.SetParent(wheel.parent, false);
+            pivot.SetPositionAndRotation(pivotWorldPosition, wheel.rotation);
+            pivot.localScale = Vector3.one;
+            wheel.SetParent(pivot, true);
+        }
 
-        Transform parent = wheel.parent;
+        // Hub axis (wheelSpinAxis) in wheel local space → projected on kart's lateral axis (right).
+        // Wheels whose hub points opposite to kart.right must spin with opposite local sign so the
+        // wheel rolls forward in world space regardless of which side it sits on.
+        Vector3 worldHubAxis = pivot.TransformDirection(wheelSpinAxis);
+        Vector3 kartRight = kart != null ? kart.transform.right : Vector3.right;
+        float dot = Vector3.Dot(worldHubAxis, kartRight);
+        float spinSign = dot >= 0f ? 1f : -1f;
 
-        if (parent == null)
-            return new WheelVisual(wheel);
-
-        Vector3 pivotWorldPosition = GetRendererBoundsCenter(wheel);
-        GameObject pivotObject = new GameObject($"{wheel.name}_{wheelName}_RuntimePivot");
-        Transform pivot = pivotObject.transform;
-
-        pivot.SetParent(parent, false);
-        pivot.SetPositionAndRotation(pivotWorldPosition, wheel.rotation);
-        pivot.localScale = Vector3.one;
-
-        wheel.SetParent(pivot, true);
-
-        return new WheelVisual(pivot);
+        return new WheelVisual(pivot, spinSign);
     }
 
     private Vector3 GetRendererBoundsCenter(Transform wheel)
@@ -313,13 +319,15 @@ public class KartArcadeVisuals : MonoBehaviour
 
     private sealed class WheelVisual
     {
-        public WheelVisual(Transform transform)
+        public WheelVisual(Transform transform, float spinSign = 1f)
         {
             Transform = transform;
             BaseLocalRotation = transform.localRotation;
+            SpinSign = spinSign;
         }
 
         public Transform Transform { get; }
         public Quaternion BaseLocalRotation { get; }
+        public float SpinSign { get; }
     }
 }
