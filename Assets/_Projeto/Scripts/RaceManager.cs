@@ -17,6 +17,14 @@ public class RaceManager : MonoBehaviour
 
     public bool RaceStarted => raceStarted;
 
+    public void SetCountdownText(TMP_Text text)
+    {
+        if (countdownText != null && countdownText != text)
+            countdownText.gameObject.SetActive(false);
+
+        countdownText = text;
+    }
+
     private void Start()
     {
         StartCoroutine(StartRaceRoutine());

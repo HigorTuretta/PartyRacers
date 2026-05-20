@@ -46,7 +46,7 @@ public class KartPowerInventory : MonoBehaviour
         {
             KartPowerType.None => "Nenhum",
             KartPowerType.SwapPosition => "Troca",
-            KartPowerType.StunShot => "Stun",
+            KartPowerType.StunShot => "Bolha Eletro-Gel",
             KartPowerType.Shield => "Escudo",
             _ => "Desconhecido"
         };
