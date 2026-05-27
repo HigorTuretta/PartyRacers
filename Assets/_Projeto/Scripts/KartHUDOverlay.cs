@@ -24,27 +24,27 @@ public class KartHUDOverlay : MonoBehaviour
     [SerializeField] private float[] gearTopSpeedsKmh = { 35f, 70f, 110f, 150f, 200f };
 
     [Header("Estilo — Paleta")]
-    [SerializeField] private Color backdropColor = new Color(0.05f, 0.07f, 0.10f, 0.82f);
-    [SerializeField] private Color outerRingColor = new Color(0.15f, 0.18f, 0.24f, 0.95f);
-    [SerializeField] private Color accentColor = new Color(1f, 0.55f, 0.10f, 1f);
-    [SerializeField] private Color accentHighColor = new Color(1f, 0.20f, 0.20f, 1f);
+    [SerializeField] private Color backdropColor = new Color(0.04f, 0.05f, 0.06f, 0.78f);
+    [SerializeField] private Color outerRingColor = new Color(0.16f, 0.18f, 0.20f, 0.92f);
+    [SerializeField] private Color accentColor = new Color(0.15f, 0.72f, 1f, 1f);
+    [SerializeField] private Color accentHighColor = new Color(1f, 0.42f, 0.18f, 1f);
     [SerializeField] private Color textPrimary = new Color(1f, 1f, 1f, 0.98f);
     [SerializeField] private Color textSecondary = new Color(0.82f, 0.86f, 0.94f, 0.92f);
     [SerializeField] private Color outlineColor = new Color(0.03f, 0.04f, 0.08f, 1f);
     [SerializeField, Range(0f, 1f)] private float outlineWidth = 0.32f;
-    [SerializeField] private Color cartoonYellow = new Color(1f, 0.85f, 0.18f, 1f);
-    [SerializeField] private Color countdownGoColor = new Color(0.35f, 1f, 0.45f, 1f);
+    [SerializeField] private Color cartoonYellow = new Color(1f, 0.82f, 0.24f, 1f);
+    [SerializeField] private Color countdownGoColor = new Color(0.42f, 1f, 0.62f, 1f);
 
     [Header("Layout inicial (usado só ao construir do zero)")]
-    [SerializeField] private Vector2 speedoSize = new Vector2(260f, 260f);
-    [SerializeField] private Vector2 speedoAnchoredPosition = new Vector2(-40f, 40f);
-    [SerializeField] private Vector2 gearSize = new Vector2(130f, 160f);
-    [SerializeField] private Vector2 gearAnchoredPosition = new Vector2(-320f, 40f);
-    [SerializeField] private Vector2 lapSize = new Vector2(260f, 110f);
-    [SerializeField] private Vector2 lapAnchoredPosition = new Vector2(0f, -36f);
-    [SerializeField] private Vector2 powerSize = new Vector2(280f, 110f);
-    [SerializeField] private Vector2 powerAnchoredPosition = new Vector2(-36f, -36f);
-    [SerializeField] private Vector2 countdownSize = new Vector2(600f, 400f);
+    [SerializeField] private Vector2 speedoSize = new Vector2(230f, 108f);
+    [SerializeField] private Vector2 speedoAnchoredPosition = new Vector2(-32f, 30f);
+    [SerializeField] private Vector2 gearSize = new Vector2(86f, 108f);
+    [SerializeField] private Vector2 gearAnchoredPosition = new Vector2(-276f, 30f);
+    [SerializeField] private Vector2 lapSize = new Vector2(190f, 62f);
+    [SerializeField] private Vector2 lapAnchoredPosition = new Vector2(0f, -24f);
+    [SerializeField] private Vector2 powerSize = new Vector2(250f, 72f);
+    [SerializeField] private Vector2 powerAnchoredPosition = new Vector2(-30f, -24f);
+    [SerializeField] private Vector2 countdownSize = new Vector2(500f, 280f);
 
     [Header("Animação")]
     [SerializeField] private float speedNumberSmooth = 16f;
@@ -387,42 +387,38 @@ public class KartHUDOverlay : MonoBehaviour
         speedoRoot = CreateUIElement("Speedometer", transform as RectTransform);
         AnchorBottomRight(speedoRoot, speedoSize, speedoAnchoredPosition);
 
-        Image backdrop = CreateImage(speedoRoot, "Backdrop", GetCircleSprite(), backdropColor);
+        Image backdrop = CreateImage(speedoRoot, "Backdrop", GetRoundedSprite(), backdropColor);
         StretchFull(backdrop.rectTransform);
+        backdrop.type = Image.Type.Sliced;
 
-        Image ring = CreateImage(speedoRoot, "OuterRing", GetCircleSprite(), outerRingColor);
-        ring.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-        ring.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        ring.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        ring.rectTransform.sizeDelta = speedoSize + new Vector2(22f, 22f);
-        ring.rectTransform.SetSiblingIndex(0);
+        Image topLine = CreateImage(speedoRoot, "TopLine", GetRoundedSprite(), outerRingColor);
+        AnchorRect(topLine.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -5f), new Vector2(-18f, 4f));
+        topLine.type = Image.Type.Sliced;
 
-        speedoFill = CreateImage(speedoRoot, "FillArc", GetCircleSprite(), accentColor);
-        StretchFull(speedoFill.rectTransform);
-        speedoFill.rectTransform.localScale = Vector3.one * 0.94f;
+        speedoFill = CreateImage(speedoRoot, "SpeedFill", GetRoundedSprite(), accentColor);
+        AnchorRect(speedoFill.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 12f), new Vector2(-22f, 12f));
         speedoFill.type = Image.Type.Filled;
-        speedoFill.fillMethod = Image.FillMethod.Radial360;
-        speedoFill.fillOrigin = (int)Image.Origin360.Bottom;
-        speedoFill.fillClockwise = false;
+        speedoFill.fillMethod = Image.FillMethod.Horizontal;
+        speedoFill.fillOrigin = (int)Image.OriginHorizontal.Left;
         speedoFill.fillAmount = 0f;
 
-        Image innerHole = CreateImage(speedoRoot, "InnerHole", GetCircleSprite(), backdropColor);
-        innerHole.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-        innerHole.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        innerHole.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        innerHole.rectTransform.sizeDelta = speedoSize * 0.78f;
+        Image fillTrack = CreateImage(speedoRoot, "SpeedTrack", GetRoundedSprite(), outerRingColor);
+        AnchorRect(fillTrack.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 12f), new Vector2(-22f, 12f));
+        fillTrack.type = Image.Type.Sliced;
+        fillTrack.transform.SetSiblingIndex(speedoFill.transform.GetSiblingIndex());
 
-        speedNumberText = CreateText(speedoRoot, "SpeedNumber", "0", 86, FontStyles.Bold, TextAlignmentOptions.Center, textPrimary, withOutline: true);
-        StretchFull(speedNumberText.rectTransform);
-        speedNumberText.rectTransform.anchoredPosition = new Vector2(0f, 6f);
+        speedoFill.transform.SetAsLastSibling();
 
-        TMP_Text unit = CreateText(speedoRoot, "SpeedUnit", "KM/H", 22, FontStyles.Bold, TextAlignmentOptions.Center, accentColor, withOutline: true);
-        AnchorRect(unit.rectTransform, new Vector2(0.5f, 0.25f), new Vector2(0.5f, 0.25f), Vector2.zero, new Vector2(120f, 28f));
-        unit.characterSpacing = 8f;
+        speedNumberText = CreateText(speedoRoot, "SpeedNumber", "0", 58, FontStyles.Bold, TextAlignmentOptions.Right, textPrimary, withOutline: true);
+        AnchorRect(speedNumberText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(-70f, 2f), new Vector2(-42f, -22f));
 
-        TMP_Text label = CreateText(speedoRoot, "SpeedLabel", "SPEED", 16, FontStyles.Bold, TextAlignmentOptions.Center, textSecondary, withOutline: true);
-        AnchorRect(label.rectTransform, new Vector2(0.5f, 0.78f), new Vector2(0.5f, 0.78f), Vector2.zero, new Vector2(120f, 22f));
-        label.characterSpacing = 10f;
+        TMP_Text unit = CreateText(speedoRoot, "SpeedUnit", "KM/H", 18, FontStyles.Bold, TextAlignmentOptions.Left, accentColor, withOutline: true);
+        AnchorRect(unit.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-32f, -6f), new Vector2(54f, 28f));
+        unit.characterSpacing = 2f;
+
+        TMP_Text label = CreateText(speedoRoot, "SpeedLabel", "VELOCIDADE", 14, FontStyles.Bold, TextAlignmentOptions.Left, textSecondary, withOutline: false);
+        AnchorRect(label.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -20f), new Vector2(-34f, 22f));
+        label.characterSpacing = 3f;
     }
 
     private void BuildGearIndicator()
@@ -433,77 +429,53 @@ public class KartHUDOverlay : MonoBehaviour
         gearBackdrop = CreateImage(gearRoot, "Backdrop", GetRoundedSprite(), backdropColor);
         StretchFull(gearBackdrop.rectTransform);
         gearBackdrop.type = Image.Type.Sliced;
-        gearBackdrop.pixelsPerUnitMultiplier = 1.2f;
 
-        Image accentBar = CreateImage(gearRoot, "AccentBar", GetRoundedSprite(), accentColor);
-        AnchorRect(accentBar.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -8f), new Vector2(0f, 5f));
-        accentBar.type = Image.Type.Sliced;
+        TMP_Text label = CreateText(gearRoot, "GearLabel", "MARCHA", 12, FontStyles.Bold, TextAlignmentOptions.Center, textSecondary, withOutline: false);
+        AnchorRect(label.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -17f), new Vector2(-14f, 20f));
+        label.characterSpacing = 2f;
 
-        TMP_Text label = CreateText(gearRoot, "GearLabel", "GEAR", 18, FontStyles.Bold, TextAlignmentOptions.Center, textSecondary, withOutline: true);
-        AnchorRect(label.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(120f, 24f));
-        label.characterSpacing = 12f;
-
-        gearNumberText = CreateText(gearRoot, "GearNumber", "1", 96, FontStyles.Bold, TextAlignmentOptions.Center, textPrimary, withOutline: true);
-        AnchorRect(gearNumberText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -8f), new Vector2(120f, 120f));
+        gearNumberText = CreateText(gearRoot, "GearNumber", "1", 58, FontStyles.Bold, TextAlignmentOptions.Center, textPrimary, withOutline: true);
+        AnchorRect(gearNumberText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0f, -8f), new Vector2(-14f, -30f));
     }
 
     private void BuildLapCounter()
     {
         lapRoot = CreateUIElement("LapCounter", transform as RectTransform);
         AnchorTopCenter(lapRoot, lapSize, lapAnchoredPosition);
-        lapRoot.localRotation = Quaternion.Euler(0f, 0f, -2.5f);
 
         lapBackdrop = CreateImage(lapRoot, "Backdrop", GetRoundedSprite(), backdropColor);
         StretchFull(lapBackdrop.rectTransform);
         lapBackdrop.type = Image.Type.Sliced;
-        lapBackdrop.pixelsPerUnitMultiplier = 1.2f;
 
-        Image topStripe = CreateImage(lapRoot, "TopStripe", GetRoundedSprite(), accentColor);
-        AnchorRect(topStripe.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -8f), new Vector2(-12f, 5f));
-        topStripe.type = Image.Type.Sliced;
+        TMP_Text lapLabel = CreateText(lapRoot, "LapLabel", "VOLTA", 14, FontStyles.Bold, TextAlignmentOptions.Left, textSecondary, withOutline: false);
+        AnchorRect(lapLabel.rectTransform, new Vector2(0f, 0f), new Vector2(0.5f, 1f), new Vector2(18f, 0f), new Vector2(-18f, -14f));
+        lapLabel.characterSpacing = 3f;
 
-        Image botStripe = CreateImage(lapRoot, "BottomStripe", GetRoundedSprite(), cartoonYellow);
-        AnchorRect(botStripe.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 8f), new Vector2(-12f, 4f));
-        botStripe.type = Image.Type.Sliced;
-
-        TMP_Text lapLabel = CreateText(lapRoot, "LapLabel", "VOLTA", 22, FontStyles.Bold, TextAlignmentOptions.Center, textSecondary, withOutline: true);
-        AnchorRect(lapLabel.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(180f, 28f));
-        lapLabel.characterSpacing = 14f;
-
-        lapNumberText = CreateText(lapRoot, "LapNumber", "1/3", 56, FontStyles.Bold, TextAlignmentOptions.Center, cartoonYellow, withOutline: true);
-        AnchorRect(lapNumberText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -12f), new Vector2(220f, 70f));
+        lapNumberText = CreateText(lapRoot, "LapNumber", "1/3", 34, FontStyles.Bold, TextAlignmentOptions.Right, cartoonYellow, withOutline: true);
+        AnchorRect(lapNumberText.rectTransform, new Vector2(0.45f, 0f), new Vector2(1f, 1f), new Vector2(-18f, -1f), new Vector2(-20f, -12f));
     }
 
     private void BuildPowerDisplay()
     {
         powerRoot = CreateUIElement("PowerDisplay", transform as RectTransform);
         AnchorTopRight(powerRoot, powerSize, powerAnchoredPosition);
-        powerRoot.localRotation = Quaternion.Euler(0f, 0f, 2f);
 
         powerBackdrop = CreateImage(powerRoot, "Backdrop", GetRoundedSprite(), backdropColor);
         StretchFull(powerBackdrop.rectTransform);
         powerBackdrop.type = Image.Type.Sliced;
-        powerBackdrop.pixelsPerUnitMultiplier = 1.2f;
-
-        Image topStripe = CreateImage(powerRoot, "TopStripe", GetRoundedSprite(), accentColor);
-        AnchorRect(topStripe.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -8f), new Vector2(-12f, 5f));
-        topStripe.type = Image.Type.Sliced;
-
-        Image swatchRing = CreateImage(powerRoot, "SwatchRing", GetCircleSprite(), outerRingColor);
-        AnchorRect(swatchRing.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(50f, -4f), new Vector2(72f, 72f));
 
         powerSwatch = CreateImage(powerRoot, "Swatch", GetCircleSprite(), GetPowerColor(KartPowerType.None));
-        AnchorRect(powerSwatch.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(50f, -4f), new Vector2(58f, 58f));
+        AnchorRect(powerSwatch.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(34f, 0f), new Vector2(36f, 36f));
 
-        TMP_Text powerLabel = CreateText(powerRoot, "PowerLabel", "PODER", 18, FontStyles.Bold, TextAlignmentOptions.Left, textSecondary, withOutline: true);
-        AnchorRect(powerLabel.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(50f, -26f), new Vector2(-110f, 24f));
-        powerLabel.characterSpacing = 10f;
+        TMP_Text powerLabel = CreateText(powerRoot, "PowerLabel", "PODER", 12, FontStyles.Bold, TextAlignmentOptions.Left, textSecondary, withOutline: false);
+        AnchorRect(powerLabel.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(66f, -18f), new Vector2(-82f, 20f));
+        powerLabel.characterSpacing = 3f;
 
-        powerNameText = CreateText(powerRoot, "PowerName", "NENHUM", 28, FontStyles.Bold, TextAlignmentOptions.Left, textPrimary, withOutline: true);
-        AnchorRect(powerNameText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(50f, -8f), new Vector2(-110f, -38f));
+        powerNameText = CreateText(powerRoot, "PowerName", "NENHUM", 25, FontStyles.Bold, TextAlignmentOptions.Left, textPrimary, withOutline: true);
+        AnchorRect(powerNameText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(66f, -8f), new Vector2(-86f, -28f));
         powerNameText.enableAutoSizing = true;
-        powerNameText.fontSizeMin = 18;
-        powerNameText.fontSizeMax = 32;
+        powerNameText.fontSizeMin = 16;
+        powerNameText.fontSizeMax = 25;
     }
 
     private void BuildCountdown()
@@ -511,9 +483,9 @@ public class KartHUDOverlay : MonoBehaviour
         countdownRoot = CreateUIElement("Countdown", transform as RectTransform);
         AnchorCenter(countdownRoot, countdownSize, Vector2.zero);
 
-        countdownText = CreateText(countdownRoot, "CountdownText", "", 280, FontStyles.Bold, TextAlignmentOptions.Center, cartoonYellow, withOutline: true);
+        countdownText = CreateText(countdownRoot, "CountdownText", "", 210, FontStyles.Bold, TextAlignmentOptions.Center, cartoonYellow, withOutline: true);
         StretchFull(countdownText.rectTransform);
-        countdownText.outlineWidth = 0.45f;
+        countdownText.outlineWidth = 0.42f;
         countdownText.fontStyle = FontStyles.Bold | FontStyles.UpperCase;
         countdownText.gameObject.SetActive(false);
         previousCountdownText = "";
@@ -582,7 +554,7 @@ public class KartHUDOverlay : MonoBehaviour
         tmp.color = color;
         tmp.raycastTarget = false;
         tmp.textWrappingMode = TextWrappingModes.NoWrap;
-        tmp.overflowMode = TextOverflowModes.Overflow;
+        tmp.overflowMode = TextOverflowModes.Ellipsis;
 
         if (withOutline)
         {

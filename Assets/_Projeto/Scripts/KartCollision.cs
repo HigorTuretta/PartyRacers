@@ -22,6 +22,7 @@ public class KartCollision : MonoBehaviour
 
     [Header("Ignorar Terreno (anti-travamento em rampas)")]
     [Tooltip("Raio (m) para pré-ignorar colisores de chão no Start(). 0 = desligado.")]
+    [SerializeField] private bool enableGroundCollisionIgnore = false;
     [SerializeField] private float initialGroundScanRadius = 250f;
     [Tooltip("Distância à frente para detectar terreno em movimento e pré-ignorá-lo.")]
     [SerializeField] private float forwardScanDistance = 14f;
@@ -31,6 +32,7 @@ public class KartCollision : MonoBehaviour
 
     private Rigidbody rb;
     private Collider[] kartColliders;
+    private readonly System.Collections.Generic.HashSet<Collider> ignoredColliders = new();
     private float postHitTimer;
 
     private void Awake()
@@ -42,7 +44,7 @@ public class KartCollision : MonoBehaviour
 
     private void Start()
     {
-        if (initialGroundScanRadius > 0f)
+        if (enableGroundCollisionIgnore && initialGroundScanRadius > 0f)
             IgnoreNearbyGroundColliders();
     }
 
@@ -56,7 +58,8 @@ public class KartCollision : MonoBehaviour
             rb.angularVelocity = new Vector3(rb.angularVelocity.x, yAngular, rb.angularVelocity.z);
         }
 
-        ScanForwardForGround();
+        if (enableGroundCollisionIgnore)
+            ScanForwardForGround();
     }
 
     // -----------------------------------------------------------------------
@@ -121,11 +124,36 @@ public class KartCollision : MonoBehaviour
 
     private void IgnoreCollider(Collider other)
     {
+        if (other == null)
+            return;
+
+        ignoredColliders.Add(other);
+
         for (int i = 0; i < kartColliders.Length; i++)
         {
             if (kartColliders[i] != null)
                 Physics.IgnoreCollision(kartColliders[i], other, true);
         }
+    }
+
+    public void ResetIgnoredCollisionState()
+    {
+        if (kartColliders == null || kartColliders.Length == 0 || ignoredColliders.Count == 0)
+            return;
+
+        foreach (Collider other in ignoredColliders)
+        {
+            if (other == null)
+                continue;
+
+            for (int i = 0; i < kartColliders.Length; i++)
+            {
+                if (kartColliders[i] != null)
+                    Physics.IgnoreCollision(kartColliders[i], other, false);
+            }
+        }
+
+        ignoredColliders.Clear();
     }
 
     // -----------------------------------------------------------------------
@@ -136,12 +164,11 @@ public class KartCollision : MonoBehaviour
     {
         if (col.contactCount == 0) return;
 
-        // Se qualquer contato é chão, ignora permanentemente esse collider (suspensão cuida do chão)
+        // Se qualquer contato e chao, deixa a fisica normal resolver sem aplicar resposta de parede.
         for (int i = 0; i < col.contactCount; i++)
         {
             if (col.contacts[i].normal.y > maxGroundNormalY)
             {
-                if (col.collider != null) IgnoreCollider(col.collider);
                 return;
             }
         }

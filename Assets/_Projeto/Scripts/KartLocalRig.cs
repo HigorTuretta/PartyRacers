@@ -5,6 +5,7 @@ using UnityEngine;
 public class KartLocalRig : MonoBehaviour
 {
     [SerializeField] private GameObject localPlayerRig;
+    [SerializeField] private GameObject[] additionalLocalOnlyObjects;
     [SerializeField] private bool isLocalPlayer = true;
 
     public bool IsLocalPlayer
@@ -23,5 +24,14 @@ public class KartLocalRig : MonoBehaviour
     {
         if (localPlayerRig != null)
             localPlayerRig.SetActive(isLocalPlayer);
+
+        if (additionalLocalOnlyObjects == null)
+            return;
+
+        for (int i = 0; i < additionalLocalOnlyObjects.Length; i++)
+        {
+            if (additionalLocalOnlyObjects[i] != null)
+                additionalLocalOnlyObjects[i].SetActive(isLocalPlayer);
+        }
     }
 }
