@@ -372,7 +372,7 @@ public class KartHUDOverlay : MonoBehaviour
         switch (type)
         {
             case KartPowerType.SwapPosition: return new Color(0.30f, 0.78f, 1f, 1f);
-            case KartPowerType.Rocket: return new Color(1f, 0.45f, 0.18f, 1f);
+            case KartPowerType.StunShot: return new Color(1f, 0.92f, 0.20f, 1f);
             case KartPowerType.Shield: return new Color(0.35f, 1f, 0.55f, 1f);
             case KartPowerType.None:
             default: return new Color(0.45f, 0.48f, 0.55f, 1f);

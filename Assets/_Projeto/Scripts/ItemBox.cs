@@ -48,7 +48,7 @@ public class ItemBox : MonoBehaviour
         return random switch
         {
             0 => KartPowerType.SwapPosition,
-            1 => KartPowerType.Rocket,
+            1 => KartPowerType.StunShot,
             2 => KartPowerType.Shield,
             _ => KartPowerType.Shield
         };

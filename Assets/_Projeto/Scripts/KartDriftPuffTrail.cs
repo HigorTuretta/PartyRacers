@@ -14,8 +14,8 @@ public class KartDriftPuffTrail : MonoBehaviour
 
     [Header("Ativação - Burnout")]
     [SerializeField] private float burnoutMaxSpeedKmh = 18f;
-    [SerializeField] private float burnoutSpawnInterval = 0.07f;
-    [SerializeField] private int burnoutPuffsPerWheel = 2;
+    [SerializeField] private float burnoutSpawnInterval = 0.055f;
+    [SerializeField] private int burnoutPuffsPerWheel = 3;
 
     [Header("Ativacao - Stress de Pneu")]
     [SerializeField] private float minStressFactor = 0.32f;
@@ -23,30 +23,30 @@ public class KartDriftPuffTrail : MonoBehaviour
     [SerializeField] private int stressPuffsPerWheel = 1;
 
     [Header("Densidade do Trail")]
-    [SerializeField] private float lowSpeedSpacing = 0.78f;
-    [SerializeField] private float highSpeedSpacing = 0.36f;
-    [SerializeField] private int puffsPerWheel = 1;
+    [SerializeField] private float lowSpeedSpacing = 0.75f;
+    [SerializeField] private float highSpeedSpacing = 0.28f;
+    [SerializeField] private int puffsPerWheel = 3;
     [SerializeField] private int maxSpawnStepsPerFrame = 4;
 
     [Header("Tamanho dos Puffs")]
-    [SerializeField] private float minStartScale = 0.16f;
-    [SerializeField] private float maxStartScale = 0.26f;
-    [SerializeField] private float minEndScale = 0.68f;
-    [SerializeField] private float maxEndScale = 1.05f;
+    [SerializeField] private float minStartScale = 0.22f;
+    [SerializeField] private float maxStartScale = 0.45f;
+    [SerializeField] private float minEndScale = 0.85f;
+    [SerializeField] private float maxEndScale = 1.45f;
 
     [Header("Vida dos Puffs")]
     [SerializeField] private float minLifetime = 0.55f;
     [SerializeField] private float maxLifetime = 0.95f;
 
     [Header("Volume")]
-    [SerializeField] private float horizontalScatter = 0.22f;
-    [SerializeField] private float forwardScatter = 0.18f;
-    [SerializeField] private float verticalScatter = 0.1f;
+    [SerializeField] private float horizontalScatter = 0.38f;
+    [SerializeField] private float forwardScatter = 0.28f;
+    [SerializeField] private float verticalScatter = 0.12f;
 
     [Header("Movimento do Puff")]
-    [SerializeField] private float backwardVelocity = 0.62f;
-    [SerializeField] private float upwardVelocity = 0.28f;
-    [SerializeField] private float sideVelocity = 0.2f;
+    [SerializeField] private float backwardVelocity = 0.45f;
+    [SerializeField] private float upwardVelocity = 0.22f;
+    [SerializeField] private float sideVelocity = 0.28f;
 
     [Header("Multiplicadores Burnout")]
     [SerializeField] private float burnoutSizeMultiplier = 1.15f;

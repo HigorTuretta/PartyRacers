@@ -4,7 +4,7 @@ public enum KartPowerType
 {
     None,
     SwapPosition,
-    Rocket,
+    StunShot,
     Shield
 }
 
@@ -46,7 +46,7 @@ public class KartPowerInventory : MonoBehaviour
         {
             KartPowerType.None => "Nenhum",
             KartPowerType.SwapPosition => "Troca",
-            KartPowerType.Rocket => "Foguete",
+            KartPowerType.StunShot => "Bolha Eletro-Gel",
             KartPowerType.Shield => "Escudo",
             _ => "Desconhecido"
         };

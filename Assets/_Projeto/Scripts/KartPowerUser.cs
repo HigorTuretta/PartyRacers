@@ -37,14 +37,17 @@ public class KartPowerUser : MonoBehaviour
     [SerializeField] private string opacityProperty = "_Opacity_Global";
     [SerializeField, Range(0f, 1f)] private float activeOpacity = 1f;
 
-    [Header("Foguete")]
+    [Header("Bolha Eletro-Gel")]
     [SerializeField] private Transform projectileSpawnPoint;
     [SerializeField] private Transform equippedVisualSocket;
-    [SerializeField] private GameObject rocketProjectilePrefab;
-    [SerializeField] private GameObject rocketEquippedPrefab;
-    [SerializeField] private GameObject rocketBoingVFXPrefab;
-    [SerializeField] private GameObject rocketExplosionVFXPrefab;
-    [SerializeField] private GameObject rocketFireBurstPrefab;
+    [SerializeField] private GameObject electroGelProjectilePrefab;
+    [SerializeField] private GameObject electroGelEquippedVisualPrefab;
+    [SerializeField] private GameObject electroGelFireBurstPrefab;
+    [SerializeField] private GameObject electroGelBounceVFXPrefab;
+    [SerializeField] private GameObject electroGelHitVFXPrefab;
+    [SerializeField] private GameObject electroGelShieldBlockVFXPrefab;
+    [SerializeField] private GameObject electroGelExpireVFXPrefab;
+    [SerializeField] private GameObject electroGelStunAuraPrefab;
     [SerializeField] private Vector3 projectileSpawnLocalPosition = new Vector3(0f, 0.92f, 1.8f);
     [SerializeField] private Vector3 equippedSocketLocalPosition = Vector3.zero;
 
@@ -58,7 +61,7 @@ public class KartPowerUser : MonoBehaviour
     private Quaternion shieldBaseLocalRotation = Quaternion.identity;
     private float shieldActivationTime;
     private bool shieldVisualWasActive;
-    private GameObject rocketEquippedInstance;
+    private GameObject equippedVisualInstance;
 
     private void Awake()
     {
@@ -68,7 +71,7 @@ public class KartPowerUser : MonoBehaviour
         if (kart == null)
             kart = GetComponent<KartController>();
 
-        EnsureRocketSockets();
+        EnsureElectroGelSockets();
         CacheShieldRenderers();
         CacheShieldBaseTransform();
         ApplyShieldMaterial();
@@ -81,7 +84,7 @@ public class KartPowerUser : MonoBehaviour
         ReadPowerInput();
         UpdateShieldVisual();
         AnimateShieldVisual();
-        UpdateRocketEquippedVisual();
+        UpdateElectroGelEquippedVisual();
     }
 
     private void OnValidate()
@@ -119,8 +122,8 @@ public class KartPowerUser : MonoBehaviour
                 ActivateShield();
                 break;
 
-            case KartPowerType.Rocket:
-                FireRocket();
+            case KartPowerType.StunShot:
+                FireElectroGelBubble();
                 break;
 
             case KartPowerType.SwapPosition:
@@ -207,13 +210,13 @@ public class KartPowerUser : MonoBehaviour
         }
     }
 
-    private void EnsureRocketSockets()
+    private void EnsureElectroGelSockets()
     {
         if (projectileSpawnPoint == null)
             projectileSpawnPoint = FindOrCreateChild("ProjectileSpawnPoint", projectileSpawnLocalPosition);
 
         if (equippedVisualSocket == null)
-            equippedVisualSocket = FindOrCreateChild("RocketEquippedSocket", equippedSocketLocalPosition);
+            equippedVisualSocket = FindOrCreateChild("ElectroGelEquippedSocket", equippedSocketLocalPosition);
     }
 
     private Transform FindOrCreateChild(string childName, Vector3 localPosition)
@@ -231,71 +234,75 @@ public class KartPowerUser : MonoBehaviour
         return child.transform;
     }
 
-    private void UpdateRocketEquippedVisual()
+    private void UpdateElectroGelEquippedVisual()
     {
-        bool shouldShow = inventory != null && inventory.CurrentPower == KartPowerType.Rocket;
+        bool shouldShow = inventory != null && inventory.CurrentPower == KartPowerType.StunShot;
 
         if (!shouldShow)
         {
-            if (rocketEquippedInstance != null)
-                rocketEquippedInstance.SetActive(false);
+            if (equippedVisualInstance != null)
+                equippedVisualInstance.SetActive(false);
 
             return;
         }
 
-        if (rocketEquippedInstance == null)
-            CreateRocketEquippedVisual();
+        if (equippedVisualInstance == null)
+            CreateEquippedVisual();
 
-        if (rocketEquippedInstance != null && !rocketEquippedInstance.activeSelf)
-            rocketEquippedInstance.SetActive(true);
+        if (equippedVisualInstance != null && !equippedVisualInstance.activeSelf)
+            equippedVisualInstance.SetActive(true);
     }
 
-    private void CreateRocketEquippedVisual()
+    private void CreateEquippedVisual()
     {
-        if (rocketEquippedPrefab == null || equippedVisualSocket == null)
+        if (electroGelEquippedVisualPrefab == null || equippedVisualSocket == null)
             return;
 
-        rocketEquippedInstance = Instantiate(rocketEquippedPrefab, equippedVisualSocket);
+        equippedVisualInstance = Instantiate(electroGelEquippedVisualPrefab, equippedVisualSocket);
+        equippedVisualInstance.transform.localPosition = Vector3.zero;
+        equippedVisualInstance.transform.localRotation = Quaternion.identity;
+        equippedVisualInstance.transform.localScale = Vector3.one;
 
-        // Ensure the equipped visual component drives the idle animation.
-        RocketEquippedVisual equippedComponent = rocketEquippedInstance.GetComponent<RocketEquippedVisual>();
-        if (equippedComponent == null)
-            equippedComponent = rocketEquippedInstance.AddComponent<RocketEquippedVisual>();
-        equippedComponent.Initialize(kart);
+        ElectroGelEquippedVisual equippedVisual = equippedVisualInstance.GetComponent<ElectroGelEquippedVisual>();
+        if (equippedVisual != null)
+            equippedVisual.Initialize(kart);
     }
 
-    private void FireRocket()
+    private void FireElectroGelBubble()
     {
-        EnsureRocketSockets();
+        EnsureElectroGelSockets();
 
-        if (rocketEquippedInstance != null)
-            rocketEquippedInstance.SetActive(false);
+        if (equippedVisualInstance != null)
+            equippedVisualInstance.SetActive(false);
 
-        if (projectileSpawnPoint == null || rocketProjectilePrefab == null)
+        if (projectileSpawnPoint == null || electroGelProjectilePrefab == null)
         {
-            Debug.LogWarning("Foguete nao disparado: prefab ou ProjectileSpawnPoint ausente.");
+            Debug.LogWarning("Bolha Eletro-Gel nao foi disparada: prefab ou ProjectileSpawnPoint ausente.");
             return;
         }
 
-        if (rocketFireBurstPrefab != null)
-            Instantiate(rocketFireBurstPrefab, projectileSpawnPoint.position, projectileSpawnPoint.rotation);
+        if (electroGelFireBurstPrefab != null)
+            Instantiate(electroGelFireBurstPrefab, projectileSpawnPoint.position, projectileSpawnPoint.rotation);
 
         GameObject projectileObject = Instantiate(
-            rocketProjectilePrefab,
+            electroGelProjectilePrefab,
             projectileSpawnPoint.position,
             projectileSpawnPoint.rotation
         );
 
-        RocketProjectile projectile = projectileObject.GetComponent<RocketProjectile>();
-        if (projectile == null)
-            projectile = projectileObject.AddComponent<RocketProjectile>();
-
-        projectile.Initialize(
-            gameObject,
-            projectileSpawnPoint.forward,
-            rocketBoingVFXPrefab,
-            rocketExplosionVFXPrefab
-        );
+        ElectroGelProjectile projectile = projectileObject.GetComponent<ElectroGelProjectile>();
+        if (projectile != null)
+        {
+            projectile.Initialize(
+                gameObject,
+                projectileSpawnPoint.forward,
+                electroGelBounceVFXPrefab,
+                electroGelHitVFXPrefab,
+                electroGelShieldBlockVFXPrefab,
+                electroGelExpireVFXPrefab,
+                electroGelStunAuraPrefab
+            );
+        }
     }
 
     private void CacheShieldRenderers()
