@@ -91,6 +91,22 @@ public class KartArcadeVisuals : MonoBehaviour
         previousLocalVelocity = GetLocalVelocity();
     }
 
+    // Reatribui as 4 rodas em runtime e reconstrói o cache de pivôs.
+    // Usado pelo KartVisualCustomizer quando o modelo do carro (e suas rodas)
+    // é instanciado dinamicamente. A lógica de animação permanece inalterada.
+    public void SetWheels(Transform frontLeft, Transform frontRight, Transform rearLeft, Transform rearRight)
+    {
+        wheelFrontLeft = frontLeft;
+        wheelFrontRight = frontRight;
+        wheelRearLeft = rearLeft;
+        wheelRearRight = rearRight;
+
+        frontLeftWheel = CreateWheelVisual(wheelFrontLeft, "FrontLeft");
+        frontRightWheel = CreateWheelVisual(wheelFrontRight, "FrontRight");
+        rearLeftWheel = CreateWheelVisual(wheelRearLeft, "RearLeft");
+        rearRightWheel = CreateWheelVisual(wheelRearRight, "RearRight");
+    }
+
     private void LateUpdate()
     {
         if (kart == null)
