@@ -842,7 +842,7 @@ MonoBehaviour:
   m_text: NENHUM
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1456,7 +1456,7 @@ MonoBehaviour:
   m_text: VOLTA
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1817,7 +1817,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KartRespawn
   rb: {fileID: 6424580973894995666}
   raceTracker: {fileID: 2456961690461143285}
+  kartCollision: {fileID: 0}
   respawnHeightOffset: 1.5
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundProbeHeight: 12
+  groundProbeDistance: 35
+  groundClearance: 0.2
 --- !u!114 &5102941980696658742
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1907,27 +1914,27 @@ MonoBehaviour:
   minSpeedKmh: 20
   minDriftBlend: 0.15
   burnoutMaxSpeedKmh: 18
-  burnoutSpawnInterval: 0.055
-  burnoutPuffsPerWheel: 3
+  burnoutSpawnInterval: 0.07
+  burnoutPuffsPerWheel: 2
   minStressFactor: 0.32
   stressSpawnInterval: 0.075
   stressPuffsPerWheel: 1
-  lowSpeedSpacing: 0.75
-  highSpeedSpacing: 0.4
-  puffsPerWheel: 2
+  lowSpeedSpacing: 0.78
+  highSpeedSpacing: 0.36
+  puffsPerWheel: 1
   maxSpawnStepsPerFrame: 4
-  minStartScale: 0.12
-  maxStartScale: 0.18
-  minEndScale: 0.4
-  maxEndScale: 0.8
+  minStartScale: 0.16
+  maxStartScale: 0.26
+  minEndScale: 0.68
+  maxEndScale: 1.05
   minLifetime: 0.55
   maxLifetime: 0.95
-  horizontalScatter: 0.38
-  forwardScatter: 0.28
-  verticalScatter: 0.12
-  backwardVelocity: 0.45
-  upwardVelocity: 0.22
-  sideVelocity: 0.28
+  horizontalScatter: 0.22
+  forwardScatter: 0.18
+  verticalScatter: 0.1
+  backwardVelocity: 0.62
+  upwardVelocity: 0.28
+  sideVelocity: 0.2
   burnoutSizeMultiplier: 0.6
   burnoutUpwardMultiplier: 1
   burnoutScatterMultiplier: 0.4
@@ -1997,14 +2004,11 @@ MonoBehaviour:
   activeOpacity: 1
   projectileSpawnPoint: {fileID: 7130454205423353463}
   equippedVisualSocket: {fileID: 1234257517417538489}
-  electroGelProjectilePrefab: {fileID: 1001000001, guid: d8e9d01a1cc14ceebcf90f01a1a30001, type: 3}
-  electroGelEquippedVisualPrefab: {fileID: 1002000001, guid: d8e9d01a1cc14ceebcf90f01a1a30002, type: 3}
-  electroGelFireBurstPrefab: {fileID: 1008000001, guid: d8e9d01a1cc14ceebcf90f01a1a30008, type: 3}
-  electroGelBounceVFXPrefab: {fileID: 1003000001, guid: d8e9d01a1cc14ceebcf90f01a1a30003, type: 3}
-  electroGelHitVFXPrefab: {fileID: 1004000001, guid: d8e9d01a1cc14ceebcf90f01a1a30004, type: 3}
-  electroGelShieldBlockVFXPrefab: {fileID: 1005000001, guid: d8e9d01a1cc14ceebcf90f01a1a30005, type: 3}
-  electroGelExpireVFXPrefab: {fileID: 1006000001, guid: d8e9d01a1cc14ceebcf90f01a1a30006, type: 3}
-  electroGelStunAuraPrefab: {fileID: 1007000001, guid: d8e9d01a1cc14ceebcf90f01a1a30007, type: 3}
+  rocketProjectilePrefab: {fileID: 0}
+  rocketEquippedPrefab: {fileID: 0}
+  rocketBoingVFXPrefab: {fileID: 0}
+  rocketExplosionVFXPrefab: {fileID: 0}
+  rocketFireBurstPrefab: {fileID: 0}
   projectileSpawnLocalPosition: {x: 0, y: 0.92, z: 1.8}
   equippedSocketLocalPosition: {x: 0, y: 0, z: 0}
   shieldEndTime: 0
@@ -2097,6 +2101,7 @@ MonoBehaviour:
   maxUpwardVelocityAfterHit: 1.5
   postHitDuration: 0.3
   postHitAngularDamp: 9
+  enableGroundCollisionIgnore: 0
   initialGroundScanRadius: 250
   forwardScanDistance: 14
   forwardScanRadius: 0.7
@@ -2114,6 +2119,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartLocalRig
   localPlayerRig: {fileID: 7764339801411023325}
+  additionalLocalOnlyObjects: []
   isLocalPlayer: 1
 --- !u!1 &2907691769381872857
 GameObject:
@@ -2278,7 +2284,7 @@ MonoBehaviour:
   m_text: KM/H
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2415,7 +2421,7 @@ MonoBehaviour:
   m_text: PODER
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2759,7 +2765,7 @@ MonoBehaviour:
   m_text: 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3190,7 +3196,7 @@ MonoBehaviour:
   m_text: 1/3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3269,7 +3275,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1234257517417538489}
   m_Layer: 0
-  m_Name: ElectroGelEquippedSocket
+  m_Name: RocketEquippedSocket
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3284,7 +3290,7 @@ Transform:
   m_GameObject: {fileID: 6024930139352554508}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.01, y: 1.01, z: -0.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3486,7 +3492,7 @@ MonoBehaviour:
   m_text: GEAR
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3715,7 +3721,7 @@ MonoBehaviour:
   m_text: 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3959,7 +3965,7 @@ MonoBehaviour:
   m_text: SPEED
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
