@@ -46,6 +46,17 @@ namespace PartyRacers.Networking
         public string CurrentJoinCode { get; private set; } = string.Empty;
         public bool IsOnline => Mode != SessionMode.Offline;
         public bool HasJoinCode => !string.IsNullOrWhiteSpace(CurrentJoinCode);
+        public bool IsRaceSceneReadyForCountdown
+        {
+            get
+            {
+#if PARTYRACERS_ONLINE
+                return Mode != SessionMode.Host || !networkRaceSceneLoadInProgress;
+#else
+                return true;
+#endif
+            }
+        }
 
         public event Action<string> StatusChanged;
 
@@ -64,6 +75,9 @@ namespace PartyRacers.Networking
         private Coroutine lobbyPollRoutine;
         private Coroutine lobbyHeartbeatRoutine;
         private NetworkManager networkManager;
+        private bool networkSceneEventsSubscribed;
+        private bool networkRaceSceneLoadInProgress;
+        private string networkRaceSceneLoadName = string.Empty;
 #endif
 
         private void Awake()
@@ -340,7 +354,11 @@ namespace PartyRacers.Networking
                 return;
             }
 
+            BeginNetworkRaceSceneLoad(sceneName);
             SceneEventProgressStatus status = networkManager.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
+            if (status != SceneEventProgressStatus.Started)
+                ResetNetworkRaceSceneLoadState();
+
             SetStatus(status == SceneEventProgressStatus.Started
                 ? $"Carregando {sceneName} para todos os jogadores..."
                 : $"Falha ao carregar cena online: {status}");
@@ -355,6 +373,8 @@ namespace PartyRacers.Networking
             currentLobby = null;
             CurrentJoinCode = string.Empty;
             Mode = SessionMode.Offline;
+            ResetNetworkRaceSceneLoadState();
+            UnsubscribeNetworkSceneEvents();
 
             if (networkManager != null && networkManager.IsListening)
                 networkManager.Shutdown();
@@ -431,6 +451,57 @@ namespace PartyRacers.Networking
 
             if (prefabsList == null || !prefabsList.Contains(playerPrefab))
                 config.Prefabs.Add(new NetworkPrefab { Prefab = playerPrefab });
+        }
+
+        private void BeginNetworkRaceSceneLoad(string sceneName)
+        {
+            networkRaceSceneLoadInProgress = true;
+            networkRaceSceneLoadName = sceneName;
+            SubscribeNetworkSceneEvents();
+        }
+
+        private void ResetNetworkRaceSceneLoadState()
+        {
+            networkRaceSceneLoadInProgress = false;
+            networkRaceSceneLoadName = string.Empty;
+        }
+
+        private void SubscribeNetworkSceneEvents()
+        {
+            if (networkSceneEventsSubscribed || networkManager == null || networkManager.SceneManager == null)
+                return;
+
+            networkManager.SceneManager.OnLoadEventCompleted += OnNetworkSceneLoadEventCompleted;
+            networkSceneEventsSubscribed = true;
+        }
+
+        private void UnsubscribeNetworkSceneEvents()
+        {
+            if (!networkSceneEventsSubscribed)
+                return;
+
+            if (networkManager != null && networkManager.SceneManager != null)
+                networkManager.SceneManager.OnLoadEventCompleted -= OnNetworkSceneLoadEventCompleted;
+
+            networkSceneEventsSubscribed = false;
+        }
+
+        private void OnNetworkSceneLoadEventCompleted(
+            string sceneName,
+            LoadSceneMode loadSceneMode,
+            List<ulong> clientsCompleted,
+            List<ulong> clientsTimedOut)
+        {
+            if (!networkRaceSceneLoadInProgress)
+                return;
+
+            if (!string.Equals(sceneName, networkRaceSceneLoadName, StringComparison.Ordinal))
+                return;
+
+            if (clientsTimedOut != null && clientsTimedOut.Count > 0)
+                Debug.LogWarning($"Cena online {sceneName} completou com {clientsTimedOut.Count} cliente(s) em timeout.");
+
+            ResetNetworkRaceSceneLoadState();
         }
 
         private RaceNetworkConfig ResolveNetworkConfig()
@@ -728,6 +799,8 @@ namespace PartyRacers.Networking
             currentLobby = null;
             CurrentJoinCode = string.Empty;
             Mode = SessionMode.Offline;
+            ResetNetworkRaceSceneLoadState();
+            UnsubscribeNetworkSceneEvents();
 
             if (networkManager != null && networkManager.IsListening)
                 networkManager.Shutdown();

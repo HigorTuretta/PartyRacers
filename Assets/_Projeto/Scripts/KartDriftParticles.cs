@@ -1,3 +1,4 @@
+using PartyRacers.Networking;
 using UnityEngine;
 
 public class KartDriftParticles : MonoBehaviour
@@ -27,11 +28,14 @@ public class KartDriftParticles : MonoBehaviour
 
     private float currentRateDistance;
     private float currentRateTime;
+    private KartNetworkSync networkSync;
 
     private void Awake()
     {
         if (kart == null)
             kart = GetComponent<KartController>();
+
+        networkSync = GetComponent<KartNetworkSync>();
 
         InitializeParticleSystem(rearLeftSmoke);
         InitializeParticleSystem(rearRightSmoke);
@@ -50,7 +54,7 @@ public class KartDriftParticles : MonoBehaviour
         currentRateDistance = Mathf.Lerp(currentRateDistance, targetRateDistance, Time.deltaTime * smokeSmooth);
         currentRateTime = Mathf.Lerp(currentRateTime, targetRateTime, Time.deltaTime * smokeSmooth);
 
-        float sizeFactor = Mathf.Clamp01((kart.TireStress01 * 0.85f) + (kart.Speed01 * 0.35f));
+        float sizeFactor = Mathf.Clamp01((EffectTireStress01 * 0.85f) + (EffectSpeed01 * 0.35f));
         float currentSize = Mathf.Lerp(minStartSize, maxStartSize, sizeFactor);
         float currentSpeed = Mathf.Lerp(minStartSpeed, maxStartSpeed, sizeFactor);
 
@@ -60,18 +64,18 @@ public class KartDriftParticles : MonoBehaviour
 
     private float CalculateTargetFactor()
     {
-        if (!kart.IsGrounded)
+        if (!EffectIsGrounded)
             return 0f;
 
-        if (kart.SpeedKmh < minSpeedKmh && !kart.IsBurningOut)
+        if (EffectSpeedKmh < minSpeedKmh && !EffectIsBurningOut)
             return 0f;
 
-        float tireStress = kart.TireStress01;
+        float tireStress = EffectTireStress01;
 
         if (tireStress < minDriftBlend)
             return 0f;
 
-        float speedFactor = kart.Speed01;
+        float speedFactor = EffectSpeed01;
 
         return Mathf.Clamp01((tireStress * 0.9f) + (speedFactor * 0.25f));
     }
@@ -114,4 +118,11 @@ public class KartDriftParticles : MonoBehaviour
         emission.rateOverTime = 0f;
         emission.rateOverDistance = 0f;
     }
+
+    private bool UseSyncedEffectState => networkSync != null && networkSync.UseSyncedEffectState;
+    private bool EffectIsGrounded => UseSyncedEffectState ? networkSync.EffectIsGrounded : kart.IsGrounded;
+    private bool EffectIsBurningOut => UseSyncedEffectState ? networkSync.EffectIsBurningOut : kart.IsBurningOut;
+    private float EffectSpeedKmh => UseSyncedEffectState ? networkSync.EffectSpeedKmh : kart.SpeedKmh;
+    private float EffectSpeed01 => UseSyncedEffectState ? networkSync.EffectSpeed01 : kart.Speed01;
+    private float EffectTireStress01 => UseSyncedEffectState ? networkSync.EffectTireStress01 : kart.TireStress01;
 }

@@ -1,3 +1,4 @@
+using PartyRacers.Networking;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -28,6 +29,7 @@ public class KartTireMarks : MonoBehaviour
     private readonly WheelMarkState leftMark = new WheelMarkState();
     private readonly WheelMarkState rightMark = new WheelMarkState();
     private Material markMaterial;
+    private KartNetworkSync networkSync;
 
     private class WheelMarkState
     {
@@ -39,6 +41,8 @@ public class KartTireMarks : MonoBehaviour
     {
         if (kart == null)
             kart = GetComponent<KartController>();
+
+        networkSync = GetComponent<KartNetworkSync>();
 
         if (rearLeftPoint == null)
             rearLeftPoint = FindChildByName("SmokePoint_RearLeft");
@@ -58,11 +62,11 @@ public class KartTireMarks : MonoBehaviour
             return;
         }
 
-        float intensity = Mathf.Clamp01(kart.TireStress01);
-        bool abruptSlip = kart.LaunchSlip01 >= minIntensity || kart.BrakeSlip01 >= minIntensity;
-        bool shouldMark = kart.IsGrounded
+        float intensity = Mathf.Clamp01(EffectTireStress01);
+        bool abruptSlip = EffectLaunchSlip01 >= minIntensity || EffectBrakeSlip01 >= minIntensity;
+        bool shouldMark = EffectIsGrounded
             && intensity >= minIntensity
-            && (kart.SpeedKmh >= minSpeedKmh || kart.IsBurningOut || abruptSlip);
+            && (EffectSpeedKmh >= minSpeedKmh || EffectIsBurningOut || abruptSlip);
 
         if (!shouldMark)
         {
@@ -206,4 +210,12 @@ public class KartTireMarks : MonoBehaviour
         if (markMaterial != null)
             Destroy(markMaterial);
     }
+
+    private bool UseSyncedEffectState => networkSync != null && networkSync.UseSyncedEffectState;
+    private bool EffectIsGrounded => UseSyncedEffectState ? networkSync.EffectIsGrounded : kart.IsGrounded;
+    private bool EffectIsBurningOut => UseSyncedEffectState ? networkSync.EffectIsBurningOut : kart.IsBurningOut;
+    private float EffectSpeedKmh => UseSyncedEffectState ? networkSync.EffectSpeedKmh : kart.SpeedKmh;
+    private float EffectTireStress01 => UseSyncedEffectState ? networkSync.EffectTireStress01 : kart.TireStress01;
+    private float EffectLaunchSlip01 => UseSyncedEffectState ? networkSync.EffectLaunchSlip01 : kart.LaunchSlip01;
+    private float EffectBrakeSlip01 => UseSyncedEffectState ? networkSync.EffectBrakeSlip01 : kart.BrakeSlip01;
 }
