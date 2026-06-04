@@ -55,6 +55,7 @@ namespace PartyRacers.Networking
         private const string ReadyKey = "ready";
         private const string CarIndexKey = "carIndex";
         private const string ColorIndexKey = "colorIndex";
+        private const string ElementDataKey = "elementData";
 
         private bool servicesReady;
         private bool lobbyPollInFlight;
@@ -333,6 +334,12 @@ namespace PartyRacers.Networking
                 return;
             }
 
+            if (RacePlayerRegistry.Instance == null || !RacePlayerRegistry.Instance.AllReady())
+            {
+                SetStatus("Todos os jogadores precisam estar prontos para iniciar.");
+                return;
+            }
+
             SceneEventProgressStatus status = networkManager.SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
             SetStatus(status == SceneEventProgressStatus.Started
                 ? $"Carregando {sceneName} para todos os jogadores..."
@@ -475,6 +482,7 @@ namespace PartyRacers.Networking
 
         private Dictionary<string, PlayerDataObject> BuildPlayerData(bool? readyOverride, bool? hostOverride = null)
         {
+            RefreshLocalPlayerVisual();
             RacePlayerInfo local = RacePlayerRegistry.Instance != null ? RacePlayerRegistry.Instance.LocalPlayer : null;
             bool ready = readyOverride ?? local?.IsReady ?? false;
 
@@ -484,16 +492,45 @@ namespace PartyRacers.Networking
                 [ReadyKey] = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, ready ? "1" : "0"),
                 [CarIndexKey] = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, (local?.CarIndex ?? 0).ToString()),
                 [ColorIndexKey] = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, (local?.ColorIndex ?? 0).ToString()),
+                [ElementDataKey] = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, local?.ElementData ?? string.Empty),
             };
+        }
+
+        private void RefreshLocalPlayerVisual()
+        {
+            RacePlayerRegistry.Instance?.SetLocalPlayerVisual(KartGarageSelection.Capture());
         }
 
         private string GetLocalDisplayName()
         {
             string name = RacePlayerRegistry.Instance != null && RacePlayerRegistry.Instance.LocalPlayer != null
                 ? RacePlayerRegistry.Instance.LocalPlayer.DisplayName
-                : "Player";
+                : string.Empty;
 
-            return string.IsNullOrWhiteSpace(name) ? "Player" : name;
+            if (!IsPlaceholderName(name))
+                return name;
+
+            string playerId = AuthenticationService.Instance != null && AuthenticationService.Instance.IsSignedIn
+                ? AuthenticationService.Instance.PlayerId
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(playerId))
+                return "Player";
+
+            int suffixLength = Mathf.Min(4, playerId.Length);
+            string suffix = playerId.Substring(playerId.Length - suffixLength, suffixLength).ToUpperInvariant();
+            return "Player " + suffix;
+        }
+
+        private static bool IsPlaceholderName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return true;
+
+            if (string.Equals(name, "Player", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return name.Length <= 5 && name.StartsWith("Voc", StringComparison.OrdinalIgnoreCase);
         }
 
         private void SyncRegistryFromLobby(Lobby lobby)
@@ -519,7 +556,8 @@ namespace PartyRacers.Networking
                         IsHost = player.Id == lobby.HostId,
                         IsReady = GetPlayerData(player, ReadyKey, "0") == "1",
                         CarIndex = ParseInt(GetPlayerData(player, CarIndexKey, "0")),
-                        ColorIndex = ParseInt(GetPlayerData(player, ColorIndexKey, "0"))
+                        ColorIndex = ParseInt(GetPlayerData(player, ColorIndexKey, "0")),
+                        ElementData = GetPlayerData(player, ElementDataKey, string.Empty)
                     };
 
                     snapshot.Add(info);

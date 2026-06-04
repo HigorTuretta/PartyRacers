@@ -64,6 +64,26 @@ public class KartVisualCustomizer : MonoBehaviour
     public Color[] PaintPalette => paintPalette;
     public CarCustomizer CurrentRig => _currentRig;
 
+    public void SetLoadSelectionOnStart(bool enabled)
+    {
+        loadSelectionOnStart = enabled;
+    }
+
+    public void ApplySelection(KartVisualSelection selection)
+    {
+        ApplySelection(selection.CarIndex, selection.ColorIndex, selection.ElementData);
+    }
+
+    public void ApplySelection(int carIndex, int colorIndex, string elementData)
+    {
+        if (CarCount == 0)
+            return;
+
+        _carIndex = Mathf.Clamp(carIndex, 0, Mathf.Max(0, CarCount - 1));
+        _colorIndex = colorIndex;
+        BuildCar(applySavedElements: false, explicitElements: KartGarageSelection.DecodeElements(elementData));
+    }
+
     private void Start()
     {
         EnsureBuilt();
@@ -138,7 +158,7 @@ public class KartVisualCustomizer : MonoBehaviour
     }
 
     // ---------------------------------------------------------------- Construção
-    private void BuildCar(bool applySavedElements)
+    private void BuildCar(bool applySavedElements, Dictionary<CarElementName, int> explicitElements = null)
     {
         if (carModelRoot == null || CarCount == 0)
             return;
@@ -161,7 +181,15 @@ public class KartVisualCustomizer : MonoBehaviour
 
         _currentRig.Initialize();
 
-        if (applySavedElements)
+        if (explicitElements != null)
+        {
+            foreach (var element in _currentRig.Elements)
+            {
+                if (explicitElements.TryGetValue(element.ElementName, out int index) && index > 0)
+                    _currentRig.SwitchCarElement(element.ElementName, index);
+            }
+        }
+        else if (applySavedElements)
         {
             foreach (var element in _currentRig.Elements)
             {
