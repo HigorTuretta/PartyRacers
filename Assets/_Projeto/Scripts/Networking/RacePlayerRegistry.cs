@@ -48,10 +48,14 @@ namespace PartyRacers.Networking
             if (LocalPlayer != null)
                 return;
 
+            KartVisualSelection selection = KartGarageSelection.Capture();
             LocalPlayer = new RacePlayerInfo(Guid.NewGuid().ToString(), localPlayerName, PlayerKind.Local)
             {
                 IsHost = true,
-                IsReady = false
+                IsReady = false,
+                CarIndex = selection.CarIndex,
+                ColorIndex = selection.ColorIndex,
+                ElementData = selection.ElementData
             };
 
             players.Insert(0, LocalPlayer);
@@ -122,6 +126,20 @@ namespace PartyRacers.Networking
             RaiseChanged();
         }
 
+        public void SetLocalPlayerVisual(KartVisualSelection selection)
+        {
+            EnsureLocalPlayer();
+
+            if (LocalPlayer == null)
+                return;
+
+            LocalPlayer.CarIndex = selection.CarIndex;
+            LocalPlayer.ColorIndex = selection.ColorIndex;
+            LocalPlayer.ElementData = selection.ElementData ?? string.Empty;
+
+            RaiseChanged();
+        }
+
         public void ApplyNetworkSnapshot(IReadOnlyList<RacePlayerInfo> snapshot, string localPlayerId)
         {
             players.Clear();
@@ -144,6 +162,7 @@ namespace PartyRacers.Networking
                         IsHost = source.IsHost,
                         CarIndex = source.CarIndex,
                         ColorIndex = source.ColorIndex,
+                        ElementData = source.ElementData ?? string.Empty,
                         SpawnIndex = source.SpawnIndex
                     };
 

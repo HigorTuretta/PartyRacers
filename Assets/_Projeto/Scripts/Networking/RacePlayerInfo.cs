@@ -20,6 +20,7 @@ namespace PartyRacers.Networking
         public bool IsHost;
         public int CarIndex;
         public int ColorIndex;
+        public string ElementData;
 
         // Atribuído pelo RaceSpawnManager na largada.
         public int SpawnIndex = -1;

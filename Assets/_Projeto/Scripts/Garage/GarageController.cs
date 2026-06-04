@@ -62,6 +62,8 @@ public class GarageController : MonoBehaviour
     private TMP_Text _readyButtonLabel;
     private TMP_Text _lobbyJoinCodeText;
     private TMP_InputField _joinCodeInput;
+    private Button _raceButton;
+    private TMP_Text _raceButtonLabel;
 
     private void Start()
     {
@@ -241,7 +243,8 @@ public class GarageController : MonoBehaviour
         BuildLobbyPanel(root);
 
         // Botão CORRER / INICIAR (host). Canto inferior direito.
-        CreateButton(root, "CORRER", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-190f, 64f), new Vector2(300f, 96f), raceColor, StartRace, 34);
+        _raceButtonLabel = CreateButton(root, "CORRER", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-190f, 64f), new Vector2(300f, 96f), raceColor, StartRace, 34);
+        _raceButton = _raceButtonLabel != null ? _raceButtonLabel.GetComponentInParent<Button>() : null;
     }
 
     // ---------------------------------------------------------------- Lobby
@@ -325,6 +328,8 @@ public class GarageController : MonoBehaviour
 
         if (_lobbyJoinCodeText != null && _bootstrap != null)
             _lobbyJoinCodeText.text = _bootstrap.HasJoinCode ? $"CODIGO {_bootstrap.CurrentJoinCode}" : "CODIGO --";
+
+        RefreshRaceButtonState();
 
         if (_lobbyListContent == null)
             return;
@@ -412,21 +417,44 @@ public class GarageController : MonoBehaviour
 
         if (_lobbyJoinCodeText != null && _bootstrap != null)
             _lobbyJoinCodeText.text = _bootstrap.HasJoinCode ? $"CODIGO {_bootstrap.CurrentJoinCode}" : "CODIGO --";
+
+        RefreshRaceButtonState();
     }
 
     private void StartRace()
     {
         customizer?.EnsureBuilt();
         KartGarageSelection.Save();
+        _registry?.SetLocalPlayerVisual(KartGarageSelection.Capture());
 
         if (_bootstrap != null && _bootstrap.IsOnline)
         {
+            if (_registry == null || !_registry.AllReady())
+            {
+                if (_lobbyStatusText != null)
+                    _lobbyStatusText.text = "Todos os jogadores precisam estar prontos.";
+
+                return;
+            }
+
             _bootstrap.StartRaceScene(raceSceneName);
             return;
         }
 
         if (!string.IsNullOrEmpty(raceSceneName))
             UnityEngine.SceneManagement.SceneManager.LoadScene(raceSceneName);
+    }
+
+    private void RefreshRaceButtonState()
+    {
+        bool online = _bootstrap != null && _bootstrap.IsOnline;
+        bool canRace = !online || (_registry != null && _registry.AllReady());
+
+        if (_raceButton != null)
+            _raceButton.interactable = canRace;
+
+        if (_raceButtonLabel != null)
+            _raceButtonLabel.text = online && !canRace ? "AGUARDANDO" : "CORRER";
     }
 
     // ---------------------------------------------------------------- Opções dinâmicas
