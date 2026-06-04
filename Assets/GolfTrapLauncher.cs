@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class GolfTrapLauncher : MonoBehaviour
 {
@@ -7,59 +8,51 @@ public class GolfTrapLauncher : MonoBehaviour
     public Transform direcaoTacada;
 
     public float launchForce = 20f;
-    public float respawnTime = 3f;
+    public float waitBeforeShoot = 3f;
     public float ballLifetime = 5f;
 
     private GameObject currentBall;
 
     void Start()
     {
-        SpawnBall();
-
-        InvokeRepeating(nameof(HitBall), respawnTime, respawnTime);
+        StartCoroutine(BallLoop());
     }
 
-    void SpawnBall()
+    IEnumerator BallLoop()
     {
-        currentBall = Instantiate(
-            golfBallPrefab,
-            suporteBola.position + Vector3.up * 2f,
-            suporteBola.rotation);
-
-        Rigidbody rb = currentBall.GetComponent<Rigidbody>();
-
-        if (rb != null)
+        while (true)
         {
-            // Mantém a bola parada sobre o suporte
-            rb.isKinematic = true;
+            // Cria a bola
+            currentBall = Instantiate(
+                golfBallPrefab,
+                suporteBola.position + Vector3.up * 5f,
+                suporteBola.rotation);
+
+            Rigidbody rb = currentBall.GetComponent<Rigidbody>();
+
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+            }
+
+            // Espera antes de lançar
+            yield return new WaitForSeconds(waitBeforeShoot);
+
+            // Lança a bola
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+
+                rb.AddForce(
+                    direcaoTacada.forward * launchForce,
+                    ForceMode.Impulse);
+            }
+
+            // Espera a bola existir
+            yield return new WaitForSeconds(ballLifetime);
+
+            // Destrói a bola
+            Destroy(currentBall);
         }
-    }
-
-    void HitBall()
-    {
-        if (currentBall == null)
-            return;
-
-        Rigidbody rb = currentBall.GetComponent<Rigidbody>();
-
-        if (rb != null)
-        {
-            // Libera a física
-            rb.isKinematic = false;
-
-            // Aplica a força na direção do objeto DirecaoTacada
-            rb.AddForce(
-                direcaoTacada.forward * launchForce,
-                ForceMode.Impulse);
-        }
-
-        // Guarda referência da bola lançada
-        GameObject launchedBall = currentBall;
-
-        // Cria imediatamente uma nova bola em cima do suporte
-        SpawnBall();
-
-        // Destrói a bola lançada após alguns segundos
-        Destroy(launchedBall, ballLifetime);
     }
 }
