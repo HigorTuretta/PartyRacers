@@ -39,6 +39,13 @@ public class RaceManager : MonoBehaviour
     [SerializeField] private float countdownStepDuration = 1f;
     [SerializeField] private float goMessageDuration = 0.75f;
 
+#if PARTYRACERS_ONLINE
+    [Header("Online")]
+    [SerializeField] private bool waitForOnlinePlayersBeforeCountdown = true;
+    [SerializeField] private float onlinePlayerWaitPollInterval = 0.1f;
+    [SerializeField] private string onlineWaitingText = "AGUARDANDO";
+#endif
+
     [Header("Estado")]
     [SerializeField] private bool raceStarted;
 
@@ -261,6 +268,11 @@ public class RaceManager : MonoBehaviour
         raceStarted = false;
         SetAllControl(false);
 
+#if PARTYRACERS_ONLINE
+        yield return WaitForOnlinePlayersBeforeCountdown();
+        SetAllControl(false);
+#endif
+
         if (countdownText != null)
         {
             countdownText.gameObject.SetActive(true);
@@ -285,4 +297,88 @@ public class RaceManager : MonoBehaviour
         if (countdownText != null)
             countdownText.gameObject.SetActive(false);
     }
+
+#if PARTYRACERS_ONLINE
+    private IEnumerator WaitForOnlinePlayersBeforeCountdown()
+    {
+        if (!ShouldWaitForOnlinePlayers())
+            yield break;
+
+        WaitForSeconds wait = new WaitForSeconds(Mathf.Max(0.05f, onlinePlayerWaitPollInterval));
+
+        while (!AllExpectedOnlineKartsSpawned())
+        {
+            CollectKarts();
+            SetAllControl(false);
+            UpdateOnlineWaitingText();
+            yield return wait;
+        }
+
+        CollectKarts();
+        SetAllControl(false);
+    }
+
+    private bool ShouldWaitForOnlinePlayers()
+    {
+        if (!waitForOnlinePlayersBeforeCountdown)
+            return false;
+
+        if (NetworkBootstrap.Instance != null && NetworkBootstrap.Instance.IsOnline)
+            return true;
+
+        NetworkManager networkManager = NetworkManager.Singleton;
+        return networkManager != null && networkManager.IsListening;
+    }
+
+    private bool AllExpectedOnlineKartsSpawned()
+    {
+        if (NetworkBootstrap.Instance != null && !NetworkBootstrap.Instance.IsRaceSceneReadyForCountdown)
+            return false;
+
+        int expectedPlayers = ResolveExpectedOnlinePlayerCount();
+        int spawnedKarts = CountSpawnedOnlineKarts();
+        return spawnedKarts >= expectedPlayers;
+    }
+
+    private int ResolveExpectedOnlinePlayerCount()
+    {
+        int expectedPlayers = 1;
+
+        RacePlayerRegistry registry = RacePlayerRegistry.Instance;
+        if (registry != null && registry.Count > 0)
+            expectedPlayers = registry.Count;
+
+        NetworkManager networkManager = NetworkManager.Singleton;
+        if (networkManager != null && networkManager.IsServer)
+            expectedPlayers = Mathf.Max(expectedPlayers, networkManager.ConnectedClientsIds.Count);
+
+        return Mathf.Clamp(expectedPlayers, 1, RaceConstants.MaxPlayers);
+    }
+
+    private int CountSpawnedOnlineKarts()
+    {
+        int count = 0;
+        KartNetworkSync[] networkKarts = FindObjectsByType<KartNetworkSync>(FindObjectsInactive.Exclude);
+
+        foreach (KartNetworkSync networkKart in networkKarts)
+        {
+            if (networkKart != null && networkKart.IsSpawned)
+                count++;
+        }
+
+        return count;
+    }
+
+    private void UpdateOnlineWaitingText()
+    {
+        if (countdownText == null)
+            return;
+
+        int expectedPlayers = ResolveExpectedOnlinePlayerCount();
+        int spawnedKarts = CountSpawnedOnlineKarts();
+
+        countdownText.gameObject.SetActive(true);
+        countdownText.text = $"{onlineWaitingText}\n{Mathf.Min(spawnedKarts, expectedPlayers)}/{expectedPlayers}";
+    }
+#endif
 }

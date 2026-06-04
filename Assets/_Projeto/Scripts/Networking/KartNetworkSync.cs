@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -30,6 +31,14 @@ namespace PartyRacers.Networking
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
 
+        private readonly NetworkVariable<DriftEffectState> driftEffectState = new NetworkVariable<DriftEffectState>(
+            default,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Owner);
+
+        private const float DriftEffectStateSyncInterval = 0.05f;
+        private const float DriftEffectStateEpsilon = 0.015f;
+
         private KartController kart;
         private KartNetworkIdentity identity;
         private KartLocalRig localRig;
@@ -40,8 +49,20 @@ namespace PartyRacers.Networking
         private RigidbodyInterpolation originalInterpolation;
         private CollisionDetectionMode originalCollisionDetection;
         private bool visualEventsSubscribed;
+        private bool hasSubmittedDriftEffectState;
+        private float nextDriftEffectStateSyncTime;
+        private DriftEffectState lastSubmittedDriftEffectState;
 
         public KartInputState Read() => KartInputState.Neutral;
+        public bool UseSyncedEffectState => IsSpawned && !IsOwner;
+        public bool EffectIsGrounded => UseSyncedEffectState ? driftEffectState.Value.IsGrounded : kart != null && kart.IsGrounded;
+        public bool EffectIsBurningOut => UseSyncedEffectState ? driftEffectState.Value.IsBurningOut : kart != null && kart.IsBurningOut;
+        public float EffectSpeedKmh => UseSyncedEffectState ? driftEffectState.Value.SpeedKmh : kart != null ? kart.SpeedKmh : 0f;
+        public float EffectSpeed01 => UseSyncedEffectState ? driftEffectState.Value.Speed01 : kart != null ? kart.Speed01 : 0f;
+        public float EffectDriftBlend => UseSyncedEffectState ? driftEffectState.Value.DriftBlend : kart != null ? kart.DriftBlend : 0f;
+        public float EffectTireStress01 => UseSyncedEffectState ? driftEffectState.Value.TireStress01 : kart != null ? kart.TireStress01 : 0f;
+        public float EffectLaunchSlip01 => UseSyncedEffectState ? driftEffectState.Value.LaunchSlip01 : kart != null ? kart.LaunchSlip01 : 0f;
+        public float EffectBrakeSlip01 => UseSyncedEffectState ? driftEffectState.Value.BrakeSlip01 : kart != null ? kart.BrakeSlip01 : 0f;
 
         private void Awake()
         {
@@ -68,12 +89,22 @@ namespace PartyRacers.Networking
             ApplyNetworkRole();
 
             if (IsOwner)
+            {
                 SubmitLocalPlayerData();
+                SubmitDriftEffectState(force: true);
+            }
             else
+            {
                 ApplyNetworkVisual();
+            }
 
             raceManager = FindAnyObjectByType<RaceManager>();
             raceManager?.RegisterKart(kart);
+        }
+
+        private void Update()
+        {
+            SubmitDriftEffectState(force: false);
         }
 
         public override void OnNetworkDespawn()
@@ -255,6 +286,30 @@ namespace PartyRacers.Networking
             return new FixedString64Bytes(value);
         }
 
+        private void SubmitDriftEffectState(bool force)
+        {
+            if (!IsSpawned || !IsOwner || kart == null)
+                return;
+
+            float time = Time.unscaledTime;
+            if (!force && time < nextDriftEffectStateSyncTime)
+                return;
+
+            nextDriftEffectStateSyncTime = time + DriftEffectStateSyncInterval;
+
+            DriftEffectState current = DriftEffectState.FromKart(kart);
+            if (!force
+                && hasSubmittedDriftEffectState
+                && !current.HasMeaningfulChange(lastSubmittedDriftEffectState, DriftEffectStateEpsilon))
+            {
+                return;
+            }
+
+            driftEffectState.Value = current;
+            lastSubmittedDriftEffectState = current;
+            hasSubmittedDriftEffectState = true;
+        }
+
         private void RestoreLocalControl()
         {
             if (localRig != null)
@@ -274,6 +329,90 @@ namespace PartyRacers.Networking
             body.isKinematic = originalKinematic;
             body.interpolation = originalInterpolation;
             body.collisionDetectionMode = originalCollisionDetection;
+        }
+
+        private struct DriftEffectState : INetworkSerializable, IEquatable<DriftEffectState>
+        {
+            public bool IsGrounded;
+            public bool IsBurningOut;
+            public float SpeedKmh;
+            public float Speed01;
+            public float DriftBlend;
+            public float TireStress01;
+            public float LaunchSlip01;
+            public float BrakeSlip01;
+
+            public static DriftEffectState FromKart(KartController kart)
+            {
+                return new DriftEffectState
+                {
+                    IsGrounded = kart.IsGrounded,
+                    IsBurningOut = kart.IsBurningOut,
+                    SpeedKmh = kart.SpeedKmh,
+                    Speed01 = kart.Speed01,
+                    DriftBlend = kart.DriftBlend,
+                    TireStress01 = kart.TireStress01,
+                    LaunchSlip01 = kart.LaunchSlip01,
+                    BrakeSlip01 = kart.BrakeSlip01
+                };
+            }
+
+            public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+            {
+                serializer.SerializeValue(ref IsGrounded);
+                serializer.SerializeValue(ref IsBurningOut);
+                serializer.SerializeValue(ref SpeedKmh);
+                serializer.SerializeValue(ref Speed01);
+                serializer.SerializeValue(ref DriftBlend);
+                serializer.SerializeValue(ref TireStress01);
+                serializer.SerializeValue(ref LaunchSlip01);
+                serializer.SerializeValue(ref BrakeSlip01);
+            }
+
+            public bool Equals(DriftEffectState other)
+            {
+                return IsGrounded == other.IsGrounded
+                    && IsBurningOut == other.IsBurningOut
+                    && SpeedKmh.Equals(other.SpeedKmh)
+                    && Speed01.Equals(other.Speed01)
+                    && DriftBlend.Equals(other.DriftBlend)
+                    && TireStress01.Equals(other.TireStress01)
+                    && LaunchSlip01.Equals(other.LaunchSlip01)
+                    && BrakeSlip01.Equals(other.BrakeSlip01);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is DriftEffectState other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hashCode = IsGrounded.GetHashCode();
+                    hashCode = (hashCode * 397) ^ IsBurningOut.GetHashCode();
+                    hashCode = (hashCode * 397) ^ SpeedKmh.GetHashCode();
+                    hashCode = (hashCode * 397) ^ Speed01.GetHashCode();
+                    hashCode = (hashCode * 397) ^ DriftBlend.GetHashCode();
+                    hashCode = (hashCode * 397) ^ TireStress01.GetHashCode();
+                    hashCode = (hashCode * 397) ^ LaunchSlip01.GetHashCode();
+                    hashCode = (hashCode * 397) ^ BrakeSlip01.GetHashCode();
+                    return hashCode;
+                }
+            }
+
+            public bool HasMeaningfulChange(DriftEffectState previous, float epsilon)
+            {
+                return IsGrounded != previous.IsGrounded
+                    || IsBurningOut != previous.IsBurningOut
+                    || Mathf.Abs(SpeedKmh - previous.SpeedKmh) > epsilon
+                    || Mathf.Abs(Speed01 - previous.Speed01) > epsilon
+                    || Mathf.Abs(DriftBlend - previous.DriftBlend) > epsilon
+                    || Mathf.Abs(TireStress01 - previous.TireStress01) > epsilon
+                    || Mathf.Abs(LaunchSlip01 - previous.LaunchSlip01) > epsilon
+                    || Mathf.Abs(BrakeSlip01 - previous.BrakeSlip01) > epsilon;
+            }
         }
     }
 }
