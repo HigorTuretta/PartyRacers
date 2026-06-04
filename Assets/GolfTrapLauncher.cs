@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class GolfTrapLauncher : MonoBehaviour
 {
@@ -8,51 +9,46 @@ public class GolfTrapLauncher : MonoBehaviour
     public Transform direcaoTacada;
 
     public float launchForce = 20f;
-    public float waitBeforeShoot = 3f;
+    public float spawnInterval = 2f;   // 🔥 nova bola a cada 2s
     public float ballLifetime = 5f;
-
-    private GameObject currentBall;
 
     void Start()
     {
-        StartCoroutine(BallLoop());
+        StartCoroutine(SpawnLoop());
     }
 
-    IEnumerator BallLoop()
+    IEnumerator SpawnLoop()
     {
         while (true)
         {
-            // Cria a bola
-            currentBall = Instantiate(
-                golfBallPrefab,
-                suporteBola.position + Vector3.up * 5f,
-                suporteBola.rotation);
-
-            Rigidbody rb = currentBall.GetComponent<Rigidbody>();
-
-            if (rb != null)
-            {
-                rb.isKinematic = true;
-            }
-
-            // Espera antes de lançar
-            yield return new WaitForSeconds(waitBeforeShoot);
-
-            // Lança a bola
-            if (rb != null)
-            {
-                rb.isKinematic = false;
-
-                rb.AddForce(
-                    direcaoTacada.forward * launchForce,
-                    ForceMode.Impulse);
-            }
-
-            // Espera a bola existir
-            yield return new WaitForSeconds(ballLifetime);
-
-            // Destrói a bola
-            Destroy(currentBall);
+            SpawnBall();
+            yield return new WaitForSeconds(spawnInterval);
         }
+    }
+
+    void SpawnBall()
+    {
+        GameObject ball = Instantiate(
+            golfBallPrefab,
+            suporteBola.position + Vector3.up * 6.5f,
+            suporteBola.rotation
+        );
+
+        Rigidbody rb = ball.GetComponent<Rigidbody>();
+
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+
+            rb.AddForce(
+                direcaoTacada.forward * launchForce,
+                ForceMode.Impulse
+            );
+        }
+
+        // destrói depois do tempo de vida
+        Destroy(ball, ballLifetime);
     }
 }
