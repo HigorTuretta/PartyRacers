@@ -63,6 +63,16 @@ public class KartHUDOverlay : MonoBehaviour
     [SerializeField] private float countdownStepDuration = 1f;
     [SerializeField] private float goMessageDuration = 0.8f;
 
+    [Header("Contexto de Cena")]
+    [Tooltip("Cena de lobby/garagem onde o HUD de corrida NÃO deve aparecer. Evita que o kart spawnado pela rede no lobby cubra a tela.")]
+    [SerializeField] private string lobbySceneName = "Garage";
+
+    private Canvas hudCanvas;
+
+    // Garante UM ÚNICO HUD visível por vez. A cena de corrida pode ter um HUD avulso E
+    // o HUD embutido no kart (e em multiplayer vários karts) — apenas o primeiro reivindica.
+    private static KartHUDOverlay activeHud;
+
     // --- Widgets persistidos (preenchidos pelo botão "Build HUD") ---
     [Header("Widgets construídos (não mexer)")]
     [SerializeField] private RectTransform speedoRoot;
@@ -112,11 +122,57 @@ public class KartHUDOverlay : MonoBehaviour
     {
         AutoWire();
 
-        if (!HasAllWidgets())
+        hudCanvas = GetComponentInParent<Canvas>();
+
+        // Em runtime sempre reconstrói o HUD a partir do código atual: ignora widgets
+        // "baked" antigos que possam estar salvos no prefab (HUD legado SPEED/GEAR).
+        if (Application.isPlaying)
+            BuildHUD();
+        else if (!HasAllWidgets())
             BuildHUD();
 
         if (raceManager != null && countdownText != null)
             raceManager.SetCountdownText(countdownText);
+
+        RefreshSceneVisibility();
+    }
+
+    // O HUD de corrida só deve renderizar dentro da cena de corrida. No lobby/garagem
+    // (onde o kart pode ser spawnado pela rede ao hospedar) o Canvas fica desligado.
+    private void RefreshSceneVisibility()
+    {
+        if (hudCanvas == null)
+            return;
+
+        bool inLobby = !string.IsNullOrEmpty(lobbySceneName)
+            && gameObject.scene.IsValid()
+            && gameObject.scene.name == lobbySceneName;
+
+        if (inLobby)
+        {
+            if (activeHud == this)
+                activeHud = null;
+
+            if (hudCanvas.enabled)
+                hudCanvas.enabled = false;
+
+            return;
+        }
+
+        // Fora do lobby: reivindica o HUD único. `activeHud == null` cobre o caso de o
+        // dono anterior ter sido destruído (operador == do Unity trata destruído como null).
+        if (activeHud == null || activeHud == this)
+            activeHud = this;
+
+        bool shouldShow = activeHud == this;
+        if (hudCanvas.enabled != shouldShow)
+            hudCanvas.enabled = shouldShow;
+    }
+
+    private void OnDisable()
+    {
+        if (activeHud == this)
+            activeHud = null;
     }
 
     private void Start()
@@ -145,6 +201,8 @@ public class KartHUDOverlay : MonoBehaviour
     private void Update()
     {
         float dt = Time.deltaTime;
+
+        RefreshSceneVisibility();
 
         UpdateSpeedometer(dt);
         UpdateGearDisplay(dt);
@@ -372,7 +430,7 @@ public class KartHUDOverlay : MonoBehaviour
         switch (type)
         {
             case KartPowerType.SwapPosition: return new Color(0.30f, 0.78f, 1f, 1f);
-            case KartPowerType.StunShot: return new Color(1f, 0.92f, 0.20f, 1f);
+            case KartPowerType.Rocket: return new Color(1f, 0.50f, 0.15f, 1f);
             case KartPowerType.Shield: return new Color(0.35f, 1f, 0.55f, 1f);
             case KartPowerType.None:
             default: return new Color(0.45f, 0.48f, 0.55f, 1f);

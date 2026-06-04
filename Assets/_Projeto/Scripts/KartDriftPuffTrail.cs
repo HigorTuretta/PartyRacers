@@ -247,7 +247,8 @@ public class KartDriftPuffTrail : MonoBehaviour
             Vector3.up * Random.Range(0f, verticalScatter) * scatterMultiplier;
 
         Vector3 spawnPosition = spawnPoint.position + randomOffset;
-        Quaternion spawnRotation = Random.rotation;
+        // Só yaw aleatório: a base plana da nuvem permanece voltada para o chão.
+        Quaternion spawnRotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
         DriftPuffBubble puff = Instantiate(
             puffPrefab,

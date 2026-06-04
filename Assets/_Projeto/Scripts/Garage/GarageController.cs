@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using ithappy;
+using PartyRacers.Networking;
 
 // UI limpa e responsiva da Garagem. Constrói a interface por código (mesmo estilo
 // procedural do KartHUDOverlay) sobre um Canvas com CanvasScaler "Scale With Screen
@@ -52,6 +53,16 @@ public class GarageController : MonoBehaviour
     private readonly List<System.Action> _valueRefreshers = new List<System.Action>();
     private Sprite _roundSprite;
 
+    // --- Lobby (garagem como lobby online) ---
+    private RacePlayerRegistry _registry;
+    private NetworkBootstrap _bootstrap;
+    private TMP_Text _lobbyStatusText;
+    private TMP_Text _lobbyCountText;
+    private RectTransform _lobbyListContent;
+    private TMP_Text _readyButtonLabel;
+    private TMP_Text _lobbyJoinCodeText;
+    private TMP_InputField _joinCodeInput;
+
     private void Start()
     {
         if (customizer == null)
@@ -65,6 +76,8 @@ public class GarageController : MonoBehaviour
 
         _roundSprite = BuildRoundSprite();
 
+        EnsureNetworkObjects();
+
         BuildStaticUI();
 
         if (customizer != null)
@@ -73,8 +86,15 @@ public class GarageController : MonoBehaviour
             customizer.CarRebuilt += OnCarRebuilt;
         }
 
+        if (_registry != null)
+            _registry.Changed += RefreshLobby;
+
+        if (_bootstrap != null)
+            _bootstrap.StatusChanged += OnNetworkStatusChanged;
+
         RefreshCarName();
         RebuildOptions();
+        RefreshLobby();
         FrameCamera();
     }
 
@@ -82,6 +102,36 @@ public class GarageController : MonoBehaviour
     {
         if (customizer != null)
             customizer.CarRebuilt -= OnCarRebuilt;
+
+        if (_registry != null)
+            _registry.Changed -= RefreshLobby;
+
+        if (_bootstrap != null)
+            _bootstrap.StatusChanged -= OnNetworkStatusChanged;
+    }
+
+    // Garante os sistemas de rede/registro (singletons, persistentes). Funcionam offline:
+    // por padrão registram só o jogador local. A camada online popula remotos quando habilitada.
+    private void EnsureNetworkObjects()
+    {
+        _registry = RacePlayerRegistry.Instance;
+        _bootstrap = NetworkBootstrap.Instance;
+
+        if (_registry == null || _bootstrap == null)
+        {
+            GameObject systems = new GameObject("NetworkSystems");
+
+            _registry = RacePlayerRegistry.Instance != null
+                ? RacePlayerRegistry.Instance
+                : systems.AddComponent<RacePlayerRegistry>();
+
+            _bootstrap = NetworkBootstrap.Instance != null
+                ? NetworkBootstrap.Instance
+                : systems.AddComponent<NetworkBootstrap>();
+        }
+
+        if (_registry != null)
+            _registry.EnsureLocalPlayer();
     }
 
     private void OnCarRebuilt()
@@ -187,15 +237,193 @@ public class GarageController : MonoBehaviour
 
         _optionsContent = content;
 
-        // Botão CORRER (canto inferior direito). Pivot central => deslocar x por metade
-        // da largura para o botão não vazar a borda da tela.
+        // Painel de lobby (lado direito) — garagem funciona como lobby online.
+        BuildLobbyPanel(root);
+
+        // Botão CORRER / INICIAR (host). Canto inferior direito.
         CreateButton(root, "CORRER", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-190f, 64f), new Vector2(300f, 96f), raceColor, StartRace, 34);
+    }
+
+    // ---------------------------------------------------------------- Lobby
+    private void BuildLobbyPanel(RectTransform root)
+    {
+        RectTransform panel = CreatePanel(root, "LobbyPanel", panelColor);
+        panel.anchorMin = new Vector2(1f, 0f);
+        panel.anchorMax = new Vector2(1f, 1f);
+        panel.pivot = new Vector2(1f, 0.5f);
+        panel.offsetMin = new Vector2(-380f, 180f);
+        panel.offsetMax = new Vector2(-40f, -190f);
+
+        TMP_Text title = CreateText(panel, "LobbyTitle", "LOBBY", 22, FontStyles.Bold, TextAlignmentOptions.Left, textDimColor);
+        Anchor(title.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -26f), new Vector2(-32f, 30f));
+        title.characterSpacing = 4f;
+
+        _lobbyCountText = CreateText(panel, "LobbyCount", "JOGADORES 1/16", 16, FontStyles.Bold, TextAlignmentOptions.Right, accentColor);
+        Anchor(_lobbyCountText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(-6f, -26f), new Vector2(-16f, 28f));
+
+        _lobbyStatusText = CreateText(panel, "LobbyStatus", "Local (offline)", 13, FontStyles.Italic, TextAlignmentOptions.TopLeft, textDimColor);
+        Anchor(_lobbyStatusText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -52f), new Vector2(-28f, 34f));
+        _lobbyStatusText.textWrappingMode = TextWrappingModes.Normal;
+
+        // Lista rolável de jogadores.
+        RectTransform viewport = CreateUI("LobbyViewport", panel);
+        viewport.anchorMin = new Vector2(0f, 0f);
+        viewport.anchorMax = new Vector2(1f, 1f);
+        viewport.offsetMin = new Vector2(14f, 144f);
+        viewport.offsetMax = new Vector2(-14f, -90f);
+        viewport.gameObject.AddComponent<RectMask2D>();
+
+        RectTransform listContent = CreateUI("LobbyContent", viewport);
+        listContent.anchorMin = new Vector2(0f, 1f);
+        listContent.anchorMax = new Vector2(1f, 1f);
+        listContent.pivot = new Vector2(0.5f, 1f);
+        listContent.anchoredPosition = Vector2.zero;
+        var vlg = listContent.gameObject.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 6f;
+        vlg.childControlHeight = true;
+        vlg.childControlWidth = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childForceExpandWidth = true;
+        var fitter = listContent.gameObject.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+        scroll.viewport = viewport;
+        scroll.content = listContent;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 20f;
+        _lobbyListContent = listContent;
+
+        _lobbyJoinCodeText = CreateText(panel, "LobbyJoinCode", "CODIGO --", 13, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, accentColor);
+        Anchor(_lobbyJoinCodeText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 126f), new Vector2(-28f, 26f));
+
+        _joinCodeInput = CreateInputField(panel, "JoinCodeInput", "CODIGO", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(-54f, 86f), new Vector2(-122f, 38f));
+        CreateButton(panel, "ENTRAR", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-60f, 86f), new Vector2(104f, 38f), buttonColor, JoinOnlineGame, 14);
+
+        // Botões de ação (PRONTO / CONVIDAR) na base do painel.
+        var ready = CreateButton(panel, "PRONTO", new Vector2(0f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(-6f, 44f), buttonColor, ToggleReady, 18);
+        _readyButtonLabel = ready;
+
+        CreateButton(panel, "CONVIDAR", new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(0f, 30f), new Vector2(-6f, 44f), buttonColor, InvitePlayers, 18);
+    }
+
+    private void RefreshLobby()
+    {
+        if (_registry == null)
+            return;
+
+        if (_lobbyCountText != null)
+            _lobbyCountText.text = $"JOGADORES {_registry.Count}/{RaceConstants.MaxPlayers}";
+
+        if (_readyButtonLabel != null && _registry.LocalPlayer != null)
+            _readyButtonLabel.text = _registry.LocalPlayer.IsReady ? "PRONTO ✓" : "PRONTO";
+
+        if (_lobbyStatusText != null && _bootstrap != null)
+            _lobbyStatusText.text = _bootstrap.Status;
+
+        if (_lobbyJoinCodeText != null && _bootstrap != null)
+            _lobbyJoinCodeText.text = _bootstrap.HasJoinCode ? $"CODIGO {_bootstrap.CurrentJoinCode}" : "CODIGO --";
+
+        if (_lobbyListContent == null)
+            return;
+
+        for (int i = _lobbyListContent.childCount - 1; i >= 0; i--)
+            Destroy(_lobbyListContent.GetChild(i).gameObject);
+
+        foreach (RacePlayerInfo info in _registry.Players)
+            BuildPlayerRow(info);
+    }
+
+    private void BuildPlayerRow(RacePlayerInfo info)
+    {
+        RectTransform row = CreateUI("Player_" + info.DisplayName, _lobbyListContent);
+        var le = row.gameObject.AddComponent<LayoutElement>();
+        le.minHeight = 40f;
+        le.preferredHeight = 40f;
+
+        Color rowColor = info.IsLocal ? Color.Lerp(buttonColor, accentColor, 0.25f) : buttonColor * 0.5f;
+        Image bg = CreateImage(row, "RowBg", _roundSprite, rowColor);
+        StretchFull(bg.rectTransform);
+
+        string kindTag = info.IsLocal ? " (você)" : info.IsBot ? " (bot)" : "";
+        string hostTag = info.IsHost ? "★ " : "";
+        TMP_Text name = CreateText(row, "Name", hostTag + info.DisplayName + kindTag, 15, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, textColor);
+        var nrt = name.rectTransform;
+        nrt.anchorMin = new Vector2(0f, 0f);
+        nrt.anchorMax = new Vector2(1f, 1f);
+        nrt.offsetMin = new Vector2(12f, 0f);
+        nrt.offsetMax = new Vector2(-72f, 0f);
+
+        TMP_Text status = CreateText(row, "Ready", info.IsReady ? "PRONTO" : "...", 13, FontStyles.Bold, TextAlignmentOptions.MidlineRight,
+            info.IsReady ? raceColor : textDimColor);
+        var srt = status.rectTransform;
+        srt.anchorMin = new Vector2(1f, 0f);
+        srt.anchorMax = new Vector2(1f, 1f);
+        srt.pivot = new Vector2(1f, 0.5f);
+        srt.sizeDelta = new Vector2(70f, 0f);
+        srt.anchoredPosition = new Vector2(-10f, 0f);
+    }
+
+    private void ToggleReady()
+    {
+        if (_bootstrap != null && _bootstrap.IsOnline && _registry != null && _registry.LocalPlayer != null)
+        {
+            _bootstrap.SetLocalReady(!_registry.LocalPlayer.IsReady);
+            return;
+        }
+
+        if (_registry != null)
+            _registry.ToggleLocalReady();
+    }
+
+    private void InvitePlayers()
+    {
+        if (_bootstrap == null)
+            return;
+
+        if (_bootstrap.IsOnline && _bootstrap.HasJoinCode)
+        {
+            GUIUtility.systemCopyBuffer = _bootstrap.CurrentJoinCode;
+            Debug.Log($"Convite: codigo do lobby copiado: {_bootstrap.CurrentJoinCode}");
+
+            if (_lobbyStatusText != null)
+                _lobbyStatusText.text = $"Codigo copiado: {_bootstrap.CurrentJoinCode}";
+
+            return;
+        }
+
+        _bootstrap.HostGame();
+    }
+
+    private void JoinOnlineGame()
+    {
+        if (_bootstrap == null || _joinCodeInput == null)
+            return;
+
+        _bootstrap.JoinGame(_joinCodeInput.text);
+    }
+
+    private void OnNetworkStatusChanged(string status)
+    {
+        if (_lobbyStatusText != null)
+            _lobbyStatusText.text = status;
+
+        if (_lobbyJoinCodeText != null && _bootstrap != null)
+            _lobbyJoinCodeText.text = _bootstrap.HasJoinCode ? $"CODIGO {_bootstrap.CurrentJoinCode}" : "CODIGO --";
     }
 
     private void StartRace()
     {
         customizer?.EnsureBuilt();
         KartGarageSelection.Save();
+
+        if (_bootstrap != null && _bootstrap.IsOnline)
+        {
+            _bootstrap.StartRaceScene(raceSceneName);
+            return;
+        }
 
         if (!string.IsNullOrEmpty(raceSceneName))
             UnityEngine.SceneManagement.SceneManager.LoadScene(raceSceneName);
@@ -362,7 +590,7 @@ public class GarageController : MonoBehaviour
         return tmp;
     }
 
-    private void CreateButton(Transform parent, string text, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 size, Color color, UnityEngine.Events.UnityAction onClick, float fontSize = 26)
+    private TMP_Text CreateButton(Transform parent, string text, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 size, Color color, UnityEngine.Events.UnityAction onClick, float fontSize = 26)
     {
         var go = new GameObject("Btn_" + text, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
         go.layer = LayerMask.NameToLayer("UI");
@@ -390,6 +618,51 @@ public class GarageController : MonoBehaviour
 
         var label = CreateText(rt, "Text", text, fontSize, FontStyles.Bold, TextAlignmentOptions.Center, textColor);
         StretchFull(label.rectTransform);
+        return label;
+    }
+
+    private TMP_InputField CreateInputField(Transform parent, string name, string placeholder, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 size)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(TMP_InputField));
+        go.layer = LayerMask.NameToLayer("UI");
+        go.transform.SetParent(parent, false);
+
+        var rt = (RectTransform)go.transform;
+        rt.anchorMin = anchorMin;
+        rt.anchorMax = anchorMax;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = anchoredPos;
+
+        var img = go.GetComponent<Image>();
+        img.sprite = _roundSprite;
+        img.type = Image.Type.Sliced;
+        img.color = buttonColor * 0.65f;
+
+        TMP_Text text = CreateText(rt, "Text", "", 16, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, textColor);
+        StretchFull(text.rectTransform);
+        text.rectTransform.offsetMin = new Vector2(12f, 0f);
+        text.rectTransform.offsetMax = new Vector2(-12f, 0f);
+        text.raycastTarget = true;
+
+        TMP_Text placeholderText = CreateText(rt, "Placeholder", placeholder, 14, FontStyles.Italic, TextAlignmentOptions.MidlineLeft, textDimColor);
+        StretchFull(placeholderText.rectTransform);
+        placeholderText.rectTransform.offsetMin = new Vector2(12f, 0f);
+        placeholderText.rectTransform.offsetMax = new Vector2(-12f, 0f);
+
+        TMP_InputField input = go.GetComponent<TMP_InputField>();
+        input.textComponent = (TextMeshProUGUI)text;
+        input.placeholder = (TextMeshProUGUI)placeholderText;
+        input.characterLimit = 8;
+        input.textViewport = rt;
+        input.onValueChanged.AddListener(value =>
+        {
+            string upper = value.ToUpperInvariant();
+            if (value != upper)
+                input.SetTextWithoutNotify(upper);
+        });
+
+        return input;
     }
 
     private static void Anchor(RectTransform rect, Vector2 min, Vector2 max, Vector2 anchoredPos, Vector2 size)

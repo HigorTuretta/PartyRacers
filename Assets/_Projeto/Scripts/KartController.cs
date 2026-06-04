@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using PartyRacers.Networking;
 
 [RequireComponent(typeof(Rigidbody))]
 public class KartController : MonoBehaviour
@@ -140,6 +141,23 @@ public class KartController : MonoBehaviour
     [Header("Input")]
     [SerializeField, Range(0.5f, 2f)] private float steerInputCurve = 0.85f;
 
+    [Header("Colisão Arcade (rampas e paredes)")]
+    [Tooltip("Acima desta componente Y da normal a superfície é tratada como CHÃO (a suspensão cuida) e a colisão não é redirecionada.")]
+    [SerializeField, Range(0.5f, 1f)] private float collisionGroundNormalY = 0.82f;
+    [Tooltip("Entre este valor e collisionGroundNormalY a superfície é uma RAMPA: a velocidade é redirecionada para subir, sem o efeito de 'parede'.")]
+    [SerializeField, Range(0f, 0.8f)] private float rampMinNormalY = 0.25f;
+    [Tooltip("Fração de velocidade preservada ao subir rampas (1 = não perde nada).")]
+    [SerializeField, Range(0.8f, 1f)] private float rampSpeedRetention = 0.985f;
+    [Tooltip("Fração da velocidade tangencial preservada ao raspar paredes (evita parar do nada).")]
+    [SerializeField, Range(0.3f, 1f)] private float wallSlideRetention = 0.82f;
+    [Tooltip("Velocidade mínima (m/s) para aplicar o redirecionamento de colisão.")]
+    [SerializeField] private float collisionGlideMinSpeed = 2f;
+    [Tooltip("Velocidade com que o sinal de impacto (usado pela câmera) decai.")]
+    [SerializeField] private float impactDecaySpeed = 2.6f;
+
+    private float recentImpact01;
+    public float RecentImpact01 => recentImpact01;
+
     [Header("Boost")]
     [SerializeField] private float boostSpeedMultiplier = 1f;
     [SerializeField] private float boostAccelerationMultiplier = 1f;
@@ -159,6 +177,9 @@ public class KartController : MonoBehaviour
     private float moveInput;
     private bool handbrakeInput;
     private bool handbrakePressedThisFrame;
+
+    // Fonte de input opcional (rede/bot). Nula => comportamento local original (teclado/gamepad).
+    private IKartInputSource externalInput;
 
     private float driftReleaseTimer;
     private float driftEntryForwardSpeed;
@@ -243,6 +264,8 @@ public class KartController : MonoBehaviour
     private void Update()
     {
         UpdateBoostState();
+
+        recentImpact01 = Mathf.MoveTowards(recentImpact01, 0f, impactDecaySpeed * Time.deltaTime);
 
         if (!canControl)
         {
@@ -341,9 +364,22 @@ public class KartController : MonoBehaviour
         rb.AddForce(transform.forward * instantPush, ForceMode.VelocityChange);
     }
 
+    // Permite a uma camada de rede/bot fornecer input sem alterar a física.
+    // Passar null restaura o controle local (teclado/gamepad).
+    public void SetInputSource(IKartInputSource source)
+    {
+        externalInput = source;
+    }
+
     private void ReadInput()
     {
         ClearInput();
+
+        if (externalInput != null)
+        {
+            ApplyExternalInput(externalInput.Read());
+            return;
+        }
 
         Keyboard keyboard = Keyboard.current;
         Gamepad gamepad = Gamepad.current;
@@ -405,6 +441,16 @@ public class KartController : MonoBehaviour
         moveInput = 0f;
         handbrakeInput = false;
         handbrakePressedThisFrame = false;
+    }
+
+    private void ApplyExternalInput(KartInputState state)
+    {
+        throttleInput = Mathf.Clamp01(state.Throttle);
+        brakeInput = Mathf.Clamp01(state.Brake);
+        steerInput = Mathf.Clamp(state.Steer, -1f, 1f);
+        handbrakeInput = state.Handbrake;
+        handbrakePressedThisFrame = state.HandbrakePressed;
+        moveInput = throttleInput - brakeInput;
     }
 
     private void UpdateBurnoutState()
@@ -1163,6 +1209,66 @@ public class KartController : MonoBehaviour
 
         boostSpeedMultiplier = 1f;
         boostAccelerationMultiplier = 1f;
+    }
+
+    // Colisão "arcade": o BoxCollider do corpo, ao tocar a face de uma rampa ou parede, sofre
+    // um impulso normal que mata a velocidade ("efeito parede"). Aqui redirecionamos o movimento
+    // ao longo da superfície — sobe rampas preservando a velocidade e desliza em paredes — em vez
+    // de parar do nada. Rodado em OnCollisionStay/Enter (após o solver), então sobrescreve o stop.
+    private void OnCollisionEnter(Collision collision) => HandleCollisionGlide(collision);
+    private void OnCollisionStay(Collision collision) => HandleCollisionGlide(collision);
+
+    private void HandleCollisionGlide(Collision collision)
+    {
+        if (rb == null)
+            return;
+
+        Vector3 velocity = rb.linearVelocity;
+        float speed = velocity.magnitude;
+        if (speed < collisionGlideMinSpeed)
+            return;
+
+        // Normal que mais se opõe ao movimento = a superfície que está freando o kart.
+        Vector3 blockingNormal = Vector3.zero;
+        float worstInto = 0f;
+        int contactCount = collision.contactCount;
+
+        for (int i = 0; i < contactCount; i++)
+        {
+            Vector3 n = collision.GetContact(i).normal;
+            float into = Vector3.Dot(velocity, -n);
+            if (into > worstInto)
+            {
+                worstInto = into;
+                blockingNormal = n;
+            }
+        }
+
+        if (worstInto <= 0f)
+            return;
+
+        // Chão quase plano: a suspensão (raycast) cuida disso — não interferir.
+        if (blockingNormal.y >= collisionGroundNormalY)
+            return;
+
+        Vector3 along = Vector3.ProjectOnPlane(velocity, blockingNormal);
+        if (along.sqrMagnitude < 0.0001f)
+            along = Vector3.ProjectOnPlane(transform.forward, blockingNormal);
+
+        if (blockingNormal.y >= rampMinNormalY)
+        {
+            // Rampa: converte o movimento para subir a superfície, preservando a velocidade.
+            rb.linearVelocity = along.normalized * speed * rampSpeedRetention;
+        }
+        else
+        {
+            // Parede: desliza ao longo dela mantendo a maior parte da velocidade tangencial.
+            rb.linearVelocity = along * wallSlideRetention;
+        }
+
+        // Sinaliza o impacto para a câmera (forte quanto mais perpendicular for a batida).
+        float impact = worstInto / Mathf.Max(1f, GetCurrentMaxForwardSpeedMps());
+        recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, impact));
     }
 
     private float GetCurrentMaxForwardSpeedMps()

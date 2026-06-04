@@ -23,6 +23,102 @@ public static class CloudMeshGenerator
         return BuildFlatMesh(verts, tris);
     }
 
+    // Nuvem low-poly "de verdade": vários lóbulos (icosferas) agrupados num único mesh achatado.
+    // Lê como uma nuvenzinha volumétrica em vez de uma bola só. Mantém a contagem de triângulos baixa.
+    public static Mesh GenerateCluster(int lobes = 4, float bumpStrength = 0.22f, float noiseScale = 2.5f, float seed = 0f)
+    {
+        lobes = Mathf.Clamp(lobes, 2, 7);
+
+        var allVerts = new List<Vector3>();
+        var allTris = new List<int>();
+        var rng = new System.Random(Mathf.RoundToInt(seed * 1000f) ^ (lobes * 9176));
+
+        for (int l = 0; l < lobes; l++)
+        {
+            var verts = new List<Vector3>();
+            var tris = new List<int>();
+
+            // Icosaedro cru (20 faces, sem subdivisão) => facetas grandes e chapadas:
+            // é isso que dá a leitura "low-poly volumétrica" em vez de uma esfera lisa.
+            BuildIcosahedron(verts, tris);
+
+            float lobeSeed = seed + l * 13.7f;
+
+            for (int i = 0; i < verts.Count; i++)
+            {
+                Vector3 dir = verts[i].normalized;
+                float n = SampleNoise(dir, noiseScale, lobeSeed);
+                verts[i] = dir * (1f + Mathf.Pow(n, 1.6f) * bumpStrength);
+            }
+
+            Vector3 center;
+            float scale;
+
+            if (l == 0)
+            {
+                center = Vector3.zero;
+                scale = 1f;
+            }
+            else
+            {
+                // Lóbulos espalhados num anel horizontal e SEMPRE para cima (height >= 0):
+                // a parte de baixo fica plana, como uma nuvenzinha cartunesca pousada.
+                float angle = (l - 1) / Mathf.Max(1f, lobes - 1f) * Mathf.PI * 2f + (float)rng.NextDouble() * 0.6f;
+                float dist = 0.62f + 0.30f * (float)rng.NextDouble();
+                float height = 0.05f + 0.30f * (float)rng.NextDouble();
+                center = new Vector3(Mathf.Cos(angle) * dist, height, Mathf.Sin(angle) * dist);
+                scale = 0.55f + 0.30f * (float)rng.NextDouble();
+            }
+
+            int baseIndex = allVerts.Count;
+
+            for (int i = 0; i < verts.Count; i++)
+                allVerts.Add(center + verts[i] * scale);
+
+            for (int i = 0; i < tris.Count; i++)
+                allTris.Add(tris[i] + baseIndex);
+        }
+
+        FlattenBottom(allVerts, -0.30f);
+        NormalizeToUnit(allVerts);
+
+        return BuildFlatMesh(allVerts, allTris);
+    }
+
+    // Achata a base do conjunto: vértices abaixo do nível são levados ao plano,
+    // criando o "chão" plano de uma nuvem em vez de uma bola fechada.
+    private static void FlattenBottom(List<Vector3> verts, float level)
+    {
+        for (int i = 0; i < verts.Count; i++)
+        {
+            if (verts[i].y < level)
+                verts[i] = new Vector3(verts[i].x, level, verts[i].z);
+        }
+    }
+
+    // Recentra e normaliza o conjunto para caber aproximadamente num raio unitário,
+    // mantendo a escala dos puffs (startScale/endScale) consistente com a versão de bola única.
+    private static void NormalizeToUnit(List<Vector3> verts)
+    {
+        if (verts.Count == 0)
+            return;
+
+        Vector3 min = verts[0];
+        Vector3 max = verts[0];
+
+        for (int i = 1; i < verts.Count; i++)
+        {
+            min = Vector3.Min(min, verts[i]);
+            max = Vector3.Max(max, verts[i]);
+        }
+
+        Vector3 center = (min + max) * 0.5f;
+        float radius = Mathf.Max(0.0001f, ((max - min) * 0.5f).magnitude);
+
+        for (int i = 0; i < verts.Count; i++)
+            verts[i] = (verts[i] - center) / radius;
+    }
+
     private static void BuildIcosahedron(List<Vector3> verts, List<int> tris)
     {
         float t = (1f + Mathf.Sqrt(5f)) * 0.5f;
@@ -90,7 +186,23 @@ public static class CloudMeshGenerator
         int count = tris.Count;
         var flatVerts   = new Vector3[count];
         var flatNormals = new Vector3[count];
+        var flatColors  = new Color[count];
         var flatTris    = new int[count];
+
+        // Faixa vertical do conjunto, para assar um gradiente de sombreamento.
+        float minY = float.MaxValue, maxY = float.MinValue;
+        for (int i = 0; i < verts.Count; i++)
+        {
+            if (verts[i].y < minY) minY = verts[i].y;
+            if (verts[i].y > maxY) maxY = verts[i].y;
+        }
+        float rangeY = Mathf.Max(0.0001f, maxY - minY);
+
+        // Gradiente "ambient occlusion" estilizado: base sombreada, topo claro.
+        // O shader de partículas multiplica o albedo pela cor de vértice, então isto
+        // dá a leitura volumétrica/low-poly mesmo com iluminação plana.
+        Color bottomShade = new Color(0.55f, 0.60f, 0.70f, 1f);
+        Color topShade    = new Color(1f, 1f, 1f, 1f);
 
         for (int i = 0; i < count; i += 3)
         {
@@ -99,8 +211,16 @@ public static class CloudMeshGenerator
             Vector3 c = verts[tris[i + 2]];
             Vector3 n = Vector3.Cross(b - a, c - a).normalized;
 
+            // Faces viradas para baixo recebem um sombreamento extra (subsolo da nuvem).
+            float faceDown = Mathf.Clamp01(-n.y);
+
             flatVerts[i]     = a; flatVerts[i + 1]     = b; flatVerts[i + 2]     = c;
             flatNormals[i]   = n; flatNormals[i + 1]   = n; flatNormals[i + 2]   = n;
+
+            flatColors[i]     = ShadeVertex(a, minY, rangeY, faceDown, bottomShade, topShade);
+            flatColors[i + 1] = ShadeVertex(b, minY, rangeY, faceDown, bottomShade, topShade);
+            flatColors[i + 2] = ShadeVertex(c, minY, rangeY, faceDown, bottomShade, topShade);
+
             flatTris[i]      = i; flatTris[i + 1]      = i + 1; flatTris[i + 2]  = i + 2;
         }
 
@@ -108,7 +228,16 @@ public static class CloudMeshGenerator
         mesh.vertices = flatVerts;
         mesh.triangles = flatTris;
         mesh.normals = flatNormals;
+        mesh.colors = flatColors;
         mesh.RecalculateBounds();
         return mesh;
+    }
+
+    private static Color ShadeVertex(Vector3 v, float minY, float rangeY, float faceDown, Color bottom, Color top)
+    {
+        float h = Mathf.Clamp01((v.y - minY) / rangeY);
+        h = Mathf.SmoothStep(0f, 1f, h);
+        Color c = Color.Lerp(bottom, top, h);
+        return Color.Lerp(c, bottom, faceDown * 0.6f);
     }
 }
