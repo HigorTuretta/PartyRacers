@@ -842,7 +842,7 @@ MonoBehaviour:
   m_text: NENHUM
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1157,6 +1157,7 @@ MonoBehaviour:
   driveOwnCountdown: 0
   countdownStepDuration: 1
   goMessageDuration: 0.8
+  lobbySceneName: Garage
   speedoRoot: {fileID: 7478604673581273444}
   speedoFill: {fileID: 3430236265462423175}
   speedNumberText: {fileID: 8703766924342342296}
@@ -1272,7 +1273,7 @@ MonoBehaviour:
   m_text: VOLTA
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1365,6 +1366,7 @@ GameObject:
   - component: {fileID: 1874921155660992858}
   - component: {fileID: 2084474063037848681}
   - component: {fileID: 3008263013592393040}
+  - component: {fileID: 7838859324014391471}
   m_Layer: 0
   m_Name: PlayerKart_Local
   m_TagString: Untagged
@@ -1388,9 +1390,6 @@ Transform:
   - {fileID: 4588452779522650320}
   - {fileID: 2064700787931069122}
   - {fileID: 8530035772597386739}
-  - {fileID: 9027225838913120620}
-  - {fileID: 7130454205423353463}
-  - {fileID: 1234257517417538489}
   - {fileID: 8235464078284010822}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
@@ -1550,6 +1549,12 @@ MonoBehaviour:
   slopeCompensation: 1.5
   uphillAssistForce: 8
   steerInputCurve: 0.85
+  collisionGroundNormalY: 0.82
+  rampMinNormalY: 0.25
+  rampSpeedRetention: 0.985
+  wallSlideRetention: 0.82
+  collisionGlideMinSpeed: 2
+  impactDecaySpeed: 2.6
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
@@ -1634,7 +1639,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KartRespawn
   rb: {fileID: 6424580973894995666}
   raceTracker: {fileID: 2456961690461143285}
+  kartCollision: {fileID: 0}
   respawnHeightOffset: 1.5
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundProbeHeight: 12
+  groundProbeDistance: 35
+  groundClearance: 0.2
 --- !u!114 &5102941980696658742
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1682,10 +1694,10 @@ MonoBehaviour:
   driftFollowYawMax: 34
   driftYawSmooth: 12
   baseFieldOfView: 61
-  speedFieldOfView: 72
+  speedFieldOfView: 78
   boostFieldOfViewBonus: 6
   driftFieldOfViewBonus: 5
-  fieldOfViewSmooth: 8
+  fieldOfViewSmooth: 9
   requireRightMouseButton: 1
   mouseSensitivityX: 0.12
   mouseSensitivityY: 0.06
@@ -1693,18 +1705,20 @@ MonoBehaviour:
   minMousePitchOffset: -0.6
   maxMousePitchOffset: 0.8
   mouseReturnSpeed: 4
-  velocityLookAheadStrength: 0.58
+  velocityLookAheadStrength: 0.7
   velocityLookAheadSmooth: 7
-  steerBankAngle: 3.5
-  driftBankAngle: 8
+  steerBankAngle: 5
+  driftBankAngle: 10
   bankSmooth: 10
   speedShakeAmount: 0.018
   driftShakeAmount: 0.026
   burnoutShakeAmount: 0.012
   shakeFrequency: 18
-  followSmooth: 10
-  lookSmooth: 8
-  rotationSmooth: 11
+  impactShakeAmount: 0.2
+  impactShakeFrequency: 34
+  followSmooth: 14
+  lookSmooth: 11
+  rotationSmooth: 14
 --- !u!114 &2205616769764089810
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1788,43 +1802,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KartPowerUser
   inventory: {fileID: 5102941980696658742}
   kart: {fileID: 557555256139649974}
-  shieldVisual: {fileID: 5604477722847157127}
+  shieldVisual: {fileID: 0}
   shieldDuration: 4
-  shieldRenderers:
-  - {fileID: 8029770950089900330}
-  shieldMaterialOverride: {fileID: 2100000, guid: cee33a37f4d23a749962887be9053bae, type: 2}
-  shieldShaderOverride: {fileID: -6465566751694194690, guid: 7273ade5faebcb9448394e807492b217, type: 3}
-  createRuntimeMaterialInstance: 1
-  animateShieldVisual: 1
-  activationScaleSpeed: 10
-  activationStartScale: 0.35
-  pulseSpeed: 5.5
-  pulseAmount: 0.055
-  hologramWobbleAngle: {x: 1.4, y: 0, z: 2.2}
-  hologramWobbleSpeed: 2.2
-  textureScrollSpeed: 0.55
-  secondaryTextureScrollSpeed: -0.38
-  baseEmissionStrength: 0.35
-  emissionPulseAmount: 0.22
-  baseFresnelPower: 4
-  fresnelPulseAmount: 0.55
-  baseThreshold: 0.236
-  thresholdPulseAmount: 0.035
-  opacityProperty: _Opacity_Global
-  activeOpacity: 1
-  projectileSpawnPoint: {fileID: 7130454205423353463}
-  equippedVisualSocket: {fileID: 1234257517417538489}
-  electroGelProjectilePrefab: {fileID: 1001000001, guid: d8e9d01a1cc14ceebcf90f01a1a30001, type: 3}
-  electroGelEquippedVisualPrefab: {fileID: 1002000001, guid: d8e9d01a1cc14ceebcf90f01a1a30002, type: 3}
-  electroGelFireBurstPrefab: {fileID: 1008000001, guid: d8e9d01a1cc14ceebcf90f01a1a30008, type: 3}
-  electroGelBounceVFXPrefab: {fileID: 1003000001, guid: d8e9d01a1cc14ceebcf90f01a1a30003, type: 3}
-  electroGelHitVFXPrefab: {fileID: 1004000001, guid: d8e9d01a1cc14ceebcf90f01a1a30004, type: 3}
-  electroGelShieldBlockVFXPrefab: {fileID: 1005000001, guid: d8e9d01a1cc14ceebcf90f01a1a30005, type: 3}
-  electroGelExpireVFXPrefab: {fileID: 1006000001, guid: d8e9d01a1cc14ceebcf90f01a1a30006, type: 3}
-  electroGelStunAuraPrefab: {fileID: 1007000001, guid: d8e9d01a1cc14ceebcf90f01a1a30007, type: 3}
-  projectileSpawnLocalPosition: {x: 0, y: 0.92, z: 1.8}
-  equippedSocketLocalPosition: {x: 0, y: 0, z: 0}
-  shieldEndTime: 0
+  shieldBlockVFXPrefab: {fileID: 0}
+  rocketProjectilePrefab: {fileID: 4250853822560015088, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
+  rocketEquippedPrefab: {fileID: 4250853822560015088, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
+  explosionVFXPrefab: {fileID: 2433282508537954060, guid: a0b6e1ed3240b4947b27b773e5333e28, type: 3}
+  boingVFXPrefab: {fileID: 8547867254204328264, guid: c8538b28dffcefd45aade4380d4448a9, type: 3}
+  rocketTrailPrefab: {fileID: 8764043878647920493, guid: e0dce86fb77070c409ed9906591c2b8e, type: 3}
+  rocketEquippedSocket: {fileID: 0}
+  rocketSocketLocalPosition: {x: 0, y: 1.15, z: 0.15}
+  rocketLaunchForwardOffset: 0.6
+  useKey: 19
 --- !u!114 &4236779978090343101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1914,6 +1903,7 @@ MonoBehaviour:
   maxUpwardVelocityAfterHit: 1.5
   postHitDuration: 0.3
   postHitAngularDamp: 9
+  enableGroundCollisionIgnore: 0
   initialGroundScanRadius: 250
   forwardScanDistance: 14
   forwardScanRadius: 0.7
@@ -1931,6 +1921,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartLocalRig
   localPlayerRig: {fileID: 7764339801411023325}
+  additionalLocalOnlyObjects: []
   isLocalPlayer: 1
 --- !u!114 &3008263013592393040
 MonoBehaviour:
@@ -1977,6 +1968,37 @@ MonoBehaviour:
   - {r: 1, g: 0.45, b: 0.05, a: 1}
   - {r: 0.55, g: 0.2, b: 0.8, a: 1}
   loadSelectionOnStart: 1
+--- !u!114 &7838859324014391471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7851200d57324924a852165589fc1696, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartShieldVisual
+  shieldPrefab: {fileID: 1289543790355709915, guid: bd40bf3921f1a0a409d0c5c175cb8227, type: 3}
+  shieldRoot: {fileID: 0}
+  fitMultiplier: 1.15
+  manualScale: 0
+  rootLocalOffset: {x: 0, y: 0, z: 0}
+  groundSink: 0.4
+  prefabEulerOffset: {x: 0, y: 0, z: 0}
+  ignoreNameContains:
+  - Shield
+  - HUD
+  - Canvas
+  - Camera
+  - Rocket
+  - Foguete
+  - Puff
+  - Smoke
+  popInSpeed: 10
+  activationStartScale: 0.45
+  blockPulseScale: 1.18
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0
@@ -2077,7 +2099,7 @@ MonoBehaviour:
   m_text: KM/H
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2214,7 +2236,7 @@ MonoBehaviour:
   m_text: PODER
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2417,37 +2439,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 6111755955937584275}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &4087939143351319745
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7130454205423353463}
-  m_Layer: 0
-  m_Name: ProjectileSpawnPoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7130454205423353463
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4087939143351319745}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.92, z: 1.8}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7315551230016657755}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4186017720706336758
 GameObject:
   m_ObjectHideFlags: 0
@@ -2557,7 +2548,7 @@ MonoBehaviour:
   m_text: 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2859,96 +2850,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineHardLookAt
   LookAtOffset: {x: 0, y: 0, z: 0}
---- !u!1 &5604477722847157127
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 9027225838913120620}
-  - component: {fileID: 1063049149309300461}
-  - component: {fileID: 8029770950089900330}
-  m_Layer: 0
-  m_Name: ShieldVisual
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &9027225838913120620
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5604477722847157127}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.72, z: 0}
-  m_LocalScale: {x: 2.45, y: 1.65, z: 3.55}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7315551230016657755}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &1063049149309300461
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5604477722847157127}
-  m_Mesh: {fileID: 2540817853737639666, guid: 3fcaf2eb5b311d845875c2c7f2554611, type: 3}
---- !u!23 &8029770950089900330
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5604477722847157127}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: cee33a37f4d23a749962887be9053bae, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1 &5831180025417599795
 GameObject:
   m_ObjectHideFlags: 0
@@ -3017,7 +2918,7 @@ MonoBehaviour:
   m_text: 1/3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3086,37 +2987,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!1 &6024930139352554508
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1234257517417538489}
-  m_Layer: 0
-  m_Name: ElectroGelEquippedSocket
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1234257517417538489
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6024930139352554508}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7315551230016657755}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6029902257646382525
 GameObject:
   m_ObjectHideFlags: 0
@@ -3221,7 +3091,7 @@ MonoBehaviour:
   m_text: GEAR
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3358,7 +3228,7 @@ MonoBehaviour:
   m_text: 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3601,7 +3471,7 @@ MonoBehaviour:
   m_text: SPEED
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

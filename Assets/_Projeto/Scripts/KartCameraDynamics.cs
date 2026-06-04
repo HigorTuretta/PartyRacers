@@ -65,6 +65,9 @@ public class KartCameraDynamics : MonoBehaviour
     [SerializeField] private float driftShakeAmount = 0.026f;
     [SerializeField] private float burnoutShakeAmount = 0.045f;
     [SerializeField] private float shakeFrequency = 18f;
+    [Tooltip("Tranco da câmera ao bater em paredes/rampas ou aterrissar forte (reage ao impacto do kart).")]
+    [SerializeField] private float impactShakeAmount = 0.20f;
+    [SerializeField] private float impactShakeFrequency = 34f;
 
     [Header("Suavizacao")]
     [SerializeField] private float followSmooth = 10f;
@@ -259,16 +262,32 @@ public class KartCameraDynamics : MonoBehaviour
         if (kart.IsBurningOut)
             shakeAmount += burnoutShakeAmount;
 
-        if (shakeAmount <= 0.0001f)
+        float impact = kart.RecentImpact01;
+
+        if (shakeAmount <= 0.0001f && impact <= 0.0001f)
             return Vector3.zero;
 
         float time = Time.time * shakeFrequency;
 
-        return new Vector3(
+        Vector3 ambient = new Vector3(
             (Mathf.PerlinNoise(time * 0.73f, 0f)          - 0.5f) * 2f * shakeAmount,
             (Mathf.PerlinNoise(0f,           time * 0.91f) - 0.5f) * 2f * shakeAmount * 0.45f,
             0f
         );
+
+        if (impact <= 0.0001f)
+            return ambient;
+
+        // Tranco rápido e direcional no impacto, decaindo com kart.RecentImpact01.
+        float impactTime = Time.time * impactShakeFrequency;
+        float kick = impactShakeAmount * impact;
+        Vector3 impactShake = new Vector3(
+            Mathf.Sin(impactTime * 1.7f) * kick,
+            Mathf.Sin(impactTime * 2.3f) * kick * 0.7f,
+            -kick * 0.6f
+        );
+
+        return ambient + impactShake;
     }
 
     private void UpdateFieldOfView(float speed01, float driftBlend)

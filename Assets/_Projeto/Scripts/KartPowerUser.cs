@@ -1,67 +1,41 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+// Orquestra o uso dos poderes do kart (tecla padrão E):
+//  - Escudo: delega ao KartShieldVisual (prefab Magic shield blue) envolvendo o carro.
+//  - Foguete: mostra o foguete acima do carro enquanto equipado e dispara o RocketProjectile.
+// Mantém a API pública usada por projéteis: IsShieldActive e PulseShieldBlock.
 public class KartPowerUser : MonoBehaviour
 {
     [Header("Referências")]
     [SerializeField] private KartPowerInventory inventory;
     [SerializeField] private KartController kart;
-    [SerializeField] private GameObject shieldVisual;
+    [SerializeField] private KartShieldVisual shieldVisual;
 
     [Header("Escudo")]
     [SerializeField] private float shieldDuration = 4f;
+    [SerializeField] private GameObject shieldBlockVFXPrefab;
 
-    [Header("Escudo - Shader")]
-    [SerializeField] private Renderer[] shieldRenderers;
-    [SerializeField] private Material shieldMaterialOverride;
-    [SerializeField] private Shader shieldShaderOverride;
-    [SerializeField] private bool createRuntimeMaterialInstance = true;
+    [Header("Foguete")]
+    [SerializeField] private GameObject rocketProjectilePrefab;
+    [Tooltip("Prefab do foguete equipado (idle). Se vazio, usa o mesmo prefab do projétil.")]
+    [SerializeField] private GameObject rocketEquippedPrefab;
+    [SerializeField] private GameObject explosionVFXPrefab;
+    [SerializeField] private GameObject boingVFXPrefab;
+    [Tooltip("Trail do foguete em voo (ex.: VFXRocketTrail). Passado ao projétil ao disparar.")]
+    [SerializeField] private GameObject rocketTrailPrefab;
+    [SerializeField] private Transform rocketEquippedSocket;
+    [SerializeField] private Vector3 rocketSocketLocalPosition = new Vector3(0f, 1.15f, 0.15f);
+    [Tooltip("Quão à frente do socket o projétil nasce ao disparar.")]
+    [SerializeField] private float rocketLaunchForwardOffset = 0.6f;
 
-    [Header("Escudo - Animacao")]
-    [SerializeField] private bool animateShieldVisual = true;
-    [SerializeField] private float activationScaleSpeed = 10f;
-    [SerializeField, Range(0.05f, 1f)] private float activationStartScale = 0.35f;
-    [SerializeField] private float pulseSpeed = 5.5f;
-    [SerializeField, Range(0f, 0.25f)] private float pulseAmount = 0.055f;
-    [SerializeField] private Vector3 hologramWobbleAngle = new Vector3(1.4f, 0f, 2.2f);
-    [SerializeField] private float hologramWobbleSpeed = 2.2f;
-    [SerializeField] private float textureScrollSpeed = 0.55f;
-    [SerializeField] private float secondaryTextureScrollSpeed = -0.38f;
-    [SerializeField] private float baseEmissionStrength = 0.35f;
-    [SerializeField] private float emissionPulseAmount = 0.22f;
-    [SerializeField] private float baseFresnelPower = 4f;
-    [SerializeField] private float fresnelPulseAmount = 0.55f;
-    [SerializeField] private float baseThreshold = 0.236f;
-    [SerializeField] private float thresholdPulseAmount = 0.035f;
-    [SerializeField] private string opacityProperty = "_Opacity_Global";
-    [SerializeField, Range(0f, 1f)] private float activeOpacity = 1f;
+    [Header("Input")]
+    [SerializeField] private Key useKey = Key.E;
 
-    [Header("Bolha Eletro-Gel")]
-    [SerializeField] private Transform projectileSpawnPoint;
-    [SerializeField] private Transform equippedVisualSocket;
-    [SerializeField] private GameObject electroGelProjectilePrefab;
-    [SerializeField] private GameObject electroGelEquippedVisualPrefab;
-    [SerializeField] private GameObject electroGelFireBurstPrefab;
-    [SerializeField] private GameObject electroGelBounceVFXPrefab;
-    [SerializeField] private GameObject electroGelHitVFXPrefab;
-    [SerializeField] private GameObject electroGelShieldBlockVFXPrefab;
-    [SerializeField] private GameObject electroGelExpireVFXPrefab;
-    [SerializeField] private GameObject electroGelStunAuraPrefab;
-    [SerializeField] private Vector3 projectileSpawnLocalPosition = new Vector3(0f, 0.92f, 1.8f);
-    [SerializeField] private Vector3 equippedSocketLocalPosition = Vector3.zero;
-
-    [Header("Estado")]
-    [SerializeField] private float shieldEndTime;
+    private float shieldEndTime;
+    private GameObject equippedRocketInstance;
 
     public bool IsShieldActive => Time.time < shieldEndTime;
-
-    private readonly List<Material> runtimeShieldMaterials = new List<Material>();
-    private Vector3 shieldBaseLocalScale = Vector3.one;
-    private Quaternion shieldBaseLocalRotation = Quaternion.identity;
-    private float shieldActivationTime;
-    private bool shieldVisualWasActive;
-    private GameObject equippedVisualInstance;
 
     private void Awake()
     {
@@ -71,47 +45,35 @@ public class KartPowerUser : MonoBehaviour
         if (kart == null)
             kart = GetComponent<KartController>();
 
-        EnsureElectroGelSockets();
-        CacheShieldRenderers();
-        CacheShieldBaseTransform();
-        ApplyShieldMaterial();
-        DisableShieldPhysics();
-        UpdateShieldVisual();
+        if (shieldVisual == null)
+            shieldVisual = GetComponent<KartShieldVisual>();
+
+        if (shieldVisual == null)
+            shieldVisual = gameObject.AddComponent<KartShieldVisual>();
+
+        EnsureRocketSocket();
     }
 
     private void Update()
     {
-        ReadPowerInput();
-        UpdateShieldVisual();
-        AnimateShieldVisual();
-        UpdateElectroGelEquippedVisual();
+        ReadInput();
+        UpdateShield();
+        UpdateEquippedRocket();
     }
 
-    private void OnValidate()
-    {
-        CacheShieldRenderers();
-
-        if (shieldVisual != null && shieldBaseLocalScale == Vector3.zero)
-            shieldBaseLocalScale = shieldVisual.transform.localScale;
-    }
-
-    private void ReadPowerInput()
+    private void ReadInput()
     {
         Keyboard keyboard = Keyboard.current;
-
         if (keyboard == null)
             return;
 
-        if (keyboard.eKey.wasPressedThisFrame)
+        if (keyboard[useKey].wasPressedThisFrame)
             TryUseCurrentPower();
     }
 
     public void TryUseCurrentPower()
     {
-        if (inventory == null)
-            return;
-
-        if (!inventory.HasPower)
+        if (inventory == null || !inventory.HasPower)
             return;
 
         KartPowerType power = inventory.ConsumeCurrentPower();
@@ -122,8 +84,8 @@ public class KartPowerUser : MonoBehaviour
                 ActivateShield();
                 break;
 
-            case KartPowerType.StunShot:
-                FireElectroGelBubble();
+            case KartPowerType.Rocket:
+                FireRocket();
                 break;
 
             case KartPowerType.SwapPosition:
@@ -132,367 +94,122 @@ public class KartPowerUser : MonoBehaviour
         }
     }
 
+    // ------------------------------------------------------------------ Escudo
     private void ActivateShield()
     {
         shieldEndTime = Time.time + shieldDuration;
-        shieldActivationTime = Time.time;
-        Debug.Log("Escudo ativado.");
-        UpdateShieldVisual();
+
+        if (shieldVisual != null)
+            shieldVisual.Activate();
+    }
+
+    private void UpdateShield()
+    {
+        if (shieldVisual == null)
+            return;
+
+        bool shouldBeActive = IsShieldActive;
+
+        if (shouldBeActive == shieldVisual.IsActive)
+            return;
+
+        if (shouldBeActive)
+            shieldVisual.Activate();
+        else
+            shieldVisual.Deactivate();
     }
 
     public void PulseShieldBlock(Vector3 impactPoint, GameObject blockVFXPrefab)
     {
-        if (shieldVisual == null)
+        if (shieldVisual != null)
+            shieldVisual.PulseBlock(impactPoint);
+
+        GameObject vfx = blockVFXPrefab != null ? blockVFXPrefab : shieldBlockVFXPrefab;
+        if (vfx != null)
+            Instantiate(vfx, impactPoint, Quaternion.identity);
+    }
+
+    // ------------------------------------------------------------------ Foguete
+    private void EnsureRocketSocket()
+    {
+        if (rocketEquippedSocket != null)
             return;
 
-        shieldActivationTime = Time.time;
-        SetShieldOpacity(activeOpacity);
+        Transform existing = transform.Find("RocketEquippedSocket");
+        rocketEquippedSocket = existing != null
+            ? existing
+            : new GameObject("RocketEquippedSocket").transform;
 
-        if (shieldVisual.activeSelf)
-            shieldVisual.transform.localScale = shieldBaseLocalScale * 1.12f;
+        rocketEquippedSocket.SetParent(transform, false);
+        rocketEquippedSocket.localPosition = rocketSocketLocalPosition;
+        rocketEquippedSocket.localRotation = Quaternion.identity;
     }
 
-    private void UpdateShieldVisual()
+    private void UpdateEquippedRocket()
     {
-        if (shieldVisual == null)
-            return;
-
-        bool isActive = IsShieldActive;
-
-        if (shieldVisualWasActive == isActive && shieldVisual.activeSelf == isActive)
-            return;
-
-        shieldVisual.SetActive(isActive);
-        shieldVisualWasActive = isActive;
-
-        if (isActive)
-        {
-            shieldActivationTime = Time.time;
-
-            if (animateShieldVisual)
-            {
-                shieldVisual.transform.localScale = shieldBaseLocalScale * activationStartScale;
-                SetShieldOpacity(0f);
-            }
-            else
-            {
-                shieldVisual.transform.localScale = shieldBaseLocalScale;
-                shieldVisual.transform.localRotation = shieldBaseLocalRotation;
-                SetShieldOpacity(activeOpacity);
-            }
-        }
-        else
-        {
-            shieldVisual.transform.localScale = shieldBaseLocalScale;
-            shieldVisual.transform.localRotation = shieldBaseLocalRotation;
-            SetShieldOpacity(activeOpacity);
-        }
-    }
-
-    private void DisableShieldPhysics()
-    {
-        if (shieldVisual == null)
-            return;
-
-        Collider[] colliders = shieldVisual.GetComponentsInChildren<Collider>(true);
-
-        foreach (Collider shieldCollider in colliders)
-        {
-            shieldCollider.enabled = false;
-        }
-
-        Rigidbody[] rigidbodies = shieldVisual.GetComponentsInChildren<Rigidbody>(true);
-
-        foreach (Rigidbody shieldRigidbody in rigidbodies)
-        {
-            shieldRigidbody.isKinematic = true;
-            shieldRigidbody.detectCollisions = false;
-        }
-    }
-
-    private void EnsureElectroGelSockets()
-    {
-        if (projectileSpawnPoint == null)
-            projectileSpawnPoint = FindOrCreateChild("ProjectileSpawnPoint", projectileSpawnLocalPosition);
-
-        if (equippedVisualSocket == null)
-            equippedVisualSocket = FindOrCreateChild("ElectroGelEquippedSocket", equippedSocketLocalPosition);
-    }
-
-    private Transform FindOrCreateChild(string childName, Vector3 localPosition)
-    {
-        Transform existing = transform.Find(childName);
-        if (existing != null)
-            return existing;
-
-        GameObject child = new GameObject(childName);
-        child.transform.SetParent(transform, false);
-        child.transform.localPosition = localPosition;
-        child.transform.localRotation = Quaternion.identity;
-        child.transform.localScale = Vector3.one;
-
-        return child.transform;
-    }
-
-    private void UpdateElectroGelEquippedVisual()
-    {
-        bool shouldShow = inventory != null && inventory.CurrentPower == KartPowerType.StunShot;
+        bool shouldShow = inventory != null && inventory.CurrentPower == KartPowerType.Rocket;
 
         if (!shouldShow)
         {
-            if (equippedVisualInstance != null)
-                equippedVisualInstance.SetActive(false);
+            if (equippedRocketInstance != null)
+                equippedRocketInstance.SetActive(false);
 
             return;
         }
 
-        if (equippedVisualInstance == null)
-            CreateEquippedVisual();
+        if (equippedRocketInstance == null)
+            CreateEquippedRocket();
 
-        if (equippedVisualInstance != null && !equippedVisualInstance.activeSelf)
-            equippedVisualInstance.SetActive(true);
+        if (equippedRocketInstance != null && !equippedRocketInstance.activeSelf)
+            equippedRocketInstance.SetActive(true);
     }
 
-    private void CreateEquippedVisual()
+    private void CreateEquippedRocket()
     {
-        if (electroGelEquippedVisualPrefab == null || equippedVisualSocket == null)
+        GameObject prefab = rocketEquippedPrefab != null ? rocketEquippedPrefab : rocketProjectilePrefab;
+
+        if (prefab == null)
             return;
 
-        equippedVisualInstance = Instantiate(electroGelEquippedVisualPrefab, equippedVisualSocket);
-        equippedVisualInstance.transform.localPosition = Vector3.zero;
-        equippedVisualInstance.transform.localRotation = Quaternion.identity;
-        equippedVisualInstance.transform.localScale = Vector3.one;
+        EnsureRocketSocket();
 
-        ElectroGelEquippedVisual equippedVisual = equippedVisualInstance.GetComponent<ElectroGelEquippedVisual>();
-        if (equippedVisual != null)
-            equippedVisual.Initialize(kart);
+        equippedRocketInstance = Instantiate(prefab, rocketEquippedSocket);
+        equippedRocketInstance.transform.localPosition = Vector3.zero;
+        equippedRocketInstance.transform.localRotation = Quaternion.identity;
+
+        RocketEquippedVisual equipped = equippedRocketInstance.GetComponent<RocketEquippedVisual>();
+        if (equipped == null)
+            equipped = equippedRocketInstance.AddComponent<RocketEquippedVisual>();
+
+        equipped.Initialize(kart);
     }
 
-    private void FireElectroGelBubble()
+    private void FireRocket()
     {
-        EnsureElectroGelSockets();
+        EnsureRocketSocket();
 
-        if (equippedVisualInstance != null)
-            equippedVisualInstance.SetActive(false);
-
-        if (projectileSpawnPoint == null || electroGelProjectilePrefab == null)
+        if (equippedRocketInstance != null)
         {
-            Debug.LogWarning("Bolha Eletro-Gel nao foi disparada: prefab ou ProjectileSpawnPoint ausente.");
-            return;
+            Destroy(equippedRocketInstance);
+            equippedRocketInstance = null;
         }
 
-        if (electroGelFireBurstPrefab != null)
-            Instantiate(electroGelFireBurstPrefab, projectileSpawnPoint.position, projectileSpawnPoint.rotation);
-
-        GameObject projectileObject = Instantiate(
-            electroGelProjectilePrefab,
-            projectileSpawnPoint.position,
-            projectileSpawnPoint.rotation
-        );
-
-        ElectroGelProjectile projectile = projectileObject.GetComponent<ElectroGelProjectile>();
-        if (projectile != null)
+        if (rocketProjectilePrefab == null || rocketEquippedSocket == null)
         {
-            projectile.Initialize(
-                gameObject,
-                projectileSpawnPoint.forward,
-                electroGelBounceVFXPrefab,
-                electroGelHitVFXPrefab,
-                electroGelShieldBlockVFXPrefab,
-                electroGelExpireVFXPrefab,
-                electroGelStunAuraPrefab
-            );
-        }
-    }
-
-    private void CacheShieldRenderers()
-    {
-        if (shieldVisual == null)
+            Debug.LogWarning("Foguete não disparado: prefab ou socket ausente.");
             return;
-
-        if (shieldRenderers != null && shieldRenderers.Length > 0)
-            return;
-
-        shieldRenderers = shieldVisual.GetComponentsInChildren<Renderer>(true);
-    }
-
-    private void CacheShieldBaseTransform()
-    {
-        if (shieldVisual == null)
-            return;
-
-        shieldBaseLocalScale = shieldVisual.transform.localScale;
-        shieldBaseLocalRotation = shieldVisual.transform.localRotation;
-    }
-
-    private void ApplyShieldMaterial()
-    {
-        if (shieldRenderers == null || shieldRenderers.Length == 0)
-            return;
-
-        CleanupRuntimeMaterials();
-
-        for (int i = 0; i < shieldRenderers.Length; i++)
-        {
-            Renderer shieldRenderer = shieldRenderers[i];
-
-            if (shieldRenderer == null)
-                continue;
-
-            Material[] sourceMaterials = shieldRenderer.sharedMaterials;
-
-            if (sourceMaterials == null || sourceMaterials.Length == 0)
-                sourceMaterials = new Material[1];
-
-            Material[] assignedMaterials = new Material[sourceMaterials.Length];
-
-            for (int materialIndex = 0; materialIndex < assignedMaterials.Length; materialIndex++)
-            {
-                Material sourceMaterial = shieldMaterialOverride != null
-                    ? shieldMaterialOverride
-                    : sourceMaterials[materialIndex];
-
-                if (sourceMaterial == null)
-                    continue;
-
-                Material materialToApply = sourceMaterial;
-
-                if (Application.isPlaying && createRuntimeMaterialInstance)
-                {
-                    materialToApply = new Material(sourceMaterial);
-                    runtimeShieldMaterials.Add(materialToApply);
-                }
-
-                if (shieldShaderOverride != null)
-                    materialToApply.shader = shieldShaderOverride;
-
-                assignedMaterials[materialIndex] = materialToApply;
-            }
-
-            shieldRenderer.sharedMaterials = assignedMaterials;
-        }
-    }
-
-    private void AnimateShieldVisual()
-    {
-        if (!animateShieldVisual || shieldVisual == null || !IsShieldActive)
-            return;
-
-        float age = Mathf.Max(0f, Time.time - shieldActivationTime);
-        float activation = Mathf.SmoothStep(0f, 1f, age * activationScaleSpeed);
-        float pulse = Mathf.Sin(Time.time * pulseSpeed) * pulseAmount;
-        float shimmer = (Mathf.Sin(Time.time * pulseSpeed * 1.7f) + 1f) * 0.5f;
-        float scale = Mathf.Lerp(activationStartScale, 1f, activation) * (1f + pulse);
-        Vector3 breathingScale = new Vector3(1f + pulse * 0.35f, 1f + pulse * 0.75f, 1f + pulse * 0.35f);
-
-        shieldVisual.transform.localScale = Vector3.Scale(shieldBaseLocalScale, breathingScale) * scale;
-        shieldVisual.transform.localRotation = shieldBaseLocalRotation * CalculateHologramWobble();
-        AnimateShieldShader(age, activation, shimmer);
-    }
-
-    private Quaternion CalculateHologramWobble()
-    {
-        float time = Time.time * hologramWobbleSpeed;
-        float wobbleX = Mathf.Sin(time) * hologramWobbleAngle.x;
-        float wobbleY = Mathf.Sin(time * 0.73f) * hologramWobbleAngle.y;
-        float wobbleZ = Mathf.Cos(time * 1.17f) * hologramWobbleAngle.z;
-
-        return Quaternion.Euler(wobbleX, wobbleY, wobbleZ);
-    }
-
-    private void AnimateShieldShader(float age, float activation, float shimmer)
-    {
-        float opacity = activeOpacity * activation * Mathf.Lerp(0.86f, 1f, shimmer);
-
-        SetShieldOpacity(opacity);
-        SetShieldFloat("_Animation_Y", textureScrollSpeed);
-        SetShieldFloat("_Text_2_Animation_Y", secondaryTextureScrollSpeed);
-        SetShieldFloat("_Texture_Opacity", Mathf.Lerp(0.75f, 1f, shimmer));
-        SetShieldFloat("_Texture_2_Opacity", Mathf.Lerp(0.12f, 0.32f, shimmer));
-        SetShieldFloat("_Emission_Strength", baseEmissionStrength + shimmer * emissionPulseAmount);
-        SetShieldFloat("_Power", baseFresnelPower + Mathf.Sin(age * pulseSpeed * 0.85f) * fresnelPulseAmount);
-        SetShieldFloat("_Threshold", baseThreshold + Mathf.Sin(age * pulseSpeed * 1.35f) * thresholdPulseAmount);
-    }
-
-    private void SetShieldOpacity(float opacity)
-    {
-        if (shieldRenderers == null || shieldRenderers.Length == 0)
-            return;
-
-        for (int i = 0; i < shieldRenderers.Length; i++)
-        {
-            Renderer shieldRenderer = shieldRenderers[i];
-
-            if (shieldRenderer == null)
-                continue;
-
-            Material[] materials = shieldRenderer.sharedMaterials;
-
-            for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
-            {
-                Material material = materials[materialIndex];
-
-                if (material == null)
-                    continue;
-
-                if (!string.IsNullOrWhiteSpace(opacityProperty) && material.HasProperty(opacityProperty))
-                    material.SetFloat(opacityProperty, opacity);
-
-                SetColorAlpha(material, "_BaseColor", opacity);
-                SetColorAlpha(material, "_Color", opacity);
-            }
-        }
-    }
-
-    private void SetColorAlpha(Material material, string propertyName, float opacity)
-    {
-        if (!material.HasProperty(propertyName))
-            return;
-
-        Color color = material.GetColor(propertyName);
-        color.a = opacity;
-        material.SetColor(propertyName, color);
-    }
-
-    private void SetShieldFloat(string propertyName, float value)
-    {
-        if (shieldRenderers == null || shieldRenderers.Length == 0)
-            return;
-
-        for (int i = 0; i < shieldRenderers.Length; i++)
-        {
-            Renderer shieldRenderer = shieldRenderers[i];
-
-            if (shieldRenderer == null)
-                continue;
-
-            Material[] materials = shieldRenderer.sharedMaterials;
-
-            for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
-            {
-                Material material = materials[materialIndex];
-
-                if (material != null && material.HasProperty(propertyName))
-                    material.SetFloat(propertyName, value);
-            }
-        }
-    }
-
-    private void CleanupRuntimeMaterials()
-    {
-        for (int i = 0; i < runtimeShieldMaterials.Count; i++)
-        {
-            Material material = runtimeShieldMaterials[i];
-
-            if (material != null)
-                Destroy(material);
         }
 
-        runtimeShieldMaterials.Clear();
-    }
+        Vector3 forward = transform.forward;
+        Vector3 spawnPosition = rocketEquippedSocket.position + forward * rocketLaunchForwardOffset;
+        Quaternion spawnRotation = Quaternion.LookRotation(forward, Vector3.up);
 
-    private void OnDestroy()
-    {
-        CleanupRuntimeMaterials();
+        GameObject projectileObject = Instantiate(rocketProjectilePrefab, spawnPosition, spawnRotation);
+
+        RocketProjectile projectile = projectileObject.GetComponent<RocketProjectile>();
+        if (projectile == null)
+            projectile = projectileObject.AddComponent<RocketProjectile>();
+
+        projectile.Initialize(gameObject, forward, explosionVFXPrefab, boingVFXPrefab, rocketTrailPrefab);
     }
 }
