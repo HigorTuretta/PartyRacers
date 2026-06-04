@@ -1,10 +1,10 @@
 using UnityEngine;
-using System.Collections;
 
 public class GolfTrapLauncher : MonoBehaviour
 {
     public GameObject golfBallPrefab;
     public Transform suporteBola;
+    public Transform direcaoTacada;
 
     public float launchForce = 20f;
     public float respawnTime = 3f;
@@ -23,13 +23,14 @@ public class GolfTrapLauncher : MonoBehaviour
     {
         currentBall = Instantiate(
             golfBallPrefab,
-            suporteBola.position,
+            suporteBola.position + Vector3.up * 2f,
             suporteBola.rotation);
 
         Rigidbody rb = currentBall.GetComponent<Rigidbody>();
 
         if (rb != null)
         {
+            // Mantém a bola parada sobre o suporte
             rb.isKinematic = true;
         }
     }
@@ -43,16 +44,22 @@ public class GolfTrapLauncher : MonoBehaviour
 
         if (rb != null)
         {
+            // Libera a física
             rb.isKinematic = false;
 
-            // MUDE O EIXO AQUI
+            // Aplica a força na direção do objeto DirecaoTacada
             rb.AddForce(
-                Vector3.forward * launchForce,
+                direcaoTacada.forward * launchForce,
                 ForceMode.Impulse);
         }
 
-        Destroy(currentBall, ballLifetime);
+        // Guarda referência da bola lançada
+        GameObject launchedBall = currentBall;
 
+        // Cria imediatamente uma nova bola em cima do suporte
         SpawnBall();
+
+        // Destrói a bola lançada após alguns segundos
+        Destroy(launchedBall, ballLifetime);
     }
 }
