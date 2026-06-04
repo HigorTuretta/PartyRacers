@@ -16,7 +16,7 @@ public class GarageController : MonoBehaviour
     [SerializeField] private Canvas canvas;
 
     [Header("Fluxo")]
-    [SerializeField] private string raceSceneName = "DEMO";
+    [SerializeField] private string raceSceneName = "MiniGolfeRun";
 
     [Header("Câmera (auto-enquadramento)")]
     [SerializeField] private Camera previewCamera;

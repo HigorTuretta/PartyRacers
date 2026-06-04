@@ -4,6 +4,10 @@ using TMPro;
 using UnityEngine;
 using PartyRacers.Networking;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 #if PARTYRACERS_ONLINE
 using Unity.Netcode;
 #endif
@@ -16,13 +20,18 @@ public class RaceManager : MonoBehaviour
     [Header("Referências")]
     [Tooltip("Kart principal (jogador local). Opcional — karts também são descobertos na cena.")]
     [SerializeField] private KartController playerKart;
+    [Tooltip("Prefab local usado quando a cena de corrida não possui um PlayerKart já posicionado.")]
+    [SerializeField] private GameObject playerKartPrefab;
     [SerializeField] private TMP_Text countdownText;
 
     [Header("Descoberta de karts")]
+    [Tooltip("Instancia o kart local automaticamente se nenhum KartController existir na cena.")]
+    [SerializeField] private bool spawnPlayerKartIfMissing = true;
     [Tooltip("Inclui automaticamente todos os KartControllers da cena (bots/remotos/16 jogadores).")]
     [SerializeField] private bool autoCollectKarts = true;
 
     [Header("Largada")]
+    [SerializeField] private RaceSpawnManager spawnManager;
     [Tooltip("Posiciona os karts nos pontos do RaceSpawnManager (se houver) ao iniciar.")]
     [SerializeField] private bool placeOnSpawnPoints = false;
 
@@ -53,7 +62,7 @@ public class RaceManager : MonoBehaviour
 
         karts.Add(kart);
 
-        if (placeOnSpawnPoints && RaceSpawnManager.Instance != null)
+        if (placeOnSpawnPoints && ActiveSpawnManager != null)
             PlaceKartOnSpawn(kart, karts.Count - 1);
 
         // Karts que entram após a largada já largam liberados.
@@ -88,8 +97,73 @@ public class RaceManager : MonoBehaviour
             }
         }
 
-        if (placeOnSpawnPoints && RaceSpawnManager.Instance != null)
+        if (karts.Count == 0)
+        {
+            KartController spawnedKart = TrySpawnPlayerKart();
+            if (spawnedKart != null)
+                karts.Add(spawnedKart);
+        }
+
+        if (placeOnSpawnPoints && ActiveSpawnManager != null)
             PlaceKartsOnSpawns();
+    }
+
+    private KartController TrySpawnPlayerKart()
+    {
+        if (!spawnPlayerKartIfMissing || !ShouldSpawnLocalPlayerKart())
+            return null;
+
+        GameObject prefab = ResolvePlayerKartPrefab();
+        if (prefab == null)
+        {
+            Debug.LogWarning("RaceManager nao encontrou um prefab de PlayerKart para instanciar.");
+            return null;
+        }
+
+        Pose pose = ResolveInitialSpawnPose(0);
+        GameObject instance = Instantiate(prefab, pose.position, pose.rotation);
+        instance.name = prefab.name;
+
+        KartController kart = instance.GetComponent<KartController>();
+        if (kart == null)
+        {
+            Debug.LogWarning($"{prefab.name} foi instanciado, mas nao possui KartController.");
+            return null;
+        }
+
+        playerKart = kart;
+        return kart;
+    }
+
+    private bool ShouldSpawnLocalPlayerKart()
+    {
+#if PARTYRACERS_ONLINE
+        if (NetworkBootstrap.Instance != null && NetworkBootstrap.Instance.IsOnline)
+            return false;
+#endif
+
+        return true;
+    }
+
+    private GameObject ResolvePlayerKartPrefab()
+    {
+        if (playerKartPrefab != null)
+            return playerKartPrefab;
+
+#if UNITY_EDITOR
+        return AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Projeto/Prefabs/Cars/PlayerKart_Local.prefab");
+#else
+        return null;
+#endif
+    }
+
+    private Pose ResolveInitialSpawnPose(int spawnIndex)
+    {
+        RaceSpawnManager resolvedSpawnManager = ActiveSpawnManager;
+        if (resolvedSpawnManager != null)
+            return resolvedSpawnManager.GetSpawnPose(spawnIndex);
+
+        return new Pose(transform.position, transform.rotation);
     }
 
     private bool ShouldIgnoreKartForOnline(KartController kart)
@@ -120,7 +194,11 @@ public class RaceManager : MonoBehaviour
         if (kart == null || !ShouldPlaceKartLocally(kart))
             return;
 
-        Pose pose = RaceSpawnManager.Instance.GetSpawnPose(ResolveSpawnIndex(kart, fallbackIndex));
+        RaceSpawnManager resolvedSpawnManager = ActiveSpawnManager;
+        if (resolvedSpawnManager == null)
+            return;
+
+        Pose pose = resolvedSpawnManager.GetSpawnPose(ResolveSpawnIndex(kart, fallbackIndex));
 
         Rigidbody body = kart.Rigidbody;
         if (body != null)
@@ -156,6 +234,17 @@ public class RaceManager : MonoBehaviour
 #else
         return true;
 #endif
+    }
+
+    private RaceSpawnManager ActiveSpawnManager
+    {
+        get
+        {
+            if (spawnManager != null)
+                return spawnManager;
+
+            return RaceSpawnManager.Instance;
+        }
     }
 
     private void SetAllControl(bool enabled)
