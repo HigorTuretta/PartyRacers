@@ -154,6 +154,10 @@ public class KartController : MonoBehaviour
     [SerializeField] private float collisionGlideMinSpeed = 2f;
     [Tooltip("Velocidade com que o sinal de impacto (usado pela câmera) decai.")]
     [SerializeField] private float impactDecaySpeed = 2.6f;
+    [Tooltip("ARCADE: fração da velocidade preservada ao esbarrar em OUTRO kart (1 = não perde nada).")]
+    [SerializeField, Range(0.5f, 1f)] private float carBumpRetention = 0.92f;
+    [Tooltip("ARCADE: empurrão leve (m/s) ao esbarrar em outro kart, para 'esbarrão' em vez de parada seca.")]
+    [SerializeField] private float carBumpPush = 4f;
 
     private float recentImpact01;
     public float RecentImpact01 => recentImpact01;
@@ -162,6 +166,7 @@ public class KartController : MonoBehaviour
     [SerializeField] private float boostSpeedMultiplier = 1f;
     [SerializeField] private float boostAccelerationMultiplier = 1f;
     [SerializeField] private float boostEndTime;
+    [SerializeField] private float boostDurationWindow = 1f;
 
     [Header("Estado")]
     [SerializeField] private bool canControl = true;
@@ -228,6 +233,9 @@ public class KartController : MonoBehaviour
     public float SpeedKmh => Mathf.Abs(ForwardSpeed) * 3.6f;
     public float Speed01 => Mathf.Clamp01(Mathf.Abs(ForwardSpeed) / GetCurrentMaxForwardSpeedMps());
     public bool IsBoosting => Time.time < boostEndTime;
+    public float BoostRemaining01 => IsBoosting
+        ? Mathf.Clamp01((boostEndTime - Time.time) / Mathf.Max(0.01f, boostDurationWindow))
+        : 0f;
 
     public float SlipAngleDeg
     {
@@ -357,7 +365,13 @@ public class KartController : MonoBehaviour
 
     public void ApplyBoost(float duration, float speedMultiplier, float accelerationMultiplier, float instantPush)
     {
-        boostEndTime = Mathf.Max(boostEndTime, Time.time + duration);
+        float targetEndTime = Time.time + duration;
+        if (targetEndTime >= boostEndTime)
+        {
+            boostDurationWindow = Mathf.Max(0.01f, duration);
+        }
+
+        boostEndTime = Mathf.Max(boostEndTime, targetEndTime);
         boostSpeedMultiplier = Mathf.Max(boostSpeedMultiplier, speedMultiplier);
         boostAccelerationMultiplier = Mathf.Max(boostAccelerationMultiplier, accelerationMultiplier);
 
@@ -838,7 +852,9 @@ public class KartController : MonoBehaviour
 
             float speedFactor = Mathf.Clamp01(forwardSpeed / GetCurrentMaxForwardSpeedMps());
 
-            float launchRamp = Mathf.SmoothStep(0.15f, 1f, Mathf.Clamp01(SpeedKmh / accelerationLaunchKmh));
+            // ARCADE: largada com mais "soco". Antes a força começava em 15% (resposta lenta);
+            // agora começa em 55% e cresce rápido até accelerationLaunchKmh. Ajuste fino aqui.
+            float launchRamp = Mathf.SmoothStep(0.55f, 1f, Mathf.Clamp01(SpeedKmh / accelerationLaunchKmh));
             // Curva mais plana: motor mantém quase força máxima até 70% e cai só nos últimos 30%
             float topEndDropoff = speedFactor < 0.7f
                 ? 1f
@@ -1250,6 +1266,18 @@ public class KartController : MonoBehaviour
         // Chão quase plano: a suspensão (raycast) cuida disso — não interferir.
         if (blockingNormal.y >= collisionGroundNormalY)
             return;
+
+        // Esbarrão ARCADE entre karts: preserva quase toda a velocidade e dá um empurrão leve
+        // na direção da normal, em vez de parar seco (autoridade única do contato kart-a-kart;
+        // KartCollision ignora outros karts para não punir em dobro).
+        if (collision.rigidbody != null && collision.rigidbody.GetComponent<KartController>() != null)
+        {
+            Vector3 alongCar = Vector3.ProjectOnPlane(velocity, blockingNormal);
+            rb.linearVelocity = alongCar * carBumpRetention;
+            rb.AddForce(blockingNormal * carBumpPush, ForceMode.VelocityChange);
+            recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, worstInto / Mathf.Max(1f, GetCurrentMaxForwardSpeedMps())));
+            return;
+        }
 
         Vector3 along = Vector3.ProjectOnPlane(velocity, blockingNormal);
         if (along.sqrMagnitude < 0.0001f)

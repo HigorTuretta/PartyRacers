@@ -16,6 +16,7 @@ public class KartRaceTracker : MonoBehaviour
     [SerializeField] private Quaternion lastRespawnRotation;
 
     public int TotalLaps => totalLaps;
+    public int TotalCheckpoints => totalCheckpoints;
     public int CurrentLap => currentLap;
     public int NextCheckpointIndex => nextCheckpointIndex;
     public bool RaceFinished => raceFinished;

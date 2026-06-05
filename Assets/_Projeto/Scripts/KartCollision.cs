@@ -160,9 +160,15 @@ public class KartCollision : MonoBehaviour
     // COLISÃO
     // -----------------------------------------------------------------------
 
+    // Contato kart-a-kart é tratado como "esbarrão arcade" pelo KartController.HandleCollisionGlide.
+    // Aqui ignoramos para não aplicar resposta de parede em dobro (que travava os carros secamente).
+    private static bool IsAnotherKart(Collision col)
+        => col.rigidbody != null && col.rigidbody.GetComponent<KartController>() != null;
+
     private void OnCollisionEnter(Collision col)
     {
         if (col.contactCount == 0) return;
+        if (IsAnotherKart(col)) return;
 
         // Se qualquer contato e chao, deixa a fisica normal resolver sem aplicar resposta de parede.
         for (int i = 0; i < col.contactCount; i++)
@@ -184,6 +190,7 @@ public class KartCollision : MonoBehaviour
     private void OnCollisionStay(Collision col)
     {
         if (col.contactCount == 0) return;
+        if (IsAnotherKart(col)) return;
         if (!TryGetWallNormal(col, out Vector3 wallNormal)) return;
 
         // Remove velocidade que ainda esteja empurrando o kart pra dentro da parede

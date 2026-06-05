@@ -30,6 +30,9 @@ namespace Hovl
             if (sourceCamera == null)
                 sourceCamera = Camera.main;
 
+            if (!Application.isPlaying)
+                return;
+
             UpdateSize();
         }
 
@@ -66,12 +69,24 @@ namespace Hovl
 
         void LateUpdate()
         {
+            if (!Application.isPlaying)
+                return;
+
             UpdateSize();
         }
 
         void OnValidate()
         {
-            // Keep editor changes live
+            if (Application.isPlaying)
+                return;
+
+            if (!gameObject.scene.IsValid())
+                return;
+
+            if (sourceCamera == null)
+                sourceCamera = Camera.main;
+
+            // Keep explicit editor changes live without running every Inspector repaint.
             UpdateSize();
         }
 

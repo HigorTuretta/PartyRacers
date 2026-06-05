@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using PartyRacers.Networking;
 
@@ -22,7 +21,6 @@ public class RaceManager : MonoBehaviour
     [SerializeField] private KartController playerKart;
     [Tooltip("Prefab local usado quando a cena de corrida não possui um PlayerKart já posicionado.")]
     [SerializeField] private GameObject playerKartPrefab;
-    [SerializeField] private TMP_Text countdownText;
 
     [Header("Descoberta de karts")]
     [Tooltip("Instancia o kart local automaticamente se nenhum KartController existir na cena.")]
@@ -38,6 +36,8 @@ public class RaceManager : MonoBehaviour
     [Header("Configuração")]
     [SerializeField] private float countdownStepDuration = 1f;
     [SerializeField] private float goMessageDuration = 0.75f;
+    [Tooltip("Garante que esta cena dirija a contagem local. Em offline fica sempre ativo.")]
+    [SerializeField] private bool driveOwnCountdown = true;
 
 #if PARTYRACERS_ONLINE
     [Header("Online")]
@@ -54,13 +54,26 @@ public class RaceManager : MonoBehaviour
     public bool RaceStarted => raceStarted;
     public IReadOnlyList<KartController> Karts => karts;
 
-    public void SetCountdownText(TMP_Text text)
-    {
-        if (countdownText != null && countdownText != text)
-            countdownText.gameObject.SetActive(false);
+    // ---------------------------------------------------------------------
+    // Eventos de contagem regressiva (desacoplados do display).
+    // Qualquer widget de UI (CountdownUI) assina e renderiza. Isso evita a dependência frágil
+    // de SetCountdownText, que em multiplayer apontava para o texto de um HUD remoto desligado.
+    // Cada cliente roda seu próprio RaceManager na cena de corrida, então a contagem propaga a todos.
+    // ---------------------------------------------------------------------
+    public enum CountdownPhase { Idle, Three, Two, One, Go }
 
-        countdownText = text;
-    }
+    /// <summary>Etapa atual da contagem (3/2/1/VAI). Disparado em todos os clientes.</summary>
+    public static event System.Action<CountdownPhase> CountdownPhaseChanged;
+
+    /// <summary>Mensagem livre antes da contagem (ex.: "AGUARDANDO 2/4" no online).</summary>
+    public static event System.Action<string> CountdownMessageChanged;
+
+    /// <summary>Contagem encerrada — esconder o display.</summary>
+    public static event System.Action CountdownHidden;
+
+    private void BroadcastPhase(CountdownPhase phase) => CountdownPhaseChanged?.Invoke(phase);
+    private void RaiseCountdownMessage(string message) => CountdownMessageChanged?.Invoke(message);
+    private void BroadcastHidden() => CountdownHidden?.Invoke();
 
     public void RegisterKart(KartController kart)
     {
@@ -84,7 +97,22 @@ public class RaceManager : MonoBehaviour
     private void Start()
     {
         CollectKarts();
-        StartCoroutine(StartRaceRoutine());
+
+        if (ShouldDriveCountdown())
+            StartCoroutine(StartRaceRoutine());
+    }
+
+    private bool ShouldDriveCountdown()
+    {
+#if PARTYRACERS_ONLINE
+        if (NetworkBootstrap.Instance == null || !NetworkBootstrap.Instance.IsOnline)
+            return true;
+
+        return driveOwnCountdown;
+#else
+        _ = driveOwnCountdown;
+        return true;
+#endif
     }
 
     private void CollectKarts()
@@ -265,6 +293,8 @@ public class RaceManager : MonoBehaviour
 
     private IEnumerator StartRaceRoutine()
     {
+        CountdownUI.EnsureSceneInstance();
+
         raceStarted = false;
         SetAllControl(false);
 
@@ -273,29 +303,25 @@ public class RaceManager : MonoBehaviour
         SetAllControl(false);
 #endif
 
-        if (countdownText != null)
-        {
-            countdownText.gameObject.SetActive(true);
+        // Etapas da contagem — disparadas como evento; o CountdownUI (na cena) renderiza para todos.
+        yield return RunCountdownStep(CountdownPhase.Three);
+        yield return RunCountdownStep(CountdownPhase.Two);
+        yield return RunCountdownStep(CountdownPhase.One);
 
-            countdownText.text = "3";
-            yield return new WaitForSeconds(countdownStepDuration);
-
-            countdownText.text = "2";
-            yield return new WaitForSeconds(countdownStepDuration);
-
-            countdownText.text = "1";
-            yield return new WaitForSeconds(countdownStepDuration);
-
-            countdownText.text = "VAI!";
-        }
+        BroadcastPhase(CountdownPhase.Go);
 
         raceStarted = true;
         SetAllControl(true);
 
         yield return new WaitForSeconds(goMessageDuration);
 
-        if (countdownText != null)
-            countdownText.gameObject.SetActive(false);
+        BroadcastHidden();
+    }
+
+    private IEnumerator RunCountdownStep(CountdownPhase phase)
+    {
+        BroadcastPhase(phase);
+        yield return new WaitForSeconds(countdownStepDuration);
     }
 
 #if PARTYRACERS_ONLINE
@@ -371,14 +397,11 @@ public class RaceManager : MonoBehaviour
 
     private void UpdateOnlineWaitingText()
     {
-        if (countdownText == null)
-            return;
-
         int expectedPlayers = ResolveExpectedOnlinePlayerCount();
         int spawnedKarts = CountSpawnedOnlineKarts();
+        string message = $"{onlineWaitingText} {Mathf.Min(spawnedKarts, expectedPlayers)}/{expectedPlayers}";
 
-        countdownText.gameObject.SetActive(true);
-        countdownText.text = $"{onlineWaitingText}\n{Mathf.Min(spawnedKarts, expectedPlayers)}/{expectedPlayers}";
+        RaiseCountdownMessage(message);
     }
 #endif
 }

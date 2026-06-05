@@ -77,6 +77,7 @@ public class KartPowerUser : MonoBehaviour
             return;
 
         KartPowerType power = inventory.ConsumeCurrentPower();
+        RaceHudEvents.Raise(gameObject, null, RaceHudEventKind.PowerUsed, power);
 
         switch (power)
         {

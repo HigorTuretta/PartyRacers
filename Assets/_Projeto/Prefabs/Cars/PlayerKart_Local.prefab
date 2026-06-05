@@ -1115,64 +1115,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartHUDOverlay
   kart: {fileID: 557555256139649974}
-  raceTracker: {fileID: 0}
-  powerInventory: {fileID: 0}
-  raceManager: {fileID: 0}
-  maxDisplaySpeedKmh: 200
-  gearTopSpeedsKmh:
-  - 35
-  - 70
-  - 110
-  - 150
-  - 200
-  backdropColor: {r: 0.05, g: 0.07, b: 0.1, a: 0.78}
-  outerRingColor: {r: 0.15, g: 0.18, b: 0.24, a: 0.95}
-  accentColor: {r: 1, g: 0.55, b: 0.1, a: 1}
-  accentHighColor: {r: 1, g: 0.2, b: 0.2, a: 1}
-  textPrimary: {r: 1, g: 1, b: 1, a: 0.96}
-  textSecondary: {r: 0.78, g: 0.82, b: 0.9, a: 0.85}
-  outlineColor: {r: 0.03, g: 0.04, b: 0.08, a: 1}
-  outlineWidth: 0.32
-  cartoonYellow: {r: 1, g: 0.85, b: 0.18, a: 1}
-  countdownGoColor: {r: 0.35, g: 1, b: 0.45, a: 1}
-  speedoSize: {x: 260, y: 260}
-  speedoAnchoredPosition: {x: -40, y: 40}
-  gearSize: {x: 130, y: 160}
-  gearAnchoredPosition: {x: -320, y: 40}
-  lapSize: {x: 260, y: 110}
-  lapAnchoredPosition: {x: 0, y: -36}
-  powerSize: {x: 280, y: 110}
-  powerAnchoredPosition: {x: -36, y: -36}
-  countdownSize: {x: 600, y: 400}
-  speedNumberSmooth: 16
-  fillSmooth: 12
-  gearPunchScale: 1.18
-  gearPunchSpeed: 9
-  lapPunchScale: 1.28
-  lapPunchSpeed: 5.5
-  powerPunchScale: 1.22
-  powerPunchSpeed: 6
-  countdownPunchScale: 1.55
-  countdownPunchSpeed: 4.5
-  driveOwnCountdown: 0
-  countdownStepDuration: 1
-  goMessageDuration: 0.8
+  hudRootPrefab: {fileID: 6120316180664842230, guid: ccef9d31cf4daca459aa1d602625763d, type: 3}
   lobbySceneName: Garage
-  speedoRoot: {fileID: 7478604673581273444}
-  speedoFill: {fileID: 3430236265462423175}
-  speedNumberText: {fileID: 8703766924342342296}
-  gearRoot: {fileID: 774613383472631619}
-  gearNumberText: {fileID: 6316941817184039255}
-  gearBackdrop: {fileID: 7574683383073197977}
-  lapRoot: {fileID: 6572302644035066454}
-  lapBackdrop: {fileID: 8318442200382310025}
-  lapNumberText: {fileID: 1769824060252402348}
-  powerRoot: {fileID: 2861924719239992022}
-  powerBackdrop: {fileID: 4452051908723986601}
-  powerSwatch: {fileID: 2294826193125347600}
-  powerNameText: {fileID: 6233285429516547378}
-  countdownRoot: {fileID: 1092424183126654195}
-  countdownText: {fileID: 7170837641757762259}
 --- !u!1 &2528785561962729934
 GameObject:
   m_ObjectHideFlags: 0
@@ -1367,6 +1311,8 @@ GameObject:
   - component: {fileID: 2084474063037848681}
   - component: {fileID: 3008263013592393040}
   - component: {fileID: 7838859324014391471}
+  - component: {fileID: 2068541487234626136}
+  - component: {fileID: 1111111111111111101}
   m_Layer: 0
   m_Name: PlayerKart_Local
   m_TagString: Untagged
@@ -1555,6 +1501,8 @@ MonoBehaviour:
   wallSlideRetention: 0.82
   collisionGlideMinSpeed: 2
   impactDecaySpeed: 2.6
+  carBumpRetention: 0.92
+  carBumpPush: 4
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
@@ -1999,6 +1947,40 @@ MonoBehaviour:
   popInSpeed: 10
   activationStartScale: 0.45
   blockPulseScale: 1.18
+--- !u!114 &2068541487234626136
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2b1469179a44df4abfa9693c8dfe04c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartTurboScreenEffect
+  kart: {fileID: 0}
+  localRig: {fileID: 0}
+  screenWindPrefab: {fileID: 0}
+  targetCamera: {fileID: 0}
+  fadeOutDelay: 0.35
+--- !u!114 &1111111111111111101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2b1469179a44df4abfa9693c8dfe04c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kart: {fileID: 0}
+  localRig: {fileID: 0}
+  screenWindPrefab: {fileID: 3942825033974895155, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
+  targetCamera: {fileID: 0}
+  fadeOutDelay: 0.35
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0

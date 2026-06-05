@@ -23,6 +23,7 @@ public class KartPowerInventory : MonoBehaviour
 
         currentPower = powerType;
         Debug.Log($"Poder recebido: {GetPowerDisplayName()}");
+        RaceHudEvents.Raise(gameObject, null, RaceHudEventKind.PowerCollected, powerType);
 
         return true;
     }
@@ -45,9 +46,9 @@ public class KartPowerInventory : MonoBehaviour
         return currentPower switch
         {
             KartPowerType.None => "Nenhum",
-            KartPowerType.SwapPosition => "Troca",
-            KartPowerType.Rocket => "Foguete",
-            KartPowerType.Shield => "Escudo",
+            KartPowerType.SwapPosition => "Swap Position",
+            KartPowerType.Rocket => "Rocket",
+            KartPowerType.Shield => "Shield",
             _ => "Desconhecido"
         };
     }

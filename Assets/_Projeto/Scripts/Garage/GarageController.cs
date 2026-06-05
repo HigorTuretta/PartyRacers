@@ -48,10 +48,17 @@ public class GarageController : MonoBehaviour
     };
 
     private TMP_Text _carNameText;
-    private Image _colorSwatch;
     private RectTransform _optionsContent;
     private readonly List<System.Action> _valueRefreshers = new List<System.Action>();
     private Sprite _roundSprite;
+
+    // Prefabs componentizados (Resources). Lista de jogadores e categorias agora são prefabs.
+    private GameObject _playerItemPrefab;
+    private GameObject _categoryButtonPrefab;
+    private GameObject PlayerItemPrefab => _playerItemPrefab != null
+        ? _playerItemPrefab : (_playerItemPrefab = Resources.Load<GameObject>("LobbyPlayerItem"));
+    private GameObject CategoryButtonPrefab => _categoryButtonPrefab != null
+        ? _categoryButtonPrefab : (_categoryButtonPrefab = Resources.Load<GameObject>("CategoryButton"));
 
     // --- Lobby (garagem como lobby online) ---
     private RacePlayerRegistry _registry;
@@ -194,53 +201,16 @@ public class GarageController : MonoBehaviour
         _carNameText = CreateText(carBar, "CarName", "CARRO", 34, FontStyles.Bold, TextAlignmentOptions.Center, accentColor);
         Anchor(_carNameText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360f, 64f));
 
-        // Painel de opções (lateral esquerda, altura flexível para qualquer resolução)
-        RectTransform panel = CreatePanel(root, "OptionsPanel", panelColor);
-        panel.anchorMin = new Vector2(0f, 0f);
-        panel.anchorMax = new Vector2(0f, 1f);
-        panel.pivot = new Vector2(0f, 0.5f);
-        panel.offsetMin = new Vector2(40f, 40f);
-        panel.offsetMax = new Vector2(500f, -190f);
+        // Painel de opções (prefab componentizado, lado esquerdo).
+        GameObject optionsPanel = InstantiatePanel("GarageOptionsPanel");
+        if (optionsPanel != null)
+        {
+            var optUi = optionsPanel.GetComponent<GarageOptionsPanelUI>();
+            _optionsContent = optUi != null ? optUi.Content : null;
+        }
 
-        TMP_Text optTitle = CreateText(panel, "OptTitle", "CUSTOMIZAR", 22, FontStyles.Bold, TextAlignmentOptions.Left, textDimColor);
-        Anchor(optTitle.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -26f), new Vector2(-32f, 30f));
-        optTitle.characterSpacing = 4f;
-
-        // ScrollRect para acomodar muitas categorias sem cortar
-        RectTransform viewport = CreateUI("Viewport", panel);
-        viewport.anchorMin = Vector2.zero;
-        viewport.anchorMax = Vector2.one;
-        viewport.offsetMin = new Vector2(14f, 14f);
-        viewport.offsetMax = new Vector2(-14f, -52f);
-        viewport.gameObject.AddComponent<RectMask2D>();
-
-        RectTransform content = CreateUI("Content", viewport);
-        content.anchorMin = new Vector2(0f, 1f);
-        content.anchorMax = new Vector2(1f, 1f);
-        content.pivot = new Vector2(0.5f, 1f);
-        content.anchoredPosition = Vector2.zero;
-        content.sizeDelta = new Vector2(0f, 0f);
-        var vlg = content.gameObject.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 8f;
-        vlg.childControlHeight = true;
-        vlg.childControlWidth = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childForceExpandWidth = true;
-        var fitter = content.gameObject.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var scroll = panel.gameObject.AddComponent<ScrollRect>();
-        scroll.viewport = viewport;
-        scroll.content = content;
-        scroll.horizontal = false;
-        scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.scrollSensitivity = 24f;
-
-        _optionsContent = content;
-
-        // Painel de lobby (lado direito) — garagem funciona como lobby online.
-        BuildLobbyPanel(root);
+        // Painel de lobby (prefab componentizado, lado direito) — garagem funciona como lobby online.
+        SetupLobbyPanel();
 
         // Botão CORRER / INICIAR (host). Canto inferior direito.
         _raceButtonLabel = CreateButton(root, "CORRER", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-190f, 64f), new Vector2(300f, 96f), raceColor, StartRace, 34);
@@ -248,68 +218,51 @@ public class GarageController : MonoBehaviour
     }
 
     // ---------------------------------------------------------------- Lobby
-    private void BuildLobbyPanel(RectTransform root)
+    // Instancia um prefab de painel (Resources) sob o canvas. O prefab já tem suas âncoras
+    // (posição relativa ao canvas) — basta parentar.
+    private GameObject InstantiatePanel(string resourceName)
     {
-        RectTransform panel = CreatePanel(root, "LobbyPanel", panelColor);
-        panel.anchorMin = new Vector2(1f, 0f);
-        panel.anchorMax = new Vector2(1f, 1f);
-        panel.pivot = new Vector2(1f, 0.5f);
-        panel.offsetMin = new Vector2(-380f, 180f);
-        panel.offsetMax = new Vector2(-40f, -190f);
+        GameObject prefab = Resources.Load<GameObject>(resourceName);
+        if (prefab == null)
+        {
+            Debug.LogError($"{resourceName}.prefab ausente em Resources. Rode 'PartyRacers/HUD/Gerar Prefabs da Garagem'.", this);
+            return null;
+        }
+        return Instantiate(prefab, canvas.transform);
+    }
 
-        TMP_Text title = CreateText(panel, "LobbyTitle", "LOBBY", 22, FontStyles.Bold, TextAlignmentOptions.Left, textDimColor);
-        Anchor(title.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -26f), new Vector2(-32f, 30f));
-        title.characterSpacing = 4f;
+    // Instancia o prefab de lobby e liga suas referências/botões à lógica existente.
+    private void SetupLobbyPanel()
+    {
+        GameObject panel = InstantiatePanel("GarageLobbyPanel");
+        if (panel == null)
+            return;
 
-        _lobbyCountText = CreateText(panel, "LobbyCount", "JOGADORES 1/16", 16, FontStyles.Bold, TextAlignmentOptions.Right, accentColor);
-        Anchor(_lobbyCountText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(-6f, -26f), new Vector2(-16f, 28f));
+        var ui = panel.GetComponent<GarageLobbyPanelUI>();
+        if (ui == null)
+        {
+            Debug.LogError("GarageLobbyPanel.prefab sem GarageLobbyPanelUI.", this);
+            return;
+        }
 
-        _lobbyStatusText = CreateText(panel, "LobbyStatus", "Local (offline)", 13, FontStyles.Italic, TextAlignmentOptions.TopLeft, textDimColor);
-        Anchor(_lobbyStatusText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -52f), new Vector2(-28f, 34f));
-        _lobbyStatusText.textWrappingMode = TextWrappingModes.Normal;
+        _lobbyCountText = ui.Count;
+        _lobbyStatusText = ui.Status;
+        _lobbyListContent = ui.ListContent;
+        _readyButtonLabel = ui.ReadyLabel;
+        _lobbyJoinCodeText = ui.JoinCode;
+        _joinCodeInput = ui.JoinInput;
 
-        // Lista rolável de jogadores.
-        RectTransform viewport = CreateUI("LobbyViewport", panel);
-        viewport.anchorMin = new Vector2(0f, 0f);
-        viewport.anchorMax = new Vector2(1f, 1f);
-        viewport.offsetMin = new Vector2(14f, 144f);
-        viewport.offsetMax = new Vector2(-14f, -90f);
-        viewport.gameObject.AddComponent<RectMask2D>();
+        if (ui.JoinInput != null)
+            ui.JoinInput.onValueChanged.AddListener(value =>
+            {
+                string upper = value.ToUpperInvariant();
+                if (value != upper)
+                    ui.JoinInput.SetTextWithoutNotify(upper);
+            });
 
-        RectTransform listContent = CreateUI("LobbyContent", viewport);
-        listContent.anchorMin = new Vector2(0f, 1f);
-        listContent.anchorMax = new Vector2(1f, 1f);
-        listContent.pivot = new Vector2(0.5f, 1f);
-        listContent.anchoredPosition = Vector2.zero;
-        var vlg = listContent.gameObject.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 6f;
-        vlg.childControlHeight = true;
-        vlg.childControlWidth = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childForceExpandWidth = true;
-        var fitter = listContent.gameObject.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var scroll = viewport.gameObject.AddComponent<ScrollRect>();
-        scroll.viewport = viewport;
-        scroll.content = listContent;
-        scroll.horizontal = false;
-        scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.scrollSensitivity = 20f;
-        _lobbyListContent = listContent;
-
-        _lobbyJoinCodeText = CreateText(panel, "LobbyJoinCode", "CODIGO --", 13, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, accentColor);
-        Anchor(_lobbyJoinCodeText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 126f), new Vector2(-28f, 26f));
-
-        _joinCodeInput = CreateInputField(panel, "JoinCodeInput", "CODIGO", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(-54f, 86f), new Vector2(-122f, 38f));
-        CreateButton(panel, "ENTRAR", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-60f, 86f), new Vector2(104f, 38f), buttonColor, JoinOnlineGame, 14);
-
-        // Botões de ação (PRONTO / CONVIDAR) na base do painel.
-        var ready = CreateButton(panel, "PRONTO", new Vector2(0f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(-6f, 44f), buttonColor, ToggleReady, 18);
-        _readyButtonLabel = ready;
-
-        CreateButton(panel, "CONVIDAR", new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(0f, 30f), new Vector2(-6f, 44f), buttonColor, InvitePlayers, 18);
+        if (ui.ReadyButton != null) ui.ReadyButton.onClick.AddListener(ToggleReady);
+        if (ui.InviteButton != null) ui.InviteButton.onClick.AddListener(InvitePlayers);
+        if (ui.EnterButton != null) ui.EnterButton.onClick.AddListener(JoinOnlineGame);
     }
 
     private void RefreshLobby()
@@ -343,32 +296,17 @@ public class GarageController : MonoBehaviour
 
     private void BuildPlayerRow(RacePlayerInfo info)
     {
-        RectTransform row = CreateUI("Player_" + info.DisplayName, _lobbyListContent);
-        var le = row.gameObject.AddComponent<LayoutElement>();
-        le.minHeight = 40f;
-        le.preferredHeight = 40f;
+        GameObject prefab = PlayerItemPrefab;
+        if (prefab == null)
+        {
+            Debug.LogError("LobbyPlayerItem.prefab ausente em Resources. Rode 'PartyRacers/HUD/Gerar Prefabs da Garagem'.", this);
+            return;
+        }
 
-        Color rowColor = info.IsLocal ? Color.Lerp(buttonColor, accentColor, 0.25f) : buttonColor * 0.5f;
-        Image bg = CreateImage(row, "RowBg", _roundSprite, rowColor);
-        StretchFull(bg.rectTransform);
-
-        string kindTag = info.IsLocal ? " (você)" : info.IsBot ? " (bot)" : "";
-        string hostTag = info.IsHost ? "★ " : "";
-        TMP_Text name = CreateText(row, "Name", hostTag + info.DisplayName + kindTag, 15, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, textColor);
-        var nrt = name.rectTransform;
-        nrt.anchorMin = new Vector2(0f, 0f);
-        nrt.anchorMax = new Vector2(1f, 1f);
-        nrt.offsetMin = new Vector2(12f, 0f);
-        nrt.offsetMax = new Vector2(-72f, 0f);
-
-        TMP_Text status = CreateText(row, "Ready", info.IsReady ? "PRONTO" : "...", 13, FontStyles.Bold, TextAlignmentOptions.MidlineRight,
-            info.IsReady ? raceColor : textDimColor);
-        var srt = status.rectTransform;
-        srt.anchorMin = new Vector2(1f, 0f);
-        srt.anchorMax = new Vector2(1f, 1f);
-        srt.pivot = new Vector2(1f, 0.5f);
-        srt.sizeDelta = new Vector2(70f, 0f);
-        srt.anchoredPosition = new Vector2(-10f, 0f);
+        GameObject go = Instantiate(prefab, _lobbyListContent);
+        var item = go.GetComponent<LobbyPlayerItemUI>();
+        if (item != null)
+            item.Set(info.DisplayName, info.IsHost, info.IsLocal, info.IsBot, info.IsReady);
     }
 
     private void ToggleReady()
@@ -448,13 +386,24 @@ public class GarageController : MonoBehaviour
     private void RefreshRaceButtonState()
     {
         bool online = _bootstrap != null && _bootstrap.IsOnline;
-        bool canRace = !online || (_registry != null && _registry.AllReady());
+        // Dono da sala = quem criou o convite = host real do NGO (Mode == Host). Offline, o jogador
+        // local é o "dono". Amarrar ao Mode (e não só ao HostId do lobby) garante estado seguro se o
+        // host sair: nenhum cliente vira dono funcional, então o início fica bloqueado para todos.
+        bool isOwner = !online || (_bootstrap != null && _bootstrap.Mode == NetworkBootstrap.SessionMode.Host);
+        bool allReady = _registry != null && _registry.AllReady();
+        bool canRace = isOwner && (!online || allReady);
 
+        // Só o DONO vê/usa o botão Iniciar Corrida.
         if (_raceButton != null)
+        {
+            bool show = isOwner || !online;
+            if (_raceButton.gameObject.activeSelf != show)
+                _raceButton.gameObject.SetActive(show);
             _raceButton.interactable = canRace;
+        }
 
         if (_raceButtonLabel != null)
-            _raceButtonLabel.text = online && !canRace ? "AGUARDANDO" : "CORRER";
+            _raceButtonLabel.text = online && !allReady ? "AGUARDANDO" : "CORRER";
     }
 
     // ---------------------------------------------------------------- Opções dinâmicas
@@ -493,21 +442,19 @@ public class GarageController : MonoBehaviour
 
     private void BuildColorRow()
     {
-        RectTransform row = CreateRow("COR");
+        CategoryButtonUI cat = SpawnCategory("COR");
+        if (cat == null)
+            return;
 
-        CreateButton(row, "‹", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-150f, 0f), new Vector2(40f, 40f), buttonColor,
-            () => customizer.SetColor(customizer.ColorIndex - 1));
-
-        _colorSwatch = CreateImage(row, "Swatch", _roundSprite, Color.white);
-        Anchor(_colorSwatch.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-86f, 0f), new Vector2(64f, 32f));
-
-        CreateButton(row, "›", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-22f, 0f), new Vector2(40f, 40f), buttonColor,
-            () => customizer.SetColor(customizer.ColorIndex + 1));
+        cat.UseSwatch(true);
+        cat.AddNavListeners(
+            () => { customizer.SetColor(customizer.ColorIndex - 1); RefreshValues(); },
+            () => { customizer.SetColor(customizer.ColorIndex + 1); RefreshValues(); });
 
         void Refresh()
         {
-            if (_colorSwatch != null && customizer.ColorCount > 0)
-                _colorSwatch.color = customizer.PaintPalette[Mathf.Clamp(customizer.ColorIndex, 0, customizer.ColorCount - 1)];
+            if (customizer.ColorCount > 0)
+                cat.SetSwatchColor(customizer.PaintPalette[Mathf.Clamp(customizer.ColorIndex, 0, customizer.ColorCount - 1)]);
         }
         _valueRefreshers.Add(Refresh);
         Refresh();
@@ -516,54 +463,44 @@ public class GarageController : MonoBehaviour
     private void BuildElementRow(CarElementName element, int count)
     {
         string label = Labels.TryGetValue(element, out var l) ? l : element.ToString().ToUpperInvariant();
-        RectTransform row = CreateRow(label);
+        CategoryButtonUI cat = SpawnCategory(label);
+        if (cat == null)
+            return;
 
-        CreateButton(row, "‹", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-150f, 0f), new Vector2(40f, 40f), buttonColor,
-            () => customizer.SetElement(element, customizer.GetElementIndex(element) - 1));
-
-        TMP_Text value = CreateText(row, "Value", "1/" + count, 22, FontStyles.Bold, TextAlignmentOptions.Center, textColor);
-        Anchor(value.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-86f, 0f), new Vector2(64f, 40f));
-
-        CreateButton(row, "›", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-22f, 0f), new Vector2(40f, 40f), buttonColor,
-            () => customizer.SetElement(element, customizer.GetElementIndex(element) + 1));
+        cat.UseSwatch(false);
+        cat.AddNavListeners(
+            () => { customizer.SetElement(element, customizer.GetElementIndex(element) - 1); RefreshValues(); },
+            () => { customizer.SetElement(element, customizer.GetElementIndex(element) + 1); RefreshValues(); });
 
         void Refresh()
         {
             int idx = Mathf.Clamp(customizer.GetElementIndex(element), 0, count - 1);
-            value.text = (idx + 1) + "/" + count;
+            cat.SetValue((idx + 1) + "/" + count);
         }
         _valueRefreshers.Add(Refresh);
         Refresh();
+    }
+
+    // Instancia o prefab componentizado de categoria sob o painel de opções.
+    private CategoryButtonUI SpawnCategory(string label)
+    {
+        GameObject prefab = CategoryButtonPrefab;
+        if (prefab == null)
+        {
+            Debug.LogError("CategoryButton.prefab ausente em Resources. Rode 'PartyRacers/HUD/Gerar Prefabs da Garagem'.", this);
+            return null;
+        }
+
+        GameObject go = Instantiate(prefab, _optionsContent);
+        var cat = go.GetComponent<CategoryButtonUI>();
+        cat?.Configure(label, null, null, null);
+        return cat;
     }
 
     private void RefreshValues()
     {
         foreach (var r in _valueRefreshers)
             r?.Invoke();
-    }
-
-    private RectTransform CreateRow(string label)
-    {
-        RectTransform row = CreateUI("Row_" + label, _optionsContent);
-        var le = row.gameObject.AddComponent<LayoutElement>();
-        le.minHeight = 46f;
-        le.preferredHeight = 46f;
-
-        Image bg = CreateImage(row, "RowBg", _roundSprite, buttonColor * 0.5f);
-        StretchFull(bg.rectTransform);
-
-        TMP_Text lbl = CreateText(row, "Label", label, 18, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, textDimColor);
-        var lrt = lbl.rectTransform;
-        lrt.anchorMin = new Vector2(0f, 0f);
-        lrt.anchorMax = new Vector2(1f, 1f);
-        lrt.offsetMin = new Vector2(16f, 0f);
-        lrt.offsetMax = new Vector2(-150f, 0f);
-        lbl.enableAutoSizing = true;
-        lbl.fontSizeMin = 12f;
-        lbl.fontSizeMax = 18f;
-        lbl.overflowMode = TextOverflowModes.Ellipsis;
-
-        return row;
     }
 
     // ---------------------------------------------------------------- Helpers UI

@@ -228,6 +228,8 @@ public class RocketProjectile : MonoBehaviour
         KartController kart = hit.collider.GetComponentInParent<KartController>();
         if (kart != null && kart.gameObject != owner)
         {
+            RaceHudEvents.Raise(owner, kart.gameObject, RaceHudEventKind.HitOpponent, KartPowerType.Rocket);
+            RaceHudEvents.Raise(kart.gameObject, owner, RaceHudEventKind.GotHit, KartPowerType.Rocket);
             KartSpinOutEffect.ApplyTo(kart.gameObject, spinOutDuration, direction, knockbackForce, knockbackTorque);
             Explode(hit.point, hit.normal);
             return;
