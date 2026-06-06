@@ -16,13 +16,23 @@ public class CannonShooter : MonoBehaviour
     public float effectLifetime = 3f;
     public float effectOffset = 0.5f;
 
+    private AudioSource audioSource;
+
     void Start()
     {
+        audioSource = GetComponent<AudioSource>();
+
         InvokeRepeating(nameof(Fire), 0f, shootInterval);
     }
 
     void Fire()
     {
+        // Toca o som do disparo
+        if (audioSource != null)
+        {
+            audioSource.Play();
+        }
+
         // Efeito visual do disparo
         if (muzzleEffectPrefab != null)
         {
@@ -32,7 +42,6 @@ public class CannonShooter : MonoBehaviour
                 Quaternion.identity
             );
 
-            // Aumenta a escala do efeito
             effect.transform.localScale = Vector3.one * effectScale;
 
             Destroy(effect, effectLifetime);
