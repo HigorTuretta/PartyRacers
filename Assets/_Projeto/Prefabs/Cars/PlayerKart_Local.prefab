@@ -1117,6 +1117,7 @@ MonoBehaviour:
   kart: {fileID: 557555256139649974}
   hudRootPrefab: {fileID: 6120316180664842230, guid: ccef9d31cf4daca459aa1d602625763d, type: 3}
   lobbySceneName: Garage
+  hudResourcePath: HUDRoot
 --- !u!1 &2528785561962729934
 GameObject:
   m_ObjectHideFlags: 0
@@ -1506,6 +1507,7 @@ MonoBehaviour:
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
+  boostDurationWindow: 1
   canControl: 1
   isGrounded: 0
   isDrifting: 0
@@ -1964,6 +1966,11 @@ MonoBehaviour:
   screenWindPrefab: {fileID: 0}
   targetCamera: {fileID: 0}
   fadeOutDelay: 0.35
+  particleSettleDelay: 0.25
+  useEdgeVignette: 1
+  edgeDarknessAlpha: 0.22
+  vignetteFadeSpeed: 8
+  vignetteSortingOrder: 90
 --- !u!114 &1111111111111111101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1981,6 +1988,11 @@ MonoBehaviour:
   screenWindPrefab: {fileID: 3942825033974895155, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
   targetCamera: {fileID: 0}
   fadeOutDelay: 0.35
+  particleSettleDelay: 0.25
+  useEdgeVignette: 1
+  edgeDarknessAlpha: 0.22
+  vignetteFadeSpeed: 8
+  vignetteSortingOrder: 90
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0
