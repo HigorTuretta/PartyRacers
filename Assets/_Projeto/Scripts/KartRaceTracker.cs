@@ -4,7 +4,7 @@ public class KartRaceTracker : MonoBehaviour
 {
     [Header("Corrida")]
     [SerializeField] private int totalLaps = 3;
-    [SerializeField] private int totalCheckpoints = 4;
+    [SerializeField] private int totalCheckpoints = 8;
 
     [Header("Estado Atual")]
     [SerializeField] private int currentLap = 1;
