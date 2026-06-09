@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class SpeedBoost : MonoBehaviour
+public class SpeedBoostPad : MonoBehaviour
 {
     public GameObject ScreenWind;
 
