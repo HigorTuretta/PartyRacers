@@ -6,32 +6,22 @@ public class SpeedBoost : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        KartController kart = other.GetComponent<KartController>();
+        KartController kart = other.GetComponentInParent<KartController>();
+        if (kart == null)
+            return;
 
-        if (kart != null)
-        {
-            // Ativa o efeito
-            if (ScreenWind != null)
-            {
-                ScreenWind.SetActive(true);
-                Invoke(nameof(DisableEffect), 2f);
-            }
-
-            // Aplica o boost
-            kart.ApplyBoost(
-                2f,    // duração em segundos
-                1.33f, // multiplicador de velocidade
-                1.5f,  // multiplicador de aceleração
-                5f     // empurrão instantâneo
-            );
-        }
-    }
-
-    void DisableEffect()
-    {
         if (ScreenWind != null)
-        {
             ScreenWind.SetActive(false);
-        }
+
+        KartTurboScreenEffect effect = kart.GetComponent<KartTurboScreenEffect>();
+        if (effect == null)
+            effect = kart.gameObject.AddComponent<KartTurboScreenEffect>();
+
+        kart.ApplyBoost(
+            2f,
+            1.33f,
+            1.5f,
+            5f
+        );
     }
 }

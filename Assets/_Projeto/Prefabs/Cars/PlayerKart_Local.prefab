@@ -1312,7 +1312,6 @@ GameObject:
   - component: {fileID: 2084474063037848681}
   - component: {fileID: 3008263013592393040}
   - component: {fileID: 7838859324014391471}
-  - component: {fileID: 2068541487234626136}
   - component: {fileID: 1111111111111111101}
   m_Layer: 0
   m_Name: PlayerKart_Local
@@ -1949,28 +1948,6 @@ MonoBehaviour:
   popInSpeed: 10
   activationStartScale: 0.45
   blockPulseScale: 1.18
---- !u!114 &2068541487234626136
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2611403489893210895}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e2b1469179a44df4abfa9693c8dfe04c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KartTurboScreenEffect
-  kart: {fileID: 0}
-  localRig: {fileID: 0}
-  screenWindPrefab: {fileID: 0}
-  targetCamera: {fileID: 0}
-  fadeOutDelay: 0.35
-  particleSettleDelay: 0.25
-  useEdgeVignette: 1
-  edgeDarknessAlpha: 0.22
-  vignetteFadeSpeed: 8
-  vignetteSortingOrder: 90
 --- !u!114 &1111111111111111101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1989,10 +1966,12 @@ MonoBehaviour:
   targetCamera: {fileID: 0}
   fadeOutDelay: 0.35
   particleSettleDelay: 0.25
-  useEdgeVignette: 1
+  useEdgeVignette: 0
   edgeDarknessAlpha: 0.22
   vignetteFadeSpeed: 8
   vignetteSortingOrder: 90
+  screenEffectOverscan: 1.18
+  cameraPlanePadding: 0.08
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0

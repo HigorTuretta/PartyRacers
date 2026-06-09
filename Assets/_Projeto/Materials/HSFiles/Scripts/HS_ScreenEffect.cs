@@ -13,6 +13,12 @@ namespace Hovl
         // Also used as the snap distance on start if snapping is enabled
         public float fallbackDistance = 0.05f;
 
+        // Extra coverage so the effect always bleeds past every screen edge.
+        public float screenOverscan = 1.18f;
+
+        // Keep the effect beyond the camera near plane. Values below near clip are invisible.
+        public float nearPlanePadding = 0.08f;
+
         // Snap the effect to a fixed distance from the camera automatically on start (play mode only)
         public bool snapOnStart = true;
 
@@ -49,8 +55,10 @@ namespace Hovl
             if (cam == null)
                 return;
 
-            // Place the effect directly in front of the camera at the configured distance
-            transform.position = cam.transform.position + cam.transform.forward * fallbackDistance;
+            float distance = GetSafeDistance(cam);
+
+            // Place the effect directly in front of the camera at a visible distance
+            transform.position = cam.transform.position + cam.transform.forward * distance;
 
             // Optionally keep the effect facing the camera by matching rotation (comment out if not desired)
             // transform.rotation = cam.transform.rotation;
@@ -58,9 +66,9 @@ namespace Hovl
             // Parent to camera so the effect follows it
             if (parentToCameraOnStart)
             {
-                // Make the camera the parent and set a local offset forward at fallbackDistance
+                // Make the camera the parent and set a local offset forward at a visible distance
                 transform.SetParent(cam.transform, true);
-                transform.localPosition = Vector3.forward * fallbackDistance;
+                transform.localPosition = Vector3.forward * distance;
                 transform.localRotation = Quaternion.identity;
             }
 
@@ -99,10 +107,31 @@ namespace Hovl
             if (cam == null)
                 return;
 
+            float safeDistance = GetSafeDistance(cam);
+
             // distance from camera to this transform along camera forward (positive in front of camera)
             float dist = cam.transform.InverseTransformPoint(transform.position).z;
-            if (dist <= 0f)
-                dist = fallbackDistance;
+            if (dist < safeDistance)
+            {
+                dist = safeDistance;
+
+                if (Application.isPlaying)
+                {
+                    if (parentToCameraOnStart)
+                    {
+                        if (transform.parent != cam.transform)
+                            transform.SetParent(cam.transform, true);
+
+                        transform.localPosition = Vector3.forward * safeDistance;
+                        transform.localRotation = Quaternion.identity;
+                    }
+                    else
+                    {
+                        transform.position = cam.transform.position + cam.transform.forward * safeDistance;
+                        transform.rotation = cam.transform.rotation;
+                    }
+                }
+            }
 
             float height;
             if (cam.orthographic)
@@ -115,6 +144,8 @@ namespace Hovl
                 height = 2f * dist * Mathf.Tan(fovRad * 0.5f);
             }
 
+            float overscan = Mathf.Max(1f, screenOverscan);
+            height *= overscan;
             float width = height * cam.aspect;
 
             // Set particle start size to match the world size (enable3D start size)
@@ -127,6 +158,14 @@ namespace Hovl
             // If the particle system uses a shape quad / box, update its scale too so emission area matches
             var shape = screenEffect.shape;
             shape.scale = new Vector3(width, height, 1f);
+        }
+
+        float GetSafeDistance(Camera cam)
+        {
+            if (cam == null)
+                return Mathf.Max(0.01f, fallbackDistance);
+
+            return Mathf.Max(0.01f, fallbackDistance, cam.nearClipPlane + Mathf.Max(0.01f, nearPlanePadding));
         }
     }
 }

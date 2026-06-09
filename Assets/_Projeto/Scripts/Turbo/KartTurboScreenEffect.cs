@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Hovl;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -41,10 +42,12 @@ public class KartTurboScreenEffect : MonoBehaviour
     [Tooltip("Segundos que o efeito continua emitindo após o boost acabar, para uma saída suave.")]
     [SerializeField] private float fadeOutDelay = 0.35f;
     [SerializeField] private float particleSettleDelay = 0.25f;
-    [SerializeField] private bool useEdgeVignette = true;
+    [SerializeField] private bool useEdgeVignette = false;
     [SerializeField, Range(0f, 0.5f)] private float edgeDarknessAlpha = 0.22f;
     [SerializeField] private float vignetteFadeSpeed = 8f;
     [SerializeField] private int vignetteSortingOrder = 90;
+    [SerializeField, Min(1f)] private float screenEffectOverscan = 1.18f;
+    [SerializeField, Min(0.01f)] private float cameraPlanePadding = 0.08f;
 
     private GameObject instance;
     private ParticleSystem[] particles;
@@ -58,6 +61,7 @@ public class KartTurboScreenEffect : MonoBehaviour
     {
         if (kart == null) kart = GetComponent<KartController>();
         if (localRig == null) localRig = GetComponent<KartLocalRig>();
+        useEdgeVignette = false;
         ResolveMissingPrefab();
     }
 
@@ -110,6 +114,7 @@ public class KartTurboScreenEffect : MonoBehaviour
 
         effectActive = true;
         instance.SetActive(true);
+        ConfigureScreenEffect(instance);
         deactivateAtTime = 0f;
         vignetteTargetAlpha = edgeDarknessAlpha;
 
@@ -164,12 +169,11 @@ public class KartTurboScreenEffect : MonoBehaviour
 
         instance = Instantiate(screenWindPrefab);
         instance.name = screenWindPrefab.name + " (Local Turbo)";
+        instance.SetActive(false);
         particles = instance.GetComponentsInChildren<ParticleSystem>(includeInactive: true);
 
-        // O HS_ScreenEffect do prefab usa Camera.main por padrão; se uma câmera explícita foi
-        // informada, repassamos por reflexão para não criar dependência de assembly do pacote.
-        if (targetCamera != null)
-            TrySetSourceCamera(instance, targetCamera);
+        // Configure before the first visible Play so the prefab covers the camera from frame one.
+        ConfigureScreenEffect(instance);
 
         return true;
     }
@@ -263,18 +267,37 @@ public class KartTurboScreenEffect : MonoBehaviour
         rect.offsetMax = offsetMax;
     }
 
-    private static void TrySetSourceCamera(GameObject root, Camera cam)
+    private void ConfigureScreenEffect(GameObject root)
     {
-        var behaviours = root.GetComponentsInChildren<MonoBehaviour>(includeInactive: true);
-        for (int i = 0; i < behaviours.Length; i++)
-        {
-            var mb = behaviours[i];
-            if (mb == null) continue;
+        if (root == null)
+            return;
 
-            var field = mb.GetType().GetField("sourceCamera");
-            if (field != null && field.FieldType == typeof(Camera))
-                field.SetValue(mb, cam);
+        Camera cam = ResolveTargetCamera();
+        HS_ScreenEffect[] effects = root.GetComponentsInChildren<HS_ScreenEffect>(includeInactive: true);
+        for (int i = 0; i < effects.Length; i++)
+        {
+            HS_ScreenEffect effect = effects[i];
+            if (effect == null)
+                continue;
+
+            effect.sourceCamera = cam;
+            effect.parentToCameraOnStart = true;
+            effect.snapOnStart = true;
+            effect.screenOverscan = Mathf.Max(1f, screenEffectOverscan);
+            effect.nearPlanePadding = Mathf.Max(0.01f, cameraPlanePadding);
+
+            if (cam != null)
+                effect.fallbackDistance = Mathf.Max(effect.fallbackDistance, cam.nearClipPlane + effect.nearPlanePadding);
         }
+    }
+
+    private Camera ResolveTargetCamera()
+    {
+        if (targetCamera != null)
+            return targetCamera;
+
+        targetCamera = Camera.main;
+        return targetCamera;
     }
 
     private void OnDestroy()
