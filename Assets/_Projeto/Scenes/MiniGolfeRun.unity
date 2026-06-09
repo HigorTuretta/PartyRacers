@@ -4684,7 +4684,7 @@ GameObject:
   - component: {fileID: 325857860}
   - component: {fileID: 325857859}
   - component: {fileID: 325857858}
-  - component: {fileID: 325857857}
+  - component: {fileID: 325857861}
   m_Layer: 0
   m_Name: SpeedBoost
   m_TagString: Untagged
@@ -4707,25 +4707,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 173147820}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &325857857
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 325857855}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c234a6c9d8cec854c8c4a8e5bc1cb50f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoost
-  ScreenWind: {fileID: 0}
-  boostDuration: 2
-  speedMultiplier: 1.15
-  accelerationMultiplier: 1.5
-  instantPush: 5
-  baseKartSpeed: 150
-  finalSpeed: 172.5
 --- !u!65 &325857858
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4804,6 +4785,25 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 325857855}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &325857861
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 325857855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e50b7e55894684883f1cd0843b86d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoostPad
+  ScreenWind: {fileID: 0}
+  boostDuration: 2
+  speedMultiplier: 1.15
+  accelerationMultiplier: 1.5
+  instantPush: 5
+  baseKartSpeed: 150
+  finalSpeed: 172.5
 --- !u!1 &335280688
 GameObject:
   m_ObjectHideFlags: 0
@@ -17449,19 +17449,19 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 207495765307802987, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
       propertyPath: ShapeModule.m_Scale.x
-      value: 773.41144
+      value: 861.3454
       objectReference: {fileID: 0}
     - target: {fileID: 207495765307802987, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
       propertyPath: ShapeModule.m_Scale.y
-      value: 431.18198
+      value: 508.7947
       objectReference: {fileID: 0}
     - target: {fileID: 207495765307802987, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 773.41144
+      value: 861.3454
       objectReference: {fileID: 0}
     - target: {fileID: 207495765307802987, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
       propertyPath: InitialModule.startSizeY.scalar
-      value: 431.18198
+      value: 508.7947
       objectReference: {fileID: 0}
     - target: {fileID: 3110208811200968691, guid: 7297fe0a5e06fb644a731296af23d579, type: 3}
       propertyPath: sourceCamera
@@ -17817,7 +17817,7 @@ GameObject:
   - component: {fileID: 1218060703}
   - component: {fileID: 1218060702}
   - component: {fileID: 1218060701}
-  - component: {fileID: 1218060700}
+  - component: {fileID: 1218060704}
   m_Layer: 0
   m_Name: SpeedBoost
   m_TagString: Untagged
@@ -17840,25 +17840,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1119698623}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1218060700
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1218060698}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c234a6c9d8cec854c8c4a8e5bc1cb50f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoost
-  ScreenWind: {fileID: 0}
-  boostDuration: 2
-  speedMultiplier: 1.1
-  accelerationMultiplier: 1.5
-  instantPush: 5
-  baseKartSpeed: 150
-  finalSpeed: 165
 --- !u!65 &1218060701
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -17937,6 +17918,25 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1218060698}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1218060704
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1218060698}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e50b7e55894684883f1cd0843b86d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoostPad
+  ScreenWind: {fileID: 0}
+  boostDuration: 2
+  speedMultiplier: 1.1
+  accelerationMultiplier: 1.5
+  instantPush: 5
+  baseKartSpeed: 150
+  finalSpeed: 165
 --- !u!1 &1229209393
 GameObject:
   m_ObjectHideFlags: 0
@@ -20988,7 +20988,7 @@ GameObject:
   - component: {fileID: 1456638946}
   - component: {fileID: 1456638945}
   - component: {fileID: 1456638944}
-  - component: {fileID: 1456638943}
+  - component: {fileID: 1456638947}
   m_Layer: 0
   m_Name: SpeedBoost
   m_TagString: Untagged
@@ -21011,25 +21011,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 214289385}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1456638943
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1456638941}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c234a6c9d8cec854c8c4a8e5bc1cb50f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoost
-  ScreenWind: {fileID: 0}
-  boostDuration: 2
-  speedMultiplier: 1.33
-  accelerationMultiplier: 1.5
-  instantPush: 5
-  baseKartSpeed: 150
-  finalSpeed: 199.5
 --- !u!65 &1456638944
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -21108,6 +21089,25 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1456638941}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1456638947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1456638941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e50b7e55894684883f1cd0843b86d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoostPad
+  ScreenWind: {fileID: 0}
+  boostDuration: 2
+  speedMultiplier: 1.33
+  accelerationMultiplier: 1.5
+  instantPush: 5
+  baseKartSpeed: 150
+  finalSpeed: 199.5
 --- !u!1 &1459284019
 GameObject:
   m_ObjectHideFlags: 0
@@ -21120,7 +21120,7 @@ GameObject:
   - component: {fileID: 1459284024}
   - component: {fileID: 1459284023}
   - component: {fileID: 1459284022}
-  - component: {fileID: 1459284021}
+  - component: {fileID: 1459284025}
   m_Layer: 0
   m_Name: SpeedBoost
   m_TagString: Untagged
@@ -21143,25 +21143,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1980459710}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1459284021
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1459284019}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c234a6c9d8cec854c8c4a8e5bc1cb50f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoost
-  ScreenWind: {fileID: 0}
-  boostDuration: 2
-  speedMultiplier: 1.33
-  accelerationMultiplier: 1.5
-  instantPush: 5
-  baseKartSpeed: 150
-  finalSpeed: 199.5
 --- !u!65 &1459284022
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -21240,6 +21221,25 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1459284019}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1459284025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1459284019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e50b7e55894684883f1cd0843b86d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpeedBoostPad
+  ScreenWind: {fileID: 0}
+  boostDuration: 2
+  speedMultiplier: 1.33
+  accelerationMultiplier: 1.5
+  instantPush: 5
+  baseKartSpeed: 150
+  finalSpeed: 199.5
 --- !u!1 &1459630763
 GameObject:
   m_ObjectHideFlags: 0
