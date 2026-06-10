@@ -32,5 +32,14 @@ namespace PartyRacers.Networking
         }
 
         public void SetKind(PlayerKind newKind) => kind = newKind;
+
+        // Permite que sistemas locais (ex.: bots offline) definam o nome exibido sem um RacePlayerInfo.
+        public void SetDisplayName(string newName)
+        {
+            if (!string.IsNullOrEmpty(newName))
+                displayName = newName;
+        }
+
+        public void SetPlayerId(string id) => playerId = id;
     }
 }

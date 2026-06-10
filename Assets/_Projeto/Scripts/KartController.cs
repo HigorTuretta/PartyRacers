@@ -186,6 +186,10 @@ public class KartController : MonoBehaviour
     // Fonte de input opcional (rede/bot). Nula => comportamento local original (teclado/gamepad).
     private IKartInputSource externalInput;
 
+    // Usado para garantir que karts NÃO-locais (bots/remotos) jamais leiam teclado/gamepad,
+    // mesmo que a fonte externa não tenha sido atribuída ainda (evita vazamento de controle).
+    private KartLocalRig localRig;
+
     private float driftReleaseTimer;
     private float driftEntryForwardSpeed;
     private float driftSwitchTimer;
@@ -261,6 +265,8 @@ public class KartController : MonoBehaviour
 
         if (suspension == null)
             suspension = GetComponent<KartSuspension>();
+
+        localRig = GetComponent<KartLocalRig>();
 
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
@@ -394,6 +400,11 @@ public class KartController : MonoBehaviour
             ApplyExternalInput(externalInput.Read());
             return;
         }
+
+        // Kart não-local sem fonte externa (bot ainda inicializando / remoto): fica neutro.
+        // Nunca lê teclado/gamepad — só o kart do jogador local pode fazer isso.
+        if (localRig != null && !localRig.IsLocalPlayer)
+            return;
 
         Keyboard keyboard = Keyboard.current;
         Gamepad gamepad = Gamepad.current;
@@ -1272,9 +1283,26 @@ public class KartController : MonoBehaviour
         // KartCollision ignora outros karts para não punir em dobro).
         if (collision.rigidbody != null && collision.rigidbody.GetComponent<KartController>() != null)
         {
-            Vector3 alongCar = Vector3.ProjectOnPlane(velocity, blockingNormal);
-            rb.linearVelocity = alongCar * carBumpRetention;
+            // O solver de física já removeu energia neste contato ANTES deste callback rodar.
+            // Por isso restauramos o movimento a partir da velocidade PRÉ-impacto (capturada no
+            // fim do FixedUpdate anterior): o esbarrão perde só (1 - carBumpRetention) da
+            // velocidade tangencial, em vez de parar seco no toque lateral.
+            Vector3 preImpactVelocity = transform.TransformDirection(previousLocalVelocity);
+            Vector3 referenceVelocity = preImpactVelocity.sqrMagnitude > velocity.sqrMagnitude
+                ? preImpactVelocity
+                : velocity;
+
+            Vector3 alongCar = Vector3.ProjectOnPlane(referenceVelocity, blockingNormal);
+            Vector3 newVelocity = alongCar * carBumpRetention;
+            newVelocity.y = velocity.y; // preserva a componente vertical atual (gravidade/suspensão)
+            rb.linearVelocity = newVelocity;
             rb.AddForce(blockingNormal * carBumpPush, ForceMode.VelocityChange);
+
+            // Amortece o giro brusco que o contato gera (evita o kart "rodar" no esbarrão).
+            Vector3 angular = rb.angularVelocity;
+            angular.y *= 0.45f;
+            rb.angularVelocity = angular;
+
             recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, worstInto / Mathf.Max(1f, GetCurrentMaxForwardSpeedMps())));
             return;
         }

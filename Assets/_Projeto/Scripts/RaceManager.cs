@@ -81,6 +81,7 @@ public class RaceManager : MonoBehaviour
             return;
 
         karts.Add(kart);
+        ConfigureKartRaceTracker(kart);
 
         if (placeOnSpawnPoints && ActiveSpawnManager != null)
             PlaceKartOnSpawn(kart, karts.Count - 1);
@@ -138,6 +139,8 @@ public class RaceManager : MonoBehaviour
             if (spawnedKart != null)
                 karts.Add(spawnedKart);
         }
+
+        ConfigureRaceTrackers();
 
         if (placeOnSpawnPoints && ActiveSpawnManager != null)
             PlaceKartsOnSpawns();
@@ -282,6 +285,22 @@ public class RaceManager : MonoBehaviour
         }
     }
 
+    private void ConfigureRaceTrackers()
+    {
+        for (int i = 0; i < karts.Count; i++)
+            ConfigureKartRaceTracker(karts[i]);
+    }
+
+    private static void ConfigureKartRaceTracker(KartController kart)
+    {
+        if (kart == null)
+            return;
+
+        KartRaceTracker tracker = kart.GetComponent<KartRaceTracker>();
+        if (tracker != null)
+            tracker.ConfigureCheckpointCount(KartRaceTracker.DetectSceneCheckpointCount());
+    }
+
     private void SetAllControl(bool enabled)
     {
         foreach (KartController kart in karts)
@@ -291,10 +310,23 @@ public class RaceManager : MonoBehaviour
         }
     }
 
+    // Arma o cronômetro de volta de todos os karts no "VAI!". A contagem em si só inicia
+    // quando cada kart cruza a linha de largada/chegada (ver KartRaceTracker).
+    private void StartLapTimers()
+    {
+        foreach (KartController kart in karts)
+        {
+            if (kart == null)
+                continue;
+
+            KartRaceTracker tracker = kart.GetComponent<KartRaceTracker>();
+            if (tracker != null)
+                tracker.NotifyRaceStarted();
+        }
+    }
+
     private IEnumerator StartRaceRoutine()
     {
-        CountdownUI.EnsureSceneInstance();
-
         raceStarted = false;
         SetAllControl(false);
 
@@ -312,6 +344,7 @@ public class RaceManager : MonoBehaviour
 
         raceStarted = true;
         SetAllControl(true);
+        StartLapTimers();
 
         yield return new WaitForSeconds(goMessageDuration);
 

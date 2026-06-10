@@ -1,16 +1,17 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using PartyRacers.Networking;
 
-// Orquestra o uso dos poderes do kart (tecla padrão E):
-//  - Escudo: delega ao KartShieldVisual (prefab Magic shield blue) envolvendo o carro.
-//  - Foguete: mostra o foguete acima do carro enquanto equipado e dispara o RocketProjectile.
-// Mantém a API pública usada por projéteis: IsShieldActive e PulseShieldBlock.
+// Orchestrates kart powers. Player input is gated to the local kart; bots call
+// TryUseCurrentPower directly through their AI controller.
 public class KartPowerUser : MonoBehaviour
 {
-    [Header("Referências")]
+    [Header("Referencias")]
     [SerializeField] private KartPowerInventory inventory;
     [SerializeField] private KartController kart;
     [SerializeField] private KartShieldVisual shieldVisual;
+    [SerializeField] private KartNetworkIdentity identity;
+    [SerializeField] private KartLocalRig localRig;
 
     [Header("Escudo")]
     [SerializeField] private float shieldDuration = 4f;
@@ -18,22 +19,37 @@ public class KartPowerUser : MonoBehaviour
 
     [Header("Foguete")]
     [SerializeField] private GameObject rocketProjectilePrefab;
-    [Tooltip("Prefab do foguete equipado (idle). Se vazio, usa o mesmo prefab do projétil.")]
+    [Tooltip("Prefab do foguete equipado (idle). Se vazio, usa o mesmo prefab do projetil.")]
     [SerializeField] private GameObject rocketEquippedPrefab;
     [SerializeField] private GameObject explosionVFXPrefab;
     [SerializeField] private GameObject boingVFXPrefab;
-    [Tooltip("Trail do foguete em voo (ex.: VFXRocketTrail). Passado ao projétil ao disparar.")]
+    [Tooltip("Trail do foguete em voo (ex.: VFXRocketTrail). Passado ao projetil ao disparar.")]
     [SerializeField] private GameObject rocketTrailPrefab;
     [SerializeField] private Transform rocketEquippedSocket;
     [SerializeField] private Vector3 rocketSocketLocalPosition = new Vector3(0f, 1.15f, 0.15f);
-    [Tooltip("Quão à frente do socket o projétil nasce ao disparar.")]
+    [Tooltip("Quao a frente do socket o projetil nasce ao disparar.")]
     [SerializeField] private float rocketLaunchForwardOffset = 0.6f;
+
+    [Header("Disco Voador (Swap)")]
+    [Tooltip("Prefab do projétil do disco voador (com UFOSwapProjectile).")]
+    [SerializeField] private GameObject ufoProjectilePrefab;
+    [Tooltip("Prefab do disco equipado (idle acima do carro). Se vazio, usa o prefab do projétil.")]
+    [SerializeField] private GameObject ufoEquippedPrefab;
+    [Tooltip("Círculo mágico exibido no chão ao redor dos dois carros antes da troca.")]
+    [SerializeField] private GameObject ufoMagicCirclePrefab;
+    [Tooltip("Efeito ativado dentro do disco quando ele não acerta ninguém (ex.: AoE slash blue).")]
+    [SerializeField] private GameObject ufoMissVFXPrefab;
+    [SerializeField] private Transform ufoEquippedSocket;
+    [SerializeField] private Vector3 ufoSocketLocalPosition = new Vector3(0f, 1.9f, 0f);
+    [Tooltip("Quão à frente do socket o disco nasce ao disparar.")]
+    [SerializeField] private float ufoLaunchForwardOffset = 1.2f;
 
     [Header("Input")]
     [SerializeField] private Key useKey = Key.E;
 
     private float shieldEndTime;
     private GameObject equippedRocketInstance;
+    private GameObject equippedUfoInstance;
 
     public bool IsShieldActive => Time.time < shieldEndTime;
 
@@ -44,6 +60,12 @@ public class KartPowerUser : MonoBehaviour
 
         if (kart == null)
             kart = GetComponent<KartController>();
+
+        if (identity == null)
+            identity = GetComponent<KartNetworkIdentity>();
+
+        if (localRig == null)
+            localRig = GetComponent<KartLocalRig>();
 
         if (shieldVisual == null)
             shieldVisual = GetComponent<KartShieldVisual>();
@@ -59,10 +81,14 @@ public class KartPowerUser : MonoBehaviour
         ReadInput();
         UpdateShield();
         UpdateEquippedRocket();
+        UpdateEquippedUfo();
     }
 
     private void ReadInput()
     {
+        if (!ShouldReadLocalInput())
+            return;
+
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
             return;
@@ -71,28 +97,52 @@ public class KartPowerUser : MonoBehaviour
             TryUseCurrentPower();
     }
 
-    public void TryUseCurrentPower()
+    private bool ShouldReadLocalInput()
+    {
+        if (identity != null && !identity.IsLocalControlled)
+            return false;
+
+        if (localRig != null && !localRig.IsLocalPlayer)
+            return false;
+
+        return true;
+    }
+
+    public bool TryUseCurrentPower()
     {
         if (inventory == null || !inventory.HasPower)
-            return;
+            return false;
 
-        KartPowerType power = inventory.ConsumeCurrentPower();
-        RaceHudEvents.Raise(gameObject, null, RaceHudEventKind.PowerUsed, power);
+        KartPowerType power = inventory.CurrentPower;
+        GameObject target = ResolvePowerTarget(power);
+        if (power == KartPowerType.SwapPosition && target == null)
+            return false;
+
+        inventory.ConsumeCurrentPower();
+        RaceHudEvents.Raise(gameObject, target, RaceHudEventKind.PowerUsed, power);
 
         switch (power)
         {
             case KartPowerType.Shield:
                 ActivateShield();
-                break;
+                return true;
 
             case KartPowerType.Rocket:
                 FireRocket();
-                break;
+                return true;
 
             case KartPowerType.SwapPosition:
-                Debug.Log("Poder Troca ainda será implementado.");
-                break;
+                FireUfo(target);
+                return true;
+
+            default:
+                return false;
         }
+    }
+
+    private GameObject ResolvePowerTarget(KartPowerType power)
+    {
+        return power == KartPowerType.SwapPosition ? FindSwapTarget() : null;
     }
 
     // ------------------------------------------------------------------ Escudo
@@ -197,7 +247,7 @@ public class KartPowerUser : MonoBehaviour
 
         if (rocketProjectilePrefab == null || rocketEquippedSocket == null)
         {
-            Debug.LogWarning("Foguete não disparado: prefab ou socket ausente.");
+            Debug.LogWarning("Foguete nao disparado: prefab ou socket ausente.");
             return;
         }
 
@@ -212,5 +262,185 @@ public class KartPowerUser : MonoBehaviour
             projectile = projectileObject.AddComponent<RocketProjectile>();
 
         projectile.Initialize(gameObject, forward, explosionVFXPrefab, boingVFXPrefab, rocketTrailPrefab);
+    }
+
+    // ------------------------------------------------------------------ Disco Voador (Swap)
+    private void EnsureUfoSocket()
+    {
+        if (ufoEquippedSocket != null)
+            return;
+
+        Transform existing = transform.Find("UfoEquippedSocket");
+        ufoEquippedSocket = existing != null
+            ? existing
+            : new GameObject("UfoEquippedSocket").transform;
+
+        ufoEquippedSocket.SetParent(transform, false);
+        ufoEquippedSocket.localPosition = ufoSocketLocalPosition;
+        ufoEquippedSocket.localRotation = Quaternion.identity;
+    }
+
+    private void UpdateEquippedUfo()
+    {
+        bool shouldShow = inventory != null && inventory.CurrentPower == KartPowerType.SwapPosition;
+
+        if (!shouldShow)
+        {
+            if (equippedUfoInstance != null)
+                equippedUfoInstance.SetActive(false);
+
+            return;
+        }
+
+        if (equippedUfoInstance == null)
+            CreateEquippedUfo();
+
+        if (equippedUfoInstance != null && !equippedUfoInstance.activeSelf)
+            equippedUfoInstance.SetActive(true);
+    }
+
+    private void CreateEquippedUfo()
+    {
+        GameObject prefab = ufoEquippedPrefab != null ? ufoEquippedPrefab : ufoProjectilePrefab;
+
+        if (prefab == null)
+            return;
+
+        EnsureUfoSocket();
+
+        equippedUfoInstance = Instantiate(prefab, ufoEquippedSocket);
+        equippedUfoInstance.transform.localPosition = Vector3.zero;
+        equippedUfoInstance.transform.localRotation = Quaternion.identity;
+
+        // O prefab do projétil pode trazer o UFOSwapProjectile — em idle ele não deve voar.
+        UFOSwapProjectile projectile = equippedUfoInstance.GetComponent<UFOSwapProjectile>();
+        if (projectile != null)
+            projectile.enabled = false;
+
+        // Colliders desligados no idle: o disco equipado não pode disparar ItemBox/checkpoints.
+        foreach (Collider col in equippedUfoInstance.GetComponentsInChildren<Collider>(true))
+            col.enabled = false;
+
+        if (equippedUfoInstance.GetComponent<UfoEquippedVisual>() == null)
+            equippedUfoInstance.AddComponent<UfoEquippedVisual>();
+    }
+
+    private void FireUfo(GameObject target)
+    {
+        EnsureUfoSocket();
+
+        if (equippedUfoInstance != null)
+        {
+            Destroy(equippedUfoInstance);
+            equippedUfoInstance = null;
+        }
+
+        if (ufoProjectilePrefab == null || ufoEquippedSocket == null)
+        {
+            Debug.LogWarning("Disco voador nao disparado: prefab ou socket ausente.");
+            return;
+        }
+
+        Vector3 forward = transform.forward;
+        Vector3 spawnPosition = ufoEquippedSocket.position + forward * ufoLaunchForwardOffset;
+        Quaternion spawnRotation = Quaternion.LookRotation(forward, Vector3.up);
+
+        GameObject projectileObject = Instantiate(ufoProjectilePrefab, spawnPosition, spawnRotation);
+
+        UFOSwapProjectile projectile = projectileObject.GetComponent<UFOSwapProjectile>();
+        if (projectile == null)
+            projectile = projectileObject.AddComponent<UFOSwapProjectile>();
+
+        projectile.enabled = true;
+        projectile.Initialize(gameObject, forward, target, ufoMagicCirclePrefab, ufoMissVFXPrefab, boingVFXPrefab);
+    }
+
+    // ------------------------------------------------------------------ Alvo da troca
+    private GameObject FindSwapTarget()
+    {
+        if (kart == null)
+            return null;
+
+        RaceManager raceManager = FindAnyObjectByType<RaceManager>(FindObjectsInactive.Exclude);
+        if (raceManager == null || raceManager.Karts == null)
+            return FindClosestKartTarget();
+
+        KartRaceTracker ownTracker = kart.GetComponent<KartRaceTracker>();
+        float ownProgress = CalculateRaceProgress(ownTracker);
+
+        KartController bestAhead = null;
+        float bestLead = float.MaxValue;
+        KartController fallbackClosest = null;
+        float fallbackDistance = float.MaxValue;
+
+        foreach (KartController other in raceManager.Karts)
+        {
+            if (other == null || other == kart || !other.gameObject.activeInHierarchy)
+                continue;
+
+            float sqrDistance = PlanarSqrDistance(kart.transform.position, other.transform.position);
+            if (sqrDistance < fallbackDistance)
+            {
+                fallbackDistance = sqrDistance;
+                fallbackClosest = other;
+            }
+
+            float otherProgress = CalculateRaceProgress(other.GetComponent<KartRaceTracker>());
+            float lead = otherProgress - ownProgress;
+            if (lead <= 0f || lead >= bestLead)
+                continue;
+
+            bestLead = lead;
+            bestAhead = other;
+        }
+
+        KartController target = bestAhead != null ? bestAhead : fallbackClosest;
+        return target != null ? target.gameObject : null;
+    }
+
+    private GameObject FindClosestKartTarget()
+    {
+        KartController[] karts = FindObjectsByType<KartController>(FindObjectsInactive.Exclude);
+        KartController closest = null;
+        float best = float.MaxValue;
+
+        foreach (KartController other in karts)
+        {
+            if (other == null || other == kart)
+                continue;
+
+            float sqrDistance = PlanarSqrDistance(kart.transform.position, other.transform.position);
+            if (sqrDistance >= best)
+                continue;
+
+            best = sqrDistance;
+            closest = other;
+        }
+
+        return closest != null ? closest.gameObject : null;
+    }
+
+    private static float CalculateRaceProgress(KartRaceTracker tracker)
+    {
+        if (tracker == null)
+            return 0f;
+
+        int totalCheckpoints = Mathf.Max(1, tracker.TotalCheckpoints);
+        if (tracker.RaceFinished)
+            return tracker.TotalLaps * totalCheckpoints + totalCheckpoints;
+
+        int nextCheckpoint = tracker.NextCheckpointIndex;
+        int completedThisLap = nextCheckpoint <= 0
+            ? totalCheckpoints - 1
+            : Mathf.Clamp(nextCheckpoint - 1, 0, totalCheckpoints - 1);
+
+        return (Mathf.Max(1, tracker.CurrentLap) - 1) * totalCheckpoints + completedThisLap;
+    }
+
+    private static float PlanarSqrDistance(Vector3 a, Vector3 b)
+    {
+        float dx = a.x - b.x;
+        float dz = a.z - b.z;
+        return dx * dx + dz * dz;
     }
 }

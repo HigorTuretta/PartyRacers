@@ -88,12 +88,13 @@ namespace PartyRacers.Networking
             SubscribeNetworkVisualEvents();
             ApplyNetworkRole();
 
-            if (IsOwner)
+            bool isBot = IsBotKart();
+            if (IsOwner && !isBot)
             {
                 SubmitLocalPlayerData();
                 SubmitDriftEffectState(force: true);
             }
-            else
+            else if (!isBot)
             {
                 ApplyNetworkVisual();
             }
@@ -152,11 +153,18 @@ namespace PartyRacers.Networking
 
         private void ApplyNetworkRole()
         {
+            bool isBot = IsBotKart();
             if (localRig != null)
-                localRig.IsLocalPlayer = IsOwner;
+                localRig.IsLocalPlayer = IsOwner && !isBot;
 
             if (kart == null)
                 return;
+
+            if (isBot)
+            {
+                RestoreBody();
+                return;
+            }
 
             if (IsOwner)
             {
@@ -312,13 +320,19 @@ namespace PartyRacers.Networking
 
         private void RestoreLocalControl()
         {
+            bool isBot = IsBotKart();
             if (localRig != null)
-                localRig.IsLocalPlayer = true;
+                localRig.IsLocalPlayer = !isBot;
 
-            if (kart != null)
+            if (kart != null && !isBot)
                 kart.SetInputSource(null);
 
             RestoreBody();
+        }
+
+        private bool IsBotKart()
+        {
+            return identity != null && identity.IsBot;
         }
 
         private void RestoreBody()

@@ -10,13 +10,24 @@ using UnityEngine;
 public class RocketProjectile : MonoBehaviour
 {
     [Header("Movimento")]
-    [SerializeField] private float speed = 30f;
+    [Tooltip("Velocidade de voo (m/s). Deve ser maior que a velocidade máxima dos carros.")]
+    [SerializeField] private float speed = 52f;
     [SerializeField] private float lifetime = 6f;
-    [SerializeField] private float maxDistance = 85f;
+    [SerializeField] private float maxDistance = 110f;
     [SerializeField] private float radius = 0.45f;
     [SerializeField] private LayerMask collisionMask = ~0;
     [Tooltip("Mantém o voo horizontal (recomendado para bater nas paredes verticais da pista).")]
     [SerializeField] private bool keepHorizontal = true;
+
+    [Header("Altura sobre o chão")]
+    [Tooltip("Mantém o míssil a uma altura fixa em relação ao chão (não cai nem sobe demais).")]
+    [SerializeField] private bool maintainGroundHeight = true;
+    [Tooltip("Altura fixa mantida em relação ao chão durante o voo (m).")]
+    [SerializeField] private float hoverHeight = 1.1f;
+    [SerializeField] private float heightAdjustSpeed = 12f;
+    [SerializeField] private LayerMask groundMask = ~0;
+    [Tooltip("Normais com Y acima disso são chão (não disparam quique/explosão; a altura cuida).")]
+    [SerializeField, Range(0f, 1f)] private float groundNormalMinY = 0.55f;
 
     [Header("Quique")]
     [SerializeField] private int maxBounces = 3;
@@ -160,14 +171,33 @@ public class RocketProjectile : MonoBehaviour
 
         if (TryFindHit(distance, out RaycastHit hit))
         {
-            transform.position = hit.point - direction * Mathf.Min(radius, distance);
-            travelled += hit.distance;
-            HandleHit(hit);
-            return;
+            // Chão/rampa não é obstáculo quando o míssil mantém altura: reposiciona acima
+            // da superfície e segue voando (o ajuste de altura cuida da subida).
+            if (maintainGroundHeight && hit.normal.y >= groundNormalMinY)
+            {
+                transform.position = hit.point + hit.normal * (radius + 0.05f);
+                travelled += hit.distance;
+            }
+            else
+            {
+                transform.position = hit.point - direction * Mathf.Min(radius, distance);
+                travelled += hit.distance;
+                HandleHit(hit);
+                return;
+            }
+        }
+        else
+        {
+            transform.position += direction * distance;
+            travelled += distance;
         }
 
-        transform.position += direction * distance;
-        travelled += distance;
+        if (maintainGroundHeight)
+        {
+            Vector3 position = transform.position;
+            ProjectileGroundHover.TryAdjustHeight(ref position, hoverHeight, heightAdjustSpeed, groundMask);
+            transform.position = position;
+        }
 
         if (travelled >= maxDistance)
             Explode(transform.position, -direction);
