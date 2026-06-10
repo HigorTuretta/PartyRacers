@@ -77,7 +77,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 171c508d6b002c54787ce7f1e55e7765, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RocketProjectile
-  speed: 170
+  speed: 70
   lifetime: 17
   maxDistance: 350
   radius: 0.85
@@ -110,11 +110,12 @@ MonoBehaviour:
   spinOutDuration: 1.6
   knockbackForce: 16
   knockbackTorque: 14
+  ghostDurationOnHit: 3
   explosionVFXPrefab: {fileID: 2433282508537954060, guid: a0b6e1ed3240b4947b27b773e5333e28, type: 3}
   blockVFXPrefab: {fileID: 8547867254204328264, guid: c8538b28dffcefd45aade4380d4448a9, type: 3}
   boingVFXPrefab: {fileID: 8547867254204328264, guid: c8538b28dffcefd45aade4380d4448a9, type: 3}
   boingScale: 1
-  trailPrefab: {fileID: 8764043878647920493, guid: e0dce86fb77070c409ed9906591c2b8e, type: 3}
+  trailPrefab: {fileID: 8656522925564163052, guid: 21a6d7756e8c57846b877bf8bbb757c6, type: 3}
   trailLocalOffset: {x: -0.0135, y: -0.364, z: -0.0002}
   trailLocalEuler: {x: 90, y: 90, z: 0}
   trailLingerAfterExplode: 1.2

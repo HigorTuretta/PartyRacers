@@ -119,6 +119,65 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &11383675
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 11383677}
+  - component: {fileID: 11383676}
+  m_Layer: 0
+  m_Name: RaceFinishScreen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &11383676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 11383675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a61dcd8f8643dfb4788df08fbac214f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.UI.HUD.RaceFinishScreen
+  garageSceneName: Garage
+  engageAutopilotOnFinish: 1
+  showCursorOnFinish: 1
+  maxRows: 16
+  root: {fileID: 0}
+  titleLabel: {fileID: 0}
+  rowsContainer: {fileID: 0}
+  rowTemplate: {fileID: 0}
+  rematchButton: {fileID: 0}
+  garageButton: {fileID: 0}
+  backgroundColor: {r: 0.05, g: 0.06, b: 0.12, a: 0.82}
+  panelColor: {r: 0.1, g: 0.12, b: 0.22, a: 0.95}
+  localRowColor: {r: 1, g: 0.78, b: 0.22, a: 0.3}
+  rowColor: {r: 1, g: 1, b: 1, a: 0.06}
+  accentColor: {r: 1, g: 0.78, b: 0.22, a: 1}
+--- !u!4 &11383677
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 11383675}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &17908418
 GameObject:
   m_ObjectHideFlags: 0
@@ -7912,71 +7971,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: cbf79babae678474692ba1856eb21d5f, type: 3}
---- !u!1001 &3959610275565382635
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 5383387055590150580, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_Name
-      value: UFO_SwapProjectile
-      objectReference: {fileID: 0}
-    - target: {fileID: 6315313594139559345, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: radius
-      value: 0.035
-      objectReference: {fileID: 0}
-    - target: {fileID: 6315313594139559345, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: trailPrefab
-      value: 
-      objectReference: {fileID: 5383387055590150580, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 140.62593
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0.08065295
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -179.15894
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8816890500216162807, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
 --- !u!1001 &4973060994101731812
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9247,4 +9241,4 @@ SceneRoots:
   - {fileID: 866254865}
   - {fileID: 461686089}
   - {fileID: 1797022570}
-  - {fileID: 3959610275565382635}
+  - {fileID: 11383677}

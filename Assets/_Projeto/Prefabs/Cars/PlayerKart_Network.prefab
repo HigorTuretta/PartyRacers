@@ -94,6 +94,7 @@ GameObject:
   - component: {fileID: 3283994815980097361}
   - component: {fileID: 1966975132838127885}
   - component: {fileID: 1111111111111111102}
+  - component: {fileID: 2466167913276942134}
   m_Layer: 0
   m_Name: PlayerKart_Network
   m_TagString: Untagged
@@ -178,7 +179,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 79ce1a35e5fe1f14ba15fe931d9a3e44, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartController
   rb: {fileID: 6424580973894995666}
   suspension: {fileID: 4236779978090343101}
@@ -283,6 +284,9 @@ MonoBehaviour:
   wallSlideRetention: 0.82
   collisionGlideMinSpeed: 2
   impactDecaySpeed: 2.6
+  collisionRecoveryDuration: 0.45
+  collisionGripFloor: 0.35
+  collisionYawDamping: 6
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
@@ -303,19 +307,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0aeb108fbfe481fadf6d9fc9d68fec7, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartArcadeCollisionResponse
-  minRelativeSpeed: 2.2
-  strongImpactSpeed: 16
-  minimumSolverSpeedRetention: 0.84
-  pushVelocityChange: 4.2
-  sidePushMultiplier: 1.3
-  rearQuarterPushMultiplier: 1.55
-  maxPushVelocityChange: 8
-  yawTorqueVelocityChange: 5.4
-  rearQuarterYawMultiplier: 1.7
-  angularDampingAfterContact: 0.82
-  verticalVelocityClamp: 2.2
+  minRelativeSpeed: 2
+  strongImpactSpeed: 18
+  minimumSolverSpeedRetention: 0.85
+  pushVelocityChange: 3
+  sidePushMultiplier: 1.35
+  rearQuarterPushMultiplier: 1.5
+  maxPushVelocityChange: 7
+  yawTorqueVelocityChange: 1.8
+  rearQuarterYawMultiplier: 2.4
+  sideYawScale: 0.25
+  angularDampingAfterContact: 0.7
+  verticalVelocityClamp: 1.6
+  sparks: {fileID: 0}
   debugMode: 0
   debugDrawSeconds: 0.35
 --- !u!114 &616438850191443198
@@ -888,6 +894,24 @@ MonoBehaviour:
   vignetteSortingOrder: 90
   screenEffectOverscan: 1.18
   cameraPlanePadding: 0.08
+--- !u!114 &2466167913276942134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 102993ef90e7c464bb225075f47cf6af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartCollisionSparks
+  sparksPrefab: {fileID: 8500920156052182585, guid: 66eb54812650b664996caaac3cf1e365, type: 3}
+  minImpact01: 0.16
+  cooldown: 0.16
+  vfxLifetime: 1.2
+  scale: 1
+  debugMode: 0
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0

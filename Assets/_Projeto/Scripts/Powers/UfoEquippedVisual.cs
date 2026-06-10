@@ -1,33 +1,46 @@
 using UnityEngine;
 
+// Disco voador EQUIPADO (idle) orbitando o kart enquanto o poder não é disparado.
+// A órbita é pequena e próxima, como um item realmente acoplado ao carro: gira/flutua de leve,
+// mantém altura coerente e nunca entra no chão (clamp de altura mínima) nem se afasta do veículo.
 [DisallowMultipleComponent]
 public class UfoEquippedVisual : MonoBehaviour
 {
     [Header("Model")]
     [SerializeField, Min(0.05f)] private float modelScale = 0.35f;
 
-    [Header("Idle Orbit")]
-    [SerializeField, Min(0f)] private float orbitDistance = 1.35f;
-    [SerializeField] private float height = 1.55f;
-    [SerializeField] private Vector3 localOffset = new Vector3(0f, 0f, 0.2f);
-    [SerializeField] private float orbitDegreesPerSecond = 95f;
-    [SerializeField, Min(0f)] private float followSmoothTime = 0.08f;
+    [Header("Idle Orbit (pequena e próxima)")]
+    [Tooltip("Raio da órbita ao redor do socket. Pequeno = disco coladinho no carro.")]
+    [SerializeField, Min(0f)] private float orbitDistance = 0.45f;
+    [Tooltip("Altura do disco em relação ao socket/carro.")]
+    [SerializeField] private float height = 0.95f;
+    [Tooltip("Deslocamento local fixo do centro da órbita (relativo ao socket).")]
+    [SerializeField] private Vector3 localOffset = Vector3.zero;
+    [SerializeField] private float orbitDegreesPerSecond = 80f;
+    [SerializeField, Min(0f)] private float followSmoothTime = 0.06f;
 
-    [Header("Float Animation")]
-    [SerializeField, Min(0f)] private float bobAmplitude = 0.12f;
-    [SerializeField, Min(0f)] private float bobSpeed = 2.8f;
-    [SerializeField, Min(0f)] private float radialDriftAmplitude = 0.08f;
-    [SerializeField, Min(0f)] private float radialDriftSpeed = 1.35f;
+    [Header("Float Animation (sutil)")]
+    [SerializeField, Min(0f)] private float bobAmplitude = 0.07f;
+    [SerializeField, Min(0f)] private float bobSpeed = 2.6f;
+    [SerializeField, Min(0f)] private float radialDriftAmplitude = 0.04f;
+    [SerializeField, Min(0f)] private float radialDriftSpeed = 1.2f;
 
     [Header("Rotation")]
-    [SerializeField] private float spinSpeed = 190f;
-    [SerializeField] private float tiltAngle = 5f;
+    [SerializeField] private float spinSpeed = 170f;
+    [SerializeField] private float tiltAngle = 4f;
     [SerializeField] private bool faceOrbitDirection = true;
+
+    [Header("Limite de altura ao chão")]
+    [Tooltip("Folga mínima (m) acima do chão. O disco nunca desce abaixo disso mesmo no fundo do bob.")]
+    [SerializeField] private float minGroundClearance = 0.4f;
+    [SerializeField] private LayerMask groundMask = ~0;
 
     private float orbitAngle;
     private float spinAngle;
     private float seed;
     private Vector3 smoothVelocity;
+
+    private static readonly RaycastHit[] GroundHits = new RaycastHit[8];
 
     private void Awake()
     {
@@ -71,6 +84,8 @@ public class UfoEquippedVisual : MonoBehaviour
             transform.localPosition = targetLocal;
         }
 
+        ClampAboveGround();
+
         Quaternion facing = Quaternion.identity;
         if (faceOrbitDirection && orbit.sqrMagnitude > 0.0001f)
         {
@@ -84,6 +99,47 @@ public class UfoEquippedVisual : MonoBehaviour
             Mathf.Cos(t * bobSpeed * 0.9f) * tiltAngle);
 
         transform.localRotation = facing * tilt;
+    }
+
+    // Garante que o disco nunca afunde no chão: sonda abaixo da posição mundial e eleva se preciso.
+    private void ClampAboveGround()
+    {
+        if (minGroundClearance <= 0f)
+            return;
+
+        Vector3 worldPos = transform.position;
+        Vector3 origin = worldPos + Vector3.up * 3f;
+
+        int count = Physics.RaycastNonAlloc(origin, Vector3.down, GroundHits, 12f, groundMask, QueryTriggerInteraction.Ignore);
+        float bestY = float.MinValue;
+        bool found = false;
+
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit hit = GroundHits[i];
+            if (hit.collider == null)
+                continue;
+
+            // O próprio kart não é chão.
+            if (hit.collider.GetComponentInParent<KartController>() != null)
+                continue;
+
+            if (hit.point.y > bestY)
+            {
+                bestY = hit.point.y;
+                found = true;
+            }
+        }
+
+        if (!found)
+            return;
+
+        float minY = bestY + minGroundClearance;
+        if (worldPos.y < minY)
+        {
+            worldPos.y = minY;
+            transform.position = worldPos;
+        }
     }
 
     private void DisablePhysics()

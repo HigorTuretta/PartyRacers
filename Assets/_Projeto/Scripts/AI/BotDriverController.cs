@@ -109,7 +109,9 @@ namespace PartyRacers.AI
         public bool IsInReverseRecovery => reverseTimer > 0f;
         public KartInputState LastInput => lastInput;
 
-        public void Initialize(KartController kartController, BotDifficultyProfile botProfile, int botSeed)
+        // allowLocalPlayer = true é usado SOMENTE pelo piloto automático de fim de corrida
+        // (KartFinishAutopilot), quando o player já terminou e o carro deve seguir sozinho.
+        public void Initialize(KartController kartController, BotDifficultyProfile botProfile, int botSeed, bool allowLocalPlayer = false)
         {
             kart = kartController;
             profile = botProfile ?? new BotDifficultyProfile();
@@ -124,9 +126,10 @@ namespace PartyRacers.AI
             respawn = kart != null ? kart.GetComponent<KartRespawn>() : null;
             ownColliders = kart != null ? kart.GetComponentsInChildren<Collider>(true) : null;
 
-            // Segurança: este controlador é exclusivo de bots. Nunca assume o kart do player local.
+            // Segurança: este controlador é exclusivo de bots. Nunca assume o kart do player local,
+            // EXCETO quando explicitamente autorizado pelo piloto automático de fim de corrida.
             KartLocalRig rig = kart != null ? kart.GetComponent<KartLocalRig>() : null;
-            if (rig != null && rig.IsLocalPlayer)
+            if (!allowLocalPlayer && rig != null && rig.IsLocalPlayer)
             {
                 Debug.LogError($"[BotDriverController] Tentativa de controlar o kart LOCAL '{kart.name}' — ignorada.");
                 enabled = false;

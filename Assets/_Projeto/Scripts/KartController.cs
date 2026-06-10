@@ -158,6 +158,22 @@ public class KartController : MonoBehaviour
     private float recentImpact01;
     public float RecentImpact01 => recentImpact01;
 
+    [Header("Recuperação Pós-Batida Kart-a-Kart")]
+    [Tooltip("Tempo (s) em que a aderência lateral fica reduzida após uma batida, deixando o " +
+             "empurrão 'deslizar' antes de o carro recolar — dá tempo de corrigir a trajetória.")]
+    [SerializeField] private float collisionRecoveryDuration = 0.45f;
+    [Tooltip("Aderência lateral mínima (fração) no instante da batida. Recupera suavemente até 1. " +
+             "Menor = empurrão escorrega mais (mais arcade); maior = carro 'cola' de volta mais rápido.")]
+    [SerializeField, Range(0.05f, 1f)] private float collisionGripFloor = 0.35f;
+    [Tooltip("Amortece o giro (yaw) residual durante a recuperação, evitando rodadas descontroladas.")]
+    [SerializeField, Range(0f, 20f)] private float collisionYawDamping = 6f;
+    private float collisionRecoveryTimer;
+    private float collisionRecoveryStrength;
+
+    /// <summary>Fração 0..1 do tempo de recuperação de batida ainda ativo (para HUD/feedback).</summary>
+    public float CollisionRecovery01 =>
+        collisionRecoveryDuration > 0.001f ? Mathf.Clamp01(collisionRecoveryTimer / collisionRecoveryDuration) : 0f;
+
     [Header("Boost")]
     [SerializeField] private float boostSpeedMultiplier = 1f;
     [SerializeField] private float boostAccelerationMultiplier = 1f;
@@ -309,6 +325,8 @@ public class KartController : MonoBehaviour
 
         prevGrounded = isGrounded;
 
+        TickCollisionRecovery();
+
         ApplyDrive();
         ApplySteering();
         ApplyHardTurnSpeedLoss();
@@ -384,6 +402,48 @@ public class KartController : MonoBehaviour
         boostAccelerationMultiplier = Mathf.Max(boostAccelerationMultiplier, accelerationMultiplier);
 
         rb.AddForce(transform.forward * instantPush, ForceMode.VelocityChange);
+    }
+
+    // Chamado pela KartArcadeCollisionResponse logo após uma batida kart-a-kart. Abre uma janela
+    // curta em que a aderência lateral é reduzida (o empurrão escorrega em vez de ser anulado no
+    // mesmo frame) e o yaw residual é amortecido — o carro pode ser empurrado/raspado e ainda
+    // assim corrigido pelo jogador/bot, sem rodar descontroladamente.
+    public void NotifyKartCollisionRecovery(float impact01)
+    {
+        collisionRecoveryStrength = Mathf.Max(collisionRecoveryStrength, Mathf.Clamp01(impact01));
+        collisionRecoveryTimer = collisionRecoveryDuration;
+    }
+
+    // Fração da aderência lateral vigente: 1 normalmente; reduzida logo após uma batida e
+    // recuperando suavemente até 1 ao longo de collisionRecoveryDuration.
+    private float CurrentLateralGripScale()
+    {
+        if (collisionRecoveryTimer <= 0f)
+            return 1f;
+
+        float progress = 1f - Mathf.Clamp01(collisionRecoveryTimer / Mathf.Max(0.01f, collisionRecoveryDuration));
+        float reducedGrip = Mathf.Lerp(collisionGripFloor, 1f, progress);
+        return Mathf.Lerp(1f, reducedGrip, collisionRecoveryStrength);
+    }
+
+    private void TickCollisionRecovery()
+    {
+        if (collisionRecoveryTimer <= 0f)
+            return;
+
+        collisionRecoveryTimer -= Time.fixedDeltaTime;
+
+        // Amortece apenas o yaw (giro horizontal) para que a batida não vire rodada; preserva
+        // a velocidade de avanço e o controle de direção.
+        if (collisionYawDamping > 0f && isGrounded)
+        {
+            Vector3 angular = rb.angularVelocity;
+            angular.y *= Mathf.Max(0f, 1f - collisionYawDamping * Time.fixedDeltaTime);
+            rb.angularVelocity = angular;
+        }
+
+        if (collisionRecoveryTimer <= 0f)
+            collisionRecoveryStrength = 0f;
     }
 
     // Permite a uma camada de rede/bot fornecer input sem alterar a física.
@@ -1101,10 +1161,14 @@ public class KartController : MonoBehaviour
 
         if (driftBlend <= 0.01f)
         {
+            // Aderência reduzida logo após batida (recupera suavemente) faz o empurrão deslizar
+            // de forma arcade em vez de ser anulado no mesmo frame.
+            float gripScale = CurrentLateralGripScale();
+
             localVelocity.x = Mathf.Lerp(
                 localVelocity.x,
                 0f,
-                normalLateralGrip * Time.fixedDeltaTime
+                normalLateralGrip * gripScale * Time.fixedDeltaTime
             );
 
             rb.linearVelocity = transform.TransformDirection(localVelocity);
@@ -1292,6 +1356,7 @@ public class KartController : MonoBehaviour
                     out float kartImpact01))
             {
                 recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, kartImpact01));
+                NotifyKartCollisionRecovery(kartImpact01);
             }
             return;
         }

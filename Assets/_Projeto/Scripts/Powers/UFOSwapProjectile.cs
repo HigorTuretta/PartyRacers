@@ -550,9 +550,23 @@ public class UFOSwapProjectile : MonoBehaviour
 
     private void PositionTrail()
     {
-        Quaternion flightRotation = Quaternion.LookRotation(direction, Vector3.up);
+        Quaternion flightRotation = FlightRotation();
         trailInstance.position = transform.position + flightRotation * trailLocalOffset;
         trailInstance.rotation = flightRotation * Quaternion.Euler(trailLocalEuler);
+    }
+
+    // Rotação segura na direção de voo. 'direction' pode estar (transitoriamente) zerada antes do
+    // Initialize ou em casos degenerados — aí caímos no forward atual em vez de logar
+    // "Look rotation viewing vector is zero" a cada frame.
+    private Quaternion FlightRotation()
+    {
+        Vector3 dir = Planar(direction);
+        if (dir.sqrMagnitude < 0.0001f)
+            dir = Planar(transform.forward);
+        if (dir.sqrMagnitude < 0.0001f)
+            dir = Vector3.forward;
+
+        return Quaternion.LookRotation(dir.normalized, Vector3.up);
     }
 
     private void ReleaseTrail()

@@ -42,6 +42,8 @@ public class RocketProjectile : MonoBehaviour
     [SerializeField] private float spinOutDuration = 1.6f;
     [SerializeField] private float knockbackForce = 16f;
     [SerializeField] private float knockbackTorque = 14f;
+    [Tooltip("Tempo (s) de invulnerabilidade/ghost concedido ao kart atingido após o míssil. 0 desliga.")]
+    [SerializeField] private float ghostDurationOnHit = 3f;
 
     [Header("VFX")]
     [SerializeField] private GameObject explosionVFXPrefab;
@@ -341,6 +343,12 @@ public class RocketProjectile : MonoBehaviour
         RaceHudEvents.Raise(owner, kart.gameObject, RaceHudEventKind.HitOpponent, KartPowerType.Rocket);
         RaceHudEvents.Raise(kart.gameObject, owner, RaceHudEventKind.GotHit, KartPowerType.Rocket);
         KartSpinOutEffect.ApplyTo(kart.gameObject, spinOutDuration, direction, knockbackForce, knockbackTorque);
+
+        // Estado ghost: o atingido fica brevemente intangível para outros karts (não para a pista),
+        // evitando ser atropelado em sequência por quem vem atrás enquanto se recupera.
+        if (ghostDurationOnHit > 0f)
+            KartTemporaryGhostState.Apply(kart.gameObject, ghostDurationOnHit);
+
         Finish(hit.Point, hit.Normal, explosionVFXPrefab, impactSound);
     }
 

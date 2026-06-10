@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class KartRaceTracker : MonoBehaviour
@@ -26,6 +27,14 @@ public class KartRaceTracker : MonoBehaviour
     private bool timing;
     private bool timingArmed;
 
+    // Histórico de voltas + tempo total (additivo — usado pela tela de fim de corrida).
+    private readonly List<float> lapTimes = new List<float>();
+    private float totalRaceTime;
+    private float finishRealtime = -1f;
+
+    /// <summary>Disparado UMA vez quando este kart cruza a linha de chegada da última volta.</summary>
+    public event System.Action<KartRaceTracker> RaceJustFinished;
+
     public int TotalLaps => totalLaps;
     public int TotalCheckpoints => totalCheckpoints;
     public int CurrentLap => currentLap;
@@ -42,6 +51,13 @@ public class KartRaceTracker : MonoBehaviour
     public float BestLapTime => bestLapTime;
     /// <summary>True quando o cronômetro de volta está rodando.</summary>
     public bool IsTiming => timing;
+
+    /// <summary>Tempos de cada volta concluída, em segundos (ordem das voltas).</summary>
+    public IReadOnlyList<float> LapTimes => lapTimes;
+    /// <summary>Soma dos tempos de volta concluídos + a volta atual em andamento.</summary>
+    public float TotalRaceTime => totalRaceTime + (timing && !raceFinished ? currentLapTime : 0f);
+    /// <summary>Time.time em que a corrida foi finalizada por este kart (-1 se ainda correndo).</summary>
+    public float FinishRealtime => finishRealtime;
 
     private void Awake()
     {
@@ -174,7 +190,9 @@ public class KartRaceTracker : MonoBehaviour
         {
             raceFinished = true;
             timing = false;
+            finishRealtime = Time.time;
             Debug.Log("Corrida finalizada!");
+            RaceJustFinished?.Invoke(this);
             return;
         }
 
@@ -192,6 +210,9 @@ public class KartRaceTracker : MonoBehaviour
         lastLapTime = Time.time - lapStartTime;
         if (bestLapTime < 0f || lastLapTime < bestLapTime)
             bestLapTime = lastLapTime;
+
+        lapTimes.Add(lastLapTime);
+        totalRaceTime += lastLapTime;
 
         lapStartTime = Time.time;
         currentLapTime = 0f;
