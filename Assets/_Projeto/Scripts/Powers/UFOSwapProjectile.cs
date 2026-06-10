@@ -7,19 +7,28 @@ public class UFOSwapProjectile : MonoBehaviour
     [SerializeField] private float speed = 58f;
     [SerializeField] private float lifetime = 9f;
     [SerializeField] private float maxDistance = 190f;
-    [Tooltip("Raio de proximidade usado para capturar karts sem colisao direta.")]
-    [SerializeField] private float radius = 1.35f;
+    [Tooltip("Raio do corpo do UFO usado para colisao com paredes (mantenha pequeno).")]
+    [SerializeField] private float radius = 1.2f;
+    [Tooltip("Raio (maior) de proximidade para capturar karts perto do trajeto, sem colisao direta.")]
+    [SerializeField] private float captureRadius = 3f;
     [SerializeField] private LayerMask collisionMask = ~0;
     [SerializeField] private LayerMask targetMask = ~0;
     [SerializeField] private LayerMask obstacleMask = ~0;
     [Tooltip("0 mantem voo reto. Use apenas se quiser homing leve.")]
     [SerializeField] private float homingTurnRate = 0f;
 
-    [Header("Altura sobre o chao")]
+    [Header("Altura sobre o chao (igual ao foguete)")]
     [SerializeField] private float hoverHeight = 1.65f;
     [SerializeField] private float heightAdjustSpeed = 16f;
     [SerializeField] private LayerMask groundMask = ~0;
+    [Tooltip("Normais com Y acima disso contam como CHAO/RAMPA: o UFO sobrevoa, nunca quica.")]
     [SerializeField, Range(0f, 1f)] private float groundNormalMinY = 0.55f;
+    [Tooltip("Folga minima (m) acima do chao. Trava rigida: o UFO NUNCA entra no chao mesmo se atrasar.")]
+    [SerializeField] private float minGroundClearance = 0.7f;
+    [Tooltip("Profundidade da sonda de chao (m). Maior evita 'sumico' ao passar por desniveis/rampas.")]
+    [SerializeField] private float groundProbeDown = 40f;
+    [Tooltip("Apenas superficies com normal Y abaixo disso (paredes verticais) fazem o UFO quicar.")]
+    [SerializeField, Range(0f, 1f)] private float wallMaxNormalY = 0.45f;
 
     [Header("Auto-hit")]
     [SerializeField] private bool allowOwnerHitAfterIgnore = true;
@@ -78,6 +87,7 @@ public class UFOSwapProjectile : MonoBehaviour
     }
 
     private readonly RaycastHit[] sweepHits = new RaycastHit[24];
+    private readonly RaycastHit[] groundProbe = new RaycastHit[16];
     private readonly Collider[] overlapHits = new Collider[24];
 
     private GameObject owner;
@@ -91,6 +101,8 @@ public class UFOSwapProjectile : MonoBehaviour
     private int bounceCount;
     private float spinAngle;
     private float baseY;
+    private float lastGroundY;
+    private bool hasGround;
 
     private float captureTimer;
     private Vector3 captureStartPosition;
@@ -185,7 +197,7 @@ public class UFOSwapProjectile : MonoBehaviour
         travelled += distance;
 
         Vector3 position = transform.position;
-        ProjectileGroundHover.TryAdjustHeight(ref position, hoverHeight, heightAdjustSpeed, groundMask);
+        MaintainHoverHeight(ref position);
         transform.position = position;
         baseY = position.y;
 
@@ -215,12 +227,68 @@ public class UFOSwapProjectile : MonoBehaviour
             0f).normalized;
     }
 
+    // Mantem altura FIXA sobre o chao (igual ao foguete) e impede DEFINITIVAMENTE que o UFO entre
+    // no chao: alem de seguir suavemente o terreno, aplica uma trava rigida (groundY + folga minima).
+    // Sonda bem fundo (groundProbeDown) para nao "sumir" ao passar por rampas/desniveis.
+    private void MaintainHoverHeight(ref Vector3 position)
+    {
+        if (TryGetGroundY(position, out float groundY))
+        {
+            hasGround = true;
+            lastGroundY = groundY;
+
+            float targetY = groundY + hoverHeight;
+            position.y = Mathf.MoveTowards(position.y, targetY, heightAdjustSpeed * Time.deltaTime);
+
+            // Trava rigida: nunca abaixo da folga minima, mesmo se o terreno subir rapido.
+            float floorY = groundY + minGroundClearance;
+            if (position.y < floorY)
+                position.y = floorY;
+        }
+    }
+
+    private bool TryGetGroundY(Vector3 position, out float groundY)
+    {
+        groundY = 0f;
+        Vector3 origin = position + Vector3.up * 4f;
+        int count = Physics.RaycastNonAlloc(
+            origin, Vector3.down, groundProbe, 4f + groundProbeDown, groundMask, QueryTriggerInteraction.Ignore);
+
+        float bestDistance = float.MaxValue;
+        bool found = false;
+
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit hit = groundProbe[i];
+            if (hit.collider == null)
+                continue;
+
+            // Karts nao sao chao (o UFO nao "sobe" ao sobrevoar um carro).
+            if (hit.collider.GetComponentInParent<KartController>() != null)
+                continue;
+
+            if (hit.distance < bestDistance)
+            {
+                bestDistance = hit.distance;
+                groundY = hit.point.y;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
     private void AnimateSpin()
     {
         spinAngle = Mathf.Repeat(spinAngle + spinSpeed * Time.deltaTime, 360f);
 
         Vector3 position = transform.position;
         position.y = baseY + Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
+
+        // O bob nunca pode furar a folga minima sobre o chao.
+        if (hasGround && position.y < lastGroundY + minGroundClearance)
+            position.y = lastGroundY + minGroundClearance;
+
         transform.position = position;
         transform.rotation = Quaternion.Euler(0f, spinAngle, 0f);
     }
@@ -258,7 +326,7 @@ public class UFOSwapProjectile : MonoBehaviour
 
     private bool TryFindOverlapTarget(Vector3 position, out ProjectileHit hit)
     {
-        int count = Physics.OverlapSphereNonAlloc(position, radius, overlapHits, targetMask, QueryTriggerInteraction.Collide);
+        int count = Physics.OverlapSphereNonAlloc(position, captureRadius, overlapHits, targetMask, QueryTriggerInteraction.Collide);
         hit = default;
         hit.Distance = float.MaxValue;
         float bestSqrDistance = float.MaxValue;
@@ -320,7 +388,10 @@ public class UFOSwapProjectile : MonoBehaviour
             return true;
         }
 
-        if (normal.y >= groundNormalMinY)
+        // Chao/rampa: qualquer superficie razoavelmente horizontal e SOBREVOADA (nunca quica).
+        // O UFO mantem altura fixa sobre ela via MaintainHoverHeight. So paredes verticais
+        // (normal.y < wallMaxNormalY) sao tratadas como obstaculo e fazem o UFO quicar.
+        if (normal.y >= wallMaxNormalY)
             return false;
 
         if (candidate.isTrigger || !IsInMask(candidate.gameObject.layer, obstacleMask))

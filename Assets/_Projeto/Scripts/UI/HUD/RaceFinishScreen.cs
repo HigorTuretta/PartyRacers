@@ -7,16 +7,15 @@ using UnityEngine.UI;
 namespace PartyRacers.UI.HUD
 {
     /// <summary>
-    /// Fluxo de fim de corrida para o PLAYER local.
-    /// Quando o player cruza a última linha de chegada:
+    /// Fluxo de fim de corrida para o PLAYER local. Vive FISICAMENTE dentro do prefab RaceHUD
+    /// (painel editável: título, placas, textos, botões, ícones). Quando o player cruza a última
+    /// linha de chegada:
     ///  - remove o controle manual e engata o piloto automático (KartFinishAutopilot);
-    ///  - exibe um banner/tela de resultados com a classificação;
+    ///  - exibe o painel de resultados (CanvasGroup) com a classificação;
     ///  - a classificação continua atualizando enquanto os retardatários terminam;
-    ///  - mostra tempo de cada volta e tempo total de quem já cruzou;
-    ///  - oferece Rematch (reinicia a cena) e Voltar para Garagem (carrega a cena configurável).
-    ///
-    /// A UI é montada em runtime caso as referências não sejam atribuídas no Inspector — assim o
-    /// fluxo funciona só largando este componente num GameObject da cena de corrida.
+    ///  - mostra o tempo total de quem cruzou e a melhor volta de cada corredor;
+    ///  - oferece Rematch (reinicia a cena) e Voltar para Garagem (cena configurável).
+    /// Toda a UI é referência serializada — nada é montado em runtime.
     /// </summary>
     [DisallowMultipleComponent]
     public class RaceFinishScreen : MonoBehaviour
@@ -30,31 +29,32 @@ namespace PartyRacers.UI.HUD
         [SerializeField] private bool engageAutopilotOnFinish = true;
         [Tooltip("Mostra/libera o cursor do mouse ao abrir a tela de resultados.")]
         [SerializeField] private bool showCursorOnFinish = true;
-        [Tooltip("Máximo de linhas mostradas na classificação.")]
-        [SerializeField] private int maxRows = 16;
+        [Tooltip("Máximo de linhas (placas) mostradas na classificação.")]
+        [SerializeField] private int maxRows = 12;
+        [Tooltip("Duração (s) da animação de entrada do painel.")]
+        [SerializeField] private float fadeInDuration = 0.4f;
 
-        [Header("UI (opcional — montada em runtime se vazio)")]
+        [Header("UI (referências físicas no prefab)")]
         [SerializeField] private CanvasGroup root;
+        [SerializeField] private RectTransform panel;
         [SerializeField] private TMP_Text titleLabel;
+        [SerializeField] private TMP_Text subtitleLabel;
         [SerializeField] private RectTransform rowsContainer;
-        [SerializeField] private RectTransform rowTemplate;
+        [SerializeField] private RaceFinishRowUI rowTemplate;
         [SerializeField] private Button rematchButton;
         [SerializeField] private Button garageButton;
 
-        [Header("Estilo (runtime)")]
-        [SerializeField] private Color backgroundColor = new Color(0.05f, 0.06f, 0.12f, 0.82f);
-        [SerializeField] private Color panelColor = new Color(0.10f, 0.12f, 0.22f, 0.95f);
-        [SerializeField] private Color localRowColor = new Color(1f, 0.78f, 0.22f, 0.30f);
-        [SerializeField] private Color rowColor = new Color(1f, 1f, 1f, 0.06f);
-        [SerializeField] private Color accentColor = new Color(1f, 0.78f, 0.22f, 1f);
+        [Header("Textos")]
+        [SerializeField] private string titleText = "CORRIDA FINALIZADA";
 
-        private readonly List<RectTransform> rowPool = new List<RectTransform>();
+        private readonly List<RaceFinishRowUI> rowPool = new List<RaceFinishRowUI>();
         private RaceHUDDataProvider provider;
         private KartController localKart;
         private KartRaceTracker localTracker;
 
         private bool shown;
         private bool subscribed;
+        private float fadeTimer;
 
         private static readonly string[] FallbackNames =
         {
@@ -64,10 +64,15 @@ namespace PartyRacers.UI.HUD
 
         private void Awake()
         {
-            provider = FindAnyObjectByType<RaceHUDDataProvider>(FindObjectsInactive.Exclude);
+            provider = GetComponentInParent<RaceHUDDataProvider>();
+            if (provider == null)
+                provider = FindAnyObjectByType<RaceHUDDataProvider>(FindObjectsInactive.Exclude);
 
-            if (root == null)
-                BuildRuntimeUI();
+            if (titleLabel != null && !string.IsNullOrEmpty(titleText))
+                titleLabel.text = titleText;
+
+            if (rowTemplate != null)
+                rowTemplate.SetVisible(false);
 
             HideImmediate();
             WireButtons();
@@ -82,6 +87,12 @@ namespace PartyRacers.UI.HUD
                 if (localTracker != null && localTracker.RaceFinished)
                     ShowResults();
                 return;
+            }
+
+            if (fadeTimer < fadeInDuration && root != null)
+            {
+                fadeTimer += Time.unscaledDeltaTime;
+                root.alpha = Mathf.Clamp01(fadeTimer / Mathf.Max(0.01f, fadeInDuration));
             }
 
             RefreshStandings();
@@ -148,6 +159,7 @@ namespace PartyRacers.UI.HUD
                 return;
 
             shown = true;
+            fadeTimer = 0f;
 
             if (engageAutopilotOnFinish && localKart != null)
                 KartFinishAutopilot.Engage(localKart);
@@ -160,7 +172,8 @@ namespace PartyRacers.UI.HUD
 
             if (root != null)
             {
-                root.alpha = 1f;
+                root.gameObject.SetActive(true);
+                root.alpha = 0f;
                 root.interactable = true;
                 root.blocksRaycasts = true;
             }
@@ -170,6 +183,9 @@ namespace PartyRacers.UI.HUD
 
         private void RefreshStandings()
         {
+            if (rowTemplate == null || rowsContainer == null)
+                return;
+
             List<Ranked> ranked = BuildRanked();
             int rows = Mathf.Min(ranked.Count, maxRows);
             EnsureRowPool(rows);
@@ -177,10 +193,24 @@ namespace PartyRacers.UI.HUD
             for (int i = 0; i < rowPool.Count; i++)
             {
                 bool visible = i < rows;
-                rowPool[i].gameObject.SetActive(visible);
-                if (visible)
-                    FillRow(rowPool[i], i + 1, ranked[i]);
+                rowPool[i].SetVisible(visible);
+
+                if (!visible)
+                    continue;
+
+                Ranked entry = ranked[i];
+                int position = i + 1;
+                rowPool[i].Bind(
+                    position,
+                    ResolveName(entry, position),
+                    ResolveStatus(entry),
+                    entry.Finished,
+                    ResolveBestLap(entry),
+                    entry.IsLocal);
             }
+
+            if (subtitleLabel != null && localTracker != null)
+                subtitleLabel.text = $"Seu tempo: <b>{FormatTime(localTracker.TotalRaceTime)}</b>";
         }
 
         private List<Ranked> BuildRanked()
@@ -205,7 +235,6 @@ namespace PartyRacers.UI.HUD
                 });
             }
 
-            // Terminados primeiro (por ordem de chegada); depois os que ainda correm (por progresso).
             list.Sort((a, b) =>
             {
                 if (a.Finished != b.Finished)
@@ -238,35 +267,23 @@ namespace PartyRacers.UI.HUD
             return (currentLap - 1) * totalCheckpoints + completedThisLap;
         }
 
-        private void FillRow(RectTransform row, int position, Ranked entry)
-        {
-            Image bg = row.GetComponent<Image>();
-            if (bg != null)
-                bg.color = entry.IsLocal ? localRowColor : rowColor;
-
-            TMP_Text label = row.GetComponentInChildren<TMP_Text>();
-            if (label == null)
-                return;
-
-            string name = ResolveName(entry, position);
-            string status = ResolveStatus(entry);
-            string best = entry.Tracker != null && entry.Tracker.BestLapTime > 0f
-                ? $"  <size=70%>Melhor {FormatTime(entry.Tracker.BestLapTime)}</size>"
-                : string.Empty;
-
-            label.text = $"<b>{position}.</b>  {name}    <align=right>{status}{best}";
-            label.color = entry.IsLocal ? accentColor : Color.white;
-        }
-
         private string ResolveStatus(Ranked entry)
         {
             if (entry.Tracker == null)
                 return "—";
 
             if (entry.Finished)
-                return $"<b>{FormatTime(entry.Tracker.TotalRaceTime)}</b>";
+                return FormatTime(entry.Tracker.TotalRaceTime);
 
-            return $"<color=#9AA6FF>CORRENDO V{Mathf.Max(1, entry.Tracker.CurrentLap)}/{entry.Tracker.TotalLaps}</color>";
+            return $"CORRENDO · V{Mathf.Max(1, entry.Tracker.CurrentLap)}/{entry.Tracker.TotalLaps}";
+        }
+
+        private string ResolveBestLap(Ranked entry)
+        {
+            if (entry.Tracker == null || entry.Tracker.BestLapTime <= 0f)
+                return string.Empty;
+
+            return FormatTime(entry.Tracker.BestLapTime);
         }
 
         private string ResolveName(Ranked entry, int position)
@@ -344,6 +361,7 @@ namespace PartyRacers.UI.HUD
             root.alpha = 0f;
             root.interactable = false;
             root.blocksRaycasts = false;
+            root.gameObject.SetActive(false);
         }
 
         private void OnDestroy()
@@ -352,143 +370,15 @@ namespace PartyRacers.UI.HUD
                 localTracker.RaceJustFinished -= OnLocalRaceFinished;
         }
 
-        // ----------------------------------------------------------------- Construção runtime da UI
-
         private void EnsureRowPool(int count)
         {
-            if (rowTemplate == null || rowsContainer == null)
-                return;
-
             while (rowPool.Count < count)
             {
-                RectTransform clone = Instantiate(rowTemplate, rowsContainer);
+                RaceFinishRowUI clone = Instantiate(rowTemplate, rowsContainer);
                 clone.gameObject.SetActive(true);
                 clone.name = $"ResultRow_{rowPool.Count + 1}";
                 rowPool.Add(clone);
             }
-        }
-
-        private void BuildRuntimeUI()
-        {
-            // Canvas dedicado por cima de tudo.
-            GameObject canvasGo = new GameObject("RaceFinishCanvas",
-                typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
-            canvasGo.transform.SetParent(transform, false);
-
-            Canvas canvas = canvasGo.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 500;
-
-            CanvasScaler scaler = canvasGo.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
-
-            root = canvasGo.GetComponent<CanvasGroup>();
-
-            // Fundo escurecido.
-            Image background = CreateChildImage(canvasGo.transform, "Background", backgroundColor);
-            Stretch(background.rectTransform);
-
-            // Painel central.
-            Image panel = CreateChildImage(canvasGo.transform, "Panel", panelColor);
-            RectTransform panelRect = panel.rectTransform;
-            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.pivot = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(900f, 820f);
-
-            // Título.
-            titleLabel = CreateChildText(panelRect, "Title", "CORRIDA FINALIZADA", 56, accentColor, TextAlignmentOptions.Center);
-            RectTransform titleRect = titleLabel.rectTransform;
-            titleRect.anchorMin = new Vector2(0f, 1f);
-            titleRect.anchorMax = new Vector2(1f, 1f);
-            titleRect.pivot = new Vector2(0.5f, 1f);
-            titleRect.anchoredPosition = new Vector2(0f, -28f);
-            titleRect.sizeDelta = new Vector2(-60f, 80f);
-
-            // Container das linhas (com VerticalLayoutGroup).
-            GameObject rowsGo = new GameObject("Rows", typeof(RectTransform), typeof(VerticalLayoutGroup));
-            rowsGo.transform.SetParent(panelRect, false);
-            rowsContainer = rowsGo.GetComponent<RectTransform>();
-            rowsContainer.anchorMin = new Vector2(0f, 0f);
-            rowsContainer.anchorMax = new Vector2(1f, 1f);
-            rowsContainer.offsetMin = new Vector2(36f, 120f);
-            rowsContainer.offsetMax = new Vector2(-36f, -120f);
-
-            VerticalLayoutGroup layout = rowsGo.GetComponent<VerticalLayoutGroup>();
-            layout.spacing = 6f;
-            layout.childControlWidth = true;
-            layout.childControlHeight = false;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
-            layout.childAlignment = TextAnchor.UpperCenter;
-
-            // Template de linha (desativado — clonado pelo pool).
-            Image rowImg = CreateChildImage(rowsContainer, "RowTemplate", rowColor);
-            rowTemplate = rowImg.rectTransform;
-            rowTemplate.sizeDelta = new Vector2(0f, 44f);
-            LayoutElement le = rowImg.gameObject.AddComponent<LayoutElement>();
-            le.minHeight = 44f;
-            le.preferredHeight = 44f;
-            TMP_Text rowLabel = CreateChildText(rowTemplate, "Label", "", 26, Color.white, TextAlignmentOptions.Left);
-            Stretch(rowLabel.rectTransform, 18f, 0f);
-            rowTemplate.gameObject.SetActive(false);
-
-            // Botões.
-            rematchButton = CreateButton(panelRect, "RematchButton", "REMATCH", accentColor,
-                new Vector2(-150f, 50f));
-            garageButton = CreateButton(panelRect, "GarageButton", "GARAGEM", new Color(0.4f, 0.45f, 0.6f, 1f),
-                new Vector2(150f, 50f));
-        }
-
-        private Image CreateChildImage(Transform parent, string name, Color color)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image));
-            go.transform.SetParent(parent, false);
-            Image img = go.GetComponent<Image>();
-            img.color = color;
-            return img;
-        }
-
-        private TMP_Text CreateChildText(Transform parent, string name, string text, float size, Color color, TextAlignmentOptions align)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            TextMeshProUGUI label = go.AddComponent<TextMeshProUGUI>();
-            label.text = text;
-            label.fontSize = size;
-            label.color = color;
-            label.alignment = align;
-            label.richText = true;
-            return label;
-        }
-
-        private Button CreateButton(RectTransform parent, string name, string text, Color color, Vector2 anchoredPos)
-        {
-            Image img = CreateChildImage(parent, name, color);
-            RectTransform rect = img.rectTransform;
-            rect.anchorMin = new Vector2(0.5f, 0f);
-            rect.anchorMax = new Vector2(0.5f, 0f);
-            rect.pivot = new Vector2(0.5f, 0f);
-            rect.sizeDelta = new Vector2(260f, 70f);
-            rect.anchoredPosition = anchoredPos;
-
-            Button button = img.gameObject.AddComponent<Button>();
-            button.targetGraphic = img;
-
-            TMP_Text label = CreateChildText(rect, "Label", text, 30, Color.white, TextAlignmentOptions.Center);
-            Stretch(label.rectTransform);
-
-            return button;
-        }
-
-        private static void Stretch(RectTransform rect, float padX = 0f, float padY = 0f)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(padX, padY);
-            rect.offsetMax = new Vector2(-padX, -padY);
         }
 
         private struct Ranked

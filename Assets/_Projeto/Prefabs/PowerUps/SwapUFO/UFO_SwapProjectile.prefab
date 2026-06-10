@@ -48,7 +48,8 @@ MonoBehaviour:
   speed: 58
   lifetime: 18
   maxDistance: 500
-  radius: 4
+  radius: 1.2
+  captureRadius: 3
   collisionMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -65,6 +66,9 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   groundNormalMinY: 0.55
+  minGroundClearance: 0.7
+  groundProbeDown: 40
+  wallMaxNormalY: 0.45
   allowOwnerHitAfterIgnore: 1
   ignoreOwnerTime: 0.45
   ignoreOwnerDistance: 5
