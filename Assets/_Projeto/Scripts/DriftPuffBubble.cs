@@ -146,15 +146,40 @@ public class DriftPuffBubble : MonoBehaviour
         );
     }
 
+    // Cache estático de meshes de nuvem: antes cada puff GERAVA um mesh procedural novo no Awake
+    // (custo de CPU) e o atribuía via 'mf.mesh', que clona/vaza um Mesh por puff (GC pesado). Com
+    // 16 karts derrapando isso causava engasgos. Agora pré-geramos algumas variações UMA vez e
+    // reaproveitamos via sharedMesh — visual praticamente idêntico, custo perto de zero.
+    private const int CloudMeshVariations = 16;
+    private static Mesh[] cloudMeshCache;
+
     private void ApplyCloudMesh()
     {
         MeshFilter mf = GetComponent<MeshFilter>();
         if (mf == null)
             return;
 
-        float seed = Random.Range(0f, 100f);
-        int lobes = Random.Range(Mathf.Max(1, minLobes), Mathf.Max(minLobes, maxLobes) + 1);
-        mf.mesh = CloudMeshGenerator.GenerateCluster(lobes, cloudBumpStrength, cloudNoiseScale, seed);
+        EnsureCloudMeshCache();
+        mf.sharedMesh = cloudMeshCache[Random.Range(0, cloudMeshCache.Length)];
+    }
+
+    private void EnsureCloudMeshCache()
+    {
+        if (cloudMeshCache != null)
+            return;
+
+        cloudMeshCache = new Mesh[CloudMeshVariations];
+        int loCap = Mathf.Max(1, minLobes);
+        int hiCap = Mathf.Max(loCap, maxLobes);
+
+        for (int i = 0; i < CloudMeshVariations; i++)
+        {
+            float seed = i * 13.37f + 1.7f;
+            int lobes = loCap + (i % (hiCap - loCap + 1));
+            Mesh mesh = CloudMeshGenerator.GenerateCluster(lobes, cloudBumpStrength, cloudNoiseScale, seed);
+            mesh.name = $"DriftPuffCloud_{i}";
+            cloudMeshCache[i] = mesh;
+        }
     }
 
     private void Update()

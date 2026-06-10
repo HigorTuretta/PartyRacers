@@ -60,6 +60,11 @@ namespace PartyRacers.AI
         [Tooltip("Restringe os índices de modelos usados pelos bots (vazio = todos).")]
         [SerializeField] private List<int> allowedBotCarIndices = new List<int>();
 
+        [Header("Performance")]
+        [Tooltip("Desliga fumaça de drift/burnout e marcas de pneu dos BOTS (grande ganho com muitos " +
+                 "karts na tela). O player mantém todos os efeitos.")]
+        [SerializeField] private bool disableBotSmokeEffects = true;
+
         [Header("Determinismo")]
         [Tooltip("Semente base da corrida (cor/perfil/nome derivam dela + índice do bot).")]
         [SerializeField] private int raceSeed = 1000;
@@ -215,6 +220,15 @@ namespace PartyRacers.AI
 
             // KartRespawn escuta a tecla R no Update (respawnaria todos). O bot chama Respawn() direto.
             DisableComponent<KartRespawn>(go);
+
+            // Fumaça/marcas de pneu dos bots: emissores caros (instanciam muitos GameObjects/meshes).
+            // Desligados por padrão — o player mantém os efeitos. Reduz drasticamente o custo com 16 karts.
+            if (disableBotSmokeEffects)
+            {
+                DisableComponent<KartDriftPuffTrail>(go);
+                DisableComponent<KartTireMarks>(go);
+                DisableComponent<KartDriftParticles>(go);
+            }
 
             // Garante que não sobre nenhum AudioListener ativo no rig do bot.
             foreach (AudioListener listener in go.GetComponentsInChildren<AudioListener>(true))

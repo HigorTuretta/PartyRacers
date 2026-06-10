@@ -20,6 +20,11 @@ namespace PartyRacers.AI
     public class BotDriverController : MonoBehaviour, IKartInputSource
     {
         [Header("Track following")]
+        [Tooltip("Se ligado, o bot usa a velocidade máxima do PRÓPRIO kart (KartController.maxForwardSpeedKmh) " +
+                 "em vez do valor abaixo — assim mudanças no prefab do kart valem para os bots também.")]
+        [SerializeField] private bool matchKartMaxSpeed = true;
+        [Tooltip("Fração da velocidade máxima do kart que os bots miram em reta (quando matchKartMaxSpeed).")]
+        [SerializeField, Range(0.5f, 1f)] private float kartMaxSpeedFraction = 0.95f;
         [SerializeField] private float maxStraightSpeedKmh = 145f;
         [SerializeField] private float minCornerSpeedKmh = 42f;
         [SerializeField] private float offPathTargetSpeedKmh = 34f;
@@ -116,6 +121,11 @@ namespace PartyRacers.AI
             kart = kartController;
             profile = botProfile ?? new BotDifficultyProfile();
             seed = botSeed;
+
+            // Os bots seguem a velocidade máxima do próprio kart (mesmo prefab dos players):
+            // assim, alterar maxForwardSpeedKmh no prefab também acelera/limita os bots.
+            if (matchKartMaxSpeed && kart != null && kart.MaxForwardSpeedKmh > 1f)
+                maxStraightSpeedKmh = kart.MaxForwardSpeedKmh * kartMaxSpeedFraction;
             wanderPhase = (seed % 1000) * 0.137f;
             ResetRecoveryState();
             handbrakeHeldLastRead = false;

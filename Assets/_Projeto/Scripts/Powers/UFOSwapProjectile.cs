@@ -31,9 +31,17 @@ public class UFOSwapProjectile : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float wallMaxNormalY = 0.45f;
 
     [Header("Auto-hit")]
-    [SerializeField] private bool allowOwnerHitAfterIgnore = true;
+    [Tooltip("Se FALSO (padrao), o UFO NUNCA atinge/troca com o proprio player que disparou.")]
+    [SerializeField] private bool allowOwnerHitAfterIgnore = false;
     [SerializeField] private float ignoreOwnerTime = 0.45f;
     [SerializeField] private float ignoreOwnerDistance = 5f;
+
+    [Header("Grace de lancamento (anti-sumico no disparo)")]
+    [Tooltip("Tempo inicial (s) em que o UFO ignora obstaculos/quiques — evita 'morrer' preso em " +
+             "geometria perto do carro logo ao disparar.")]
+    [SerializeField] private float launchClearTime = 0.22f;
+    [Tooltip("Distancia inicial (m) em que o UFO ignora obstaculos/quiques ao sair do carro.")]
+    [SerializeField] private float launchClearDistance = 5f;
 
     [Header("Quique em parede")]
     [SerializeField] private int maxBounces = 4;
@@ -388,6 +396,11 @@ public class UFOSwapProjectile : MonoBehaviour
             return true;
         }
 
+        // Grace de lancamento: ignora qualquer obstaculo nos primeiros instantes/metros para o UFO
+        // nao "morrer" preso na geometria ao redor do carro logo ao disparar.
+        if (IsInLaunchGrace())
+            return false;
+
         // Chao/rampa: qualquer superficie razoavelmente horizontal e SOBREVOADA (nunca quica).
         // O UFO mantem altura fixa sobre ela via MaintainHoverHeight. So paredes verticais
         // (normal.y < wallMaxNormalY) sao tratadas como obstaculo e fazem o UFO quicar.
@@ -699,5 +712,10 @@ public class UFOSwapProjectile : MonoBehaviour
     private static bool IsInMask(int layer, LayerMask mask)
     {
         return (mask.value & (1 << layer)) != 0;
+    }
+
+    private bool IsInLaunchGrace()
+    {
+        return lifeTimer < launchClearTime || travelled < launchClearDistance;
     }
 }

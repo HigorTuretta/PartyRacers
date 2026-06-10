@@ -119,65 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &11383675
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 11383677}
-  - component: {fileID: 11383676}
-  m_Layer: 0
-  m_Name: RaceFinishScreen
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &11383676
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 11383675}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a61dcd8f8643dfb4788df08fbac214f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.UI.HUD.RaceFinishScreen
-  garageSceneName: Garage
-  engageAutopilotOnFinish: 1
-  showCursorOnFinish: 1
-  maxRows: 16
-  root: {fileID: 0}
-  titleLabel: {fileID: 0}
-  rowsContainer: {fileID: 0}
-  rowTemplate: {fileID: 0}
-  rematchButton: {fileID: 0}
-  garageButton: {fileID: 0}
-  backgroundColor: {r: 0.05, g: 0.06, b: 0.12, a: 0.82}
-  panelColor: {r: 0.1, g: 0.12, b: 0.22, a: 0.95}
-  localRowColor: {r: 1, g: 0.78, b: 0.22, a: 0.3}
-  rowColor: {r: 1, g: 1, b: 1, a: 0.06}
-  accentColor: {r: 1, g: 0.78, b: 0.22, a: 1}
---- !u!4 &11383677
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 11383675}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &17908418
 GameObject:
   m_ObjectHideFlags: 0
@@ -2018,6 +1959,7 @@ MonoBehaviour:
   avoidPlayerCarModel: 1
   randomizeBotCarElements: 1
   allowedBotCarIndices: 
+  disableBotSmokeEffects: 0
   raceSeed: 1000
 --- !u!4 &461686089
 Transform:
@@ -3521,6 +3463,42 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 907156403701299738, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4282438143
+      objectReference: {fileID: 0}
+    - target: {fileID: 907156403701299738, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 1737223555771057190, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4294303441
+      objectReference: {fileID: 0}
+    - target: {fileID: 1737223555771057190, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 2790869503056759107, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 3492362807996338883, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4291931550
+      objectReference: {fileID: 0}
+    - target: {fileID: 3492362807996338883, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 3719549661862922661, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4291931550
+      objectReference: {fileID: 0}
+    - target: {fileID: 3719549661862922661, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 3997250313703745148, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
       propertyPath: m_Color.a
       value: 0
@@ -3532,6 +3510,14 @@ PrefabInstance:
     - target: {fileID: 4248099591177486483, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 132
+      objectReference: {fileID: 0}
+    - target: {fileID: 5364227037113683197, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4279050534
+      objectReference: {fileID: 0}
+    - target: {fileID: 5364227037113683197, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     - target: {fileID: 5757628465499232374, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
       propertyPath: framesPerSecond
@@ -3641,10 +3627,34 @@ PrefabInstance:
       propertyPath: m_Name
       value: RaceHUD
       objectReference: {fileID: 0}
+    - target: {fileID: 7363797333866599322, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4291931550
+      objectReference: {fileID: 0}
+    - target: {fileID: 7363797333866599322, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 7508398387377946542, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4291931550
+      objectReference: {fileID: 0}
+    - target: {fileID: 7508398387377946542, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 8476146742855976901, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
       propertyPath: m_fontColor32.rgba
       value: 3875523750
       objectReference: {fileID: 0}
+    - target: {fileID: 9056764181430101508, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_fontMaterial
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056764181430101508, guid: 30c4213eeef13274c8c3b16605fe4eef, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: -2339078071903018257, guid: b95fffb72fb393f44b8c821c65cf3016, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -9241,4 +9251,3 @@ SceneRoots:
   - {fileID: 866254865}
   - {fileID: 461686089}
   - {fileID: 1797022570}
-  - {fileID: 11383677}

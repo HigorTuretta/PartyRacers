@@ -245,6 +245,9 @@ public class KartController : MonoBehaviour
     public Rigidbody Rigidbody => rb;
     public bool CanControl => canControl;
 
+    /// <summary>Velocidade máxima de frente (km/h) configurada no kart. Bots usam isto para escalar o ritmo.</summary>
+    public float MaxForwardSpeedKmh => maxForwardSpeedKmh;
+
     public float ForwardSpeed => Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedKmh => Mathf.Abs(ForwardSpeed) * 3.6f;
     public float Speed01 => Mathf.Clamp01(Mathf.Abs(ForwardSpeed) / GetCurrentMaxForwardSpeedMps());
