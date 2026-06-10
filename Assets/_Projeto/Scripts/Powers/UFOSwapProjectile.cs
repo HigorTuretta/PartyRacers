@@ -1,75 +1,87 @@
 using UnityEngine;
 
-// Projétil do power-up "Disco Voador de Swap".
-//
-// Comportamento:
-//  - Voa para frente mantendo altura FIXA em relação ao chão (configurável), girando como um OVNI.
-//  - Se houver um alvo (carro à frente), faz homing suave em direção a ele.
-//  - Parede: quica com o mesmo "boing" do foguete (até maxBounces; depois conta como erro).
-//  - Carro válido: sobe suavemente para cima do carro atingido, ativa o círculo mágico PRESO AO
-//    CHÃO em volta dos dois carros (atirador e atingido) e, após 'swapDelay', troca as posições
-//    dos dois com orientação coerente com a pista (KartSwapUtility).
-//  - Escudo ativo no alvo: o poder é bloqueado (pulso do escudo + boing) e o disco some.
-//  - Sem acertar ninguém (tempo/alcance/quiques esgotados): ativa o efeito de "desaparecimento"
-//    (AoE slash blue) na própria posição e some.
 [DisallowMultipleComponent]
 public class UFOSwapProjectile : MonoBehaviour
 {
     [Header("Movimento")]
-    [Tooltip("Velocidade de voo (m/s). Deve ser maior que a velocidade máxima dos carros.")]
-    [SerializeField] private float speed = 52f;
-    [SerializeField] private float lifetime = 7f;
-    [SerializeField] private float maxDistance = 130f;
-    [SerializeField] private float radius = 0.8f;
+    [SerializeField] private float speed = 58f;
+    [SerializeField] private float lifetime = 9f;
+    [SerializeField] private float maxDistance = 190f;
+    [Tooltip("Raio de proximidade usado para capturar karts sem colisao direta.")]
+    [SerializeField] private float radius = 1.35f;
     [SerializeField] private LayerMask collisionMask = ~0;
-    [Tooltip("Velocidade de giro do homing em direção ao alvo (graus/s). 0 = voa reto.")]
-    [SerializeField] private float homingTurnRate = 140f;
+    [SerializeField] private LayerMask targetMask = ~0;
+    [SerializeField] private LayerMask obstacleMask = ~0;
+    [Tooltip("0 mantem voo reto. Use apenas se quiser homing leve.")]
+    [SerializeField] private float homingTurnRate = 0f;
 
-    [Header("Altura sobre o chão")]
-    [Tooltip("Altura fixa mantida em relação ao chão durante o voo (m).")]
-    [SerializeField] private float hoverHeight = 1.6f;
-    [SerializeField] private float heightAdjustSpeed = 14f;
+    [Header("Altura sobre o chao")]
+    [SerializeField] private float hoverHeight = 1.65f;
+    [SerializeField] private float heightAdjustSpeed = 16f;
     [SerializeField] private LayerMask groundMask = ~0;
-    [Tooltip("Normais com Y acima disso são chão (ignoradas pela colisão; a altura cuida delas).")]
     [SerializeField, Range(0f, 1f)] private float groundNormalMinY = 0.55f;
 
-    [Header("Quique em parede (boing)")]
-    [SerializeField] private int maxBounces = 2;
+    [Header("Auto-hit")]
+    [SerializeField] private bool allowOwnerHitAfterIgnore = true;
+    [SerializeField] private float ignoreOwnerTime = 0.45f;
+    [SerializeField] private float ignoreOwnerDistance = 5f;
+
+    [Header("Quique em parede")]
+    [SerializeField] private int maxBounces = 4;
     [SerializeField, Range(0.5f, 1f)] private float bounceSpeedRetention = 0.95f;
     [SerializeField] private GameObject boingVFXPrefab;
     [SerializeField] private float boingScale = 1f;
 
     [Header("Visual")]
-    [Tooltip("Escala aplicada ao transform raiz (o modelo do disco é filho).")]
     [SerializeField] private float modelScale = 0.35f;
-    [Tooltip("Velocidade de rotação do disco em voo (graus/s).")]
-    [SerializeField] private float spinSpeed = 320f;
-    [SerializeField] private float bobAmplitude = 0.15f;
+    [SerializeField] private float spinSpeed = 340f;
+    [SerializeField] private float bobAmplitude = 0.12f;
     [SerializeField] private float bobSpeed = 4f;
 
     [Header("Captura e Swap")]
-    [Tooltip("Altura acima do carro atingido para onde o disco sobe.")]
     [SerializeField] private float captureRiseHeight = 2.4f;
-    [Tooltip("Duração da subida suave até em cima do carro atingido (s).")]
-    [SerializeField] private float captureRiseDuration = 0.55f;
-    [Tooltip("Delay entre ativar os círculos mágicos e efetivar a troca de posições (s).")]
-    [SerializeField] private float swapDelay = 1.5f;
-    [Tooltip("Círculo mágico exibido no chão ao redor dos dois carros.")]
+    [SerializeField] private float captureRiseDuration = 0.45f;
+    [SerializeField] private float swapDelay = 1.2f;
     [SerializeField] private GameObject magicCirclePrefab;
-    [Tooltip("Tempo extra que os círculos permanecem após a troca (s).")]
     [SerializeField] private float magicCircleLinger = 0.6f;
 
-    [Header("Erro (não acertou ninguém)")]
-    [Tooltip("Efeito ativado dentro do disco antes de desaparecer (ex.: AoE slash blue).")]
+    [Header("VFX")]
+    [SerializeField] private GameObject trailPrefab;
+    [SerializeField] private Vector3 trailLocalOffset = new Vector3(0f, -0.05f, -0.65f);
+    [SerializeField] private Vector3 trailLocalEuler = new Vector3(90f, 0f, 0f);
+    [SerializeField] private float trailLingerAfterFinish = 0.9f;
+    [SerializeField] private GameObject impactVFXPrefab;
+    [SerializeField] private GameObject blockVFXPrefab;
+    [Tooltip("Prefab tocado quando o UFO some por timeout/quiques/swap concluido.")]
+    [SerializeField] private GameObject disappearVFXPrefab;
+    [Tooltip("Campo legado usado como fallback para disappearVFXPrefab.")]
     [SerializeField] private GameObject missVFXPrefab;
-    [SerializeField] private float missVFXScale = 1f;
+    [SerializeField] private float vfxFallbackLifetime = 2f;
+    [SerializeField] private float disappearVFXScale = 1f;
+    [SerializeField] private float destroyDelayAfterFinish = 0f;
+
+    [Header("Debug")]
+    [SerializeField] private bool debugMode;
+    [SerializeField] private Color debugPathColor = Color.cyan;
+    [SerializeField] private Color debugHitColor = Color.yellow;
 
     private enum State { Flying, Capturing, WaitingSwap, Done }
+    private enum HitKind { Target, Obstacle }
 
-    private readonly RaycastHit[] hits = new RaycastHit[16];
+    private struct ProjectileHit
+    {
+        public Collider Collider;
+        public Vector3 Point;
+        public Vector3 Normal;
+        public float Distance;
+        public HitKind Kind;
+    }
+
+    private readonly RaycastHit[] sweepHits = new RaycastHit[24];
+    private readonly Collider[] overlapHits = new Collider[24];
 
     private GameObject owner;
-    private GameObject targetKartObject; // alvo do homing (pode ser nulo: voo reto)
+    private GameObject targetKartObject;
     private KartController capturedKart;
     private State state = State.Flying;
 
@@ -83,6 +95,7 @@ public class UFOSwapProjectile : MonoBehaviour
     private float captureTimer;
     private Vector3 captureStartPosition;
     private float swapTimer;
+    private Transform trailInstance;
 
     public void Initialize(
         GameObject projectileOwner,
@@ -100,7 +113,11 @@ public class UFOSwapProjectile : MonoBehaviour
             magicCirclePrefab = magicCircleVFX;
 
         if (missVFX != null)
+        {
             missVFXPrefab = missVFX;
+            if (disappearVFXPrefab == null)
+                disappearVFXPrefab = missVFX;
+        }
 
         if (boingVFX != null)
             boingVFXPrefab = boingVFX;
@@ -124,51 +141,47 @@ public class UFOSwapProjectile : MonoBehaviour
             case State.Flying:
                 UpdateFlight();
                 break;
-
             case State.Capturing:
                 UpdateCapture();
                 break;
-
             case State.WaitingSwap:
                 UpdateSwapWait();
                 break;
         }
     }
 
-    // ------------------------------------------------------------------ voo
     private void UpdateFlight()
     {
         lifeTimer += Time.deltaTime;
         if (lifeTimer >= lifetime)
         {
-            Miss();
+            Disappear();
             return;
         }
 
+        if (trailInstance == null && trailPrefab != null)
+            SpawnTrail();
+
         UpdateHoming();
 
+        if (TryFindOverlapTarget(transform.position, out ProjectileHit overlapHit))
+        {
+            HandleHit(overlapHit);
+            return;
+        }
+
         float distance = speed * Time.deltaTime;
+        Vector3 start = transform.position;
 
-        if (TryFindHit(distance, out RaycastHit hit))
+        if (TryFindSweepHit(distance, out ProjectileHit hit))
         {
-            // Chão/rampa não é obstáculo: o controle de altura cuida da subida.
-            if (hit.normal.y >= groundNormalMinY)
-            {
-                transform.position = hit.point + hit.normal * (radius + 0.05f);
-            }
-            else
-            {
-                transform.position = hit.point - direction * Mathf.Min(radius, distance);
-                travelled += hit.distance;
-                HandleHit(hit);
-                return;
-            }
-        }
-        else
-        {
-            transform.position += direction * distance;
+            transform.position = hit.Point - direction * Mathf.Min(radius, distance);
+            travelled += hit.Distance;
+            HandleHit(hit);
+            return;
         }
 
+        transform.position += direction * distance;
         travelled += distance;
 
         Vector3 position = transform.position;
@@ -177,9 +190,13 @@ public class UFOSwapProjectile : MonoBehaviour
         baseY = position.y;
 
         AnimateSpin();
+        UpdateTrail();
+
+        if (debugMode)
+            Debug.DrawLine(start, transform.position, debugPathColor, Time.deltaTime);
 
         if (travelled >= maxDistance)
-            Miss();
+            Disappear();
     }
 
     private void UpdateHoming()
@@ -205,100 +222,210 @@ public class UFOSwapProjectile : MonoBehaviour
         Vector3 position = transform.position;
         position.y = baseY + Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
         transform.position = position;
-
         transform.rotation = Quaternion.Euler(0f, spinAngle, 0f);
     }
 
-    private bool TryFindHit(float distance, out RaycastHit bestHit)
+    private bool TryFindSweepHit(float distance, out ProjectileHit bestHit)
     {
-        int hitCount = Physics.SphereCastNonAlloc(
+        int mask = targetMask.value | obstacleMask.value | groundMask.value | collisionMask.value;
+        int count = Physics.SphereCastNonAlloc(
             transform.position,
             radius,
             direction,
-            hits,
+            sweepHits,
             distance,
-            collisionMask,
-            QueryTriggerInteraction.Ignore);
+            mask,
+            QueryTriggerInteraction.Collide);
 
         bestHit = default;
-        float bestDistance = float.MaxValue;
+        bestHit.Distance = float.MaxValue;
 
-        for (int i = 0; i < hitCount; i++)
+        for (int i = 0; i < count; i++)
         {
-            RaycastHit candidate = hits[i];
-
+            RaycastHit candidate = sweepHits[i];
             if (candidate.collider == null)
                 continue;
 
-            if (candidate.collider.transform.IsChildOf(transform))
+            if (!TryClassifyHit(candidate.collider, candidate.point, candidate.normal, candidate.distance, out ProjectileHit classified))
                 continue;
 
-            if (owner != null && candidate.collider.transform.IsChildOf(owner.transform))
-                continue;
-
-            if (candidate.distance < bestDistance)
-            {
-                bestHit = candidate;
-                bestDistance = candidate.distance;
-            }
+            if (classified.Distance < bestHit.Distance)
+                bestHit = classified;
         }
 
-        return bestDistance < float.MaxValue;
+        return bestHit.Collider != null;
     }
 
-    private void HandleHit(RaycastHit hit)
+    private bool TryFindOverlapTarget(Vector3 position, out ProjectileHit hit)
     {
-        // Escudo ativo no alvo: poder bloqueado, sem troca.
-        KartPowerUser shieldUser = hit.collider.GetComponentInParent<KartPowerUser>();
-        if (shieldUser != null && shieldUser.gameObject != owner && shieldUser.IsShieldActive)
+        int count = Physics.OverlapSphereNonAlloc(position, radius, overlapHits, targetMask, QueryTriggerInteraction.Collide);
+        hit = default;
+        hit.Distance = float.MaxValue;
+        float bestSqrDistance = float.MaxValue;
+
+        for (int i = 0; i < count; i++)
         {
-            shieldUser.PulseShieldBlock(hit.point, null);
-            SpawnVFX(boingVFXPrefab, hit.point, hit.normal, boingScale);
-            Destroy(gameObject);
+            Collider candidate = overlapHits[i];
+            if (candidate == null)
+                continue;
+
+            KartController kart = candidate.GetComponentInParent<KartController>();
+            if (!IsValidTarget(kart, candidate))
+                continue;
+
+            Vector3 point = candidate.ClosestPoint(position);
+            Vector3 normal = position - point;
+            if (normal.sqrMagnitude < 0.001f)
+                normal = -direction;
+
+            float sqrDistance = (point - position).sqrMagnitude;
+            if (sqrDistance >= bestSqrDistance)
+                continue;
+
+            bestSqrDistance = sqrDistance;
+            hit = new ProjectileHit
+            {
+                Collider = candidate,
+                Point = point,
+                Normal = normal.normalized,
+                Distance = 0f,
+                Kind = HitKind.Target
+            };
+        }
+
+        return hit.Collider != null;
+    }
+
+    private bool TryClassifyHit(Collider candidate, Vector3 point, Vector3 normal, float distance, out ProjectileHit hit)
+    {
+        hit = default;
+
+        if (candidate == null || candidate.transform.IsChildOf(transform))
+            return false;
+
+        KartController kart = candidate.GetComponentInParent<KartController>();
+        if (kart != null)
+        {
+            if (!IsValidTarget(kart, candidate))
+                return false;
+
+            hit = new ProjectileHit
+            {
+                Collider = candidate,
+                Point = point,
+                Normal = normal.sqrMagnitude > 0.001f ? normal.normalized : -direction,
+                Distance = distance,
+                Kind = HitKind.Target
+            };
+            return true;
+        }
+
+        if (normal.y >= groundNormalMinY)
+            return false;
+
+        if (candidate.isTrigger || !IsInMask(candidate.gameObject.layer, obstacleMask))
+            return false;
+
+        hit = new ProjectileHit
+        {
+            Collider = candidate,
+            Point = point,
+            Normal = normal.sqrMagnitude > 0.001f ? normal.normalized : -direction,
+            Distance = distance,
+            Kind = HitKind.Obstacle
+        };
+        return true;
+    }
+
+    private bool IsValidTarget(KartController kart, Collider candidate)
+    {
+        if (kart == null || !kart.gameObject.activeInHierarchy)
+            return false;
+
+        if (!IsInMask(candidate.gameObject.layer, targetMask))
+            return false;
+
+        if (owner == null)
+            return true;
+
+        if (!candidate.transform.IsChildOf(owner.transform))
+            return true;
+
+        if (!allowOwnerHitAfterIgnore)
+            return false;
+
+        return lifeTimer >= ignoreOwnerTime && travelled >= ignoreOwnerDistance;
+    }
+
+    private void HandleHit(ProjectileHit hit)
+    {
+        if (state != State.Flying || hit.Collider == null)
+            return;
+
+        if (debugMode)
+            Debug.DrawRay(hit.Point, hit.Normal * 2f, debugHitColor, 0.75f);
+
+        if (hit.Kind == HitKind.Target)
+        {
+            HandleTargetHit(hit);
             return;
         }
 
-        // Carro válido: inicia a captura (subir + círculos + swap).
-        KartController kart = hit.collider.GetComponentInParent<KartController>();
-        if (kart != null && kart.gameObject != owner)
+        HandleObstacleHit(hit);
+    }
+
+    private void HandleTargetHit(ProjectileHit hit)
+    {
+        KartController kart = hit.Collider.GetComponentInParent<KartController>();
+        if (kart == null)
+            return;
+
+        KartPowerUser shieldUser = kart.GetComponent<KartPowerUser>();
+        if (shieldUser != null && shieldUser.IsShieldActive)
         {
-            BeginCapture(kart);
+            shieldUser.PulseShieldBlock(hit.Point, blockVFXPrefab);
+            SpawnVFX(boingVFXPrefab, hit.Point, hit.Normal, boingScale);
+            FinishWithoutDisappear();
             return;
         }
 
-        // Parede: boing e quica (ou erro, se esgotou os quiques).
+        BeginCapture(kart, hit.Point, hit.Normal);
+    }
+
+    private void HandleObstacleHit(ProjectileHit hit)
+    {
         if (bounceCount < maxBounces)
         {
             bounceCount++;
-            Vector3 flatNormal = Planar(hit.normal).normalized;
+            Vector3 flatNormal = Planar(hit.Normal).normalized;
             if (flatNormal.sqrMagnitude < 0.001f)
                 flatNormal = -direction;
 
             direction = Vector3.Reflect(direction, flatNormal).normalized;
             speed *= bounceSpeedRetention;
-            transform.position = hit.point + hit.normal * (radius + 0.05f);
-            SpawnVFX(boingVFXPrefab, hit.point, hit.normal, boingScale);
+            transform.position = hit.Point + hit.Normal * (radius + 0.05f);
+            SpawnVFX(boingVFXPrefab, hit.Point, hit.Normal, boingScale);
+            return;
         }
-        else
-        {
-            Miss();
-        }
+
+        Disappear();
     }
 
-    // ------------------------------------------------------------------ captura/swap
-    private void BeginCapture(KartController hitKart)
+    private void BeginCapture(KartController hitKart, Vector3 hitPoint, Vector3 hitNormal)
     {
         state = State.Capturing;
         capturedKart = hitKart;
         captureTimer = 0f;
         captureStartPosition = transform.position;
+        ReleaseTrail();
+        SpawnVFX(impactVFXPrefab, hitPoint, hitNormal, 1f);
     }
 
     private void UpdateCapture()
     {
         if (!IsCaptureStillValid())
         {
-            Miss();
+            Disappear();
             return;
         }
 
@@ -306,12 +433,9 @@ public class UFOSwapProjectile : MonoBehaviour
         float t = Mathf.Clamp01(captureTimer / Mathf.Max(0.05f, captureRiseDuration));
         float smooth = Mathf.SmoothStep(0f, 1f, t);
 
-        // Sobe suavemente até pairar sobre o carro atingido (acompanhando-o em movimento).
         Vector3 targetPosition = capturedKart.transform.position + Vector3.up * captureRiseHeight;
         transform.position = Vector3.Lerp(captureStartPosition, targetPosition, smooth);
-
-        spinAngle = Mathf.Repeat(spinAngle + spinSpeed * Time.deltaTime, 360f);
-        transform.rotation = Quaternion.Euler(0f, spinAngle, 0f);
+        SpinInPlace();
 
         if (t >= 1f)
             BeginSwapWait();
@@ -340,14 +464,12 @@ public class UFOSwapProjectile : MonoBehaviour
     {
         if (!IsCaptureStillValid())
         {
-            Miss();
+            Disappear();
             return;
         }
 
-        // Continua pairando sobre o carro capturado durante o delay.
         transform.position = capturedKart.transform.position + Vector3.up * captureRiseHeight;
-        spinAngle = Mathf.Repeat(spinAngle + spinSpeed * Time.deltaTime, 360f);
-        transform.rotation = Quaternion.Euler(0f, spinAngle, 0f);
+        SpinInPlace();
 
         swapTimer += Time.deltaTime;
         if (swapTimer < swapDelay)
@@ -366,14 +488,14 @@ public class UFOSwapProjectile : MonoBehaviour
 
     private void ExecuteSwap()
     {
-        state = State.Done;
+        if (state == State.Done)
+            return;
 
-        // Última checagem de escudo (o alvo pode ter ativado durante o delay).
         KartPowerUser targetPowerUser = capturedKart.GetComponent<KartPowerUser>();
         if (targetPowerUser != null && targetPowerUser.IsShieldActive)
         {
-            targetPowerUser.PulseShieldBlock(capturedKart.transform.position + Vector3.up, null);
-            Destroy(gameObject);
+            targetPowerUser.PulseShieldBlock(capturedKart.transform.position + Vector3.up, blockVFXPrefab);
+            FinishWithoutDisappear();
             return;
         }
 
@@ -381,26 +503,66 @@ public class UFOSwapProjectile : MonoBehaviour
         RaceHudEvents.Raise(capturedKart.gameObject, owner, RaceHudEventKind.GotHit, KartPowerType.SwapPosition);
 
         KartSwapUtility.SwapPositions(owner, capturedKart.gameObject);
-
-        Destroy(gameObject);
+        Disappear();
     }
 
-    // ------------------------------------------------------------------ erro
-    private void Miss()
+    private void SpinInPlace()
+    {
+        spinAngle = Mathf.Repeat(spinAngle + spinSpeed * Time.deltaTime, 360f);
+        transform.rotation = Quaternion.Euler(0f, spinAngle, 0f);
+    }
+
+    private void Disappear()
     {
         if (state == State.Done)
             return;
 
         state = State.Done;
+        ReleaseTrail();
 
-        if (missVFXPrefab != null)
-        {
-            GameObject vfx = Instantiate(missVFXPrefab, transform.position, Quaternion.identity);
-            if (!Mathf.Approximately(missVFXScale, 1f))
-                vfx.transform.localScale *= missVFXScale;
-        }
+        GameObject vfx = disappearVFXPrefab != null ? disappearVFXPrefab : missVFXPrefab;
+        SpawnVFX(vfx, transform.position, Vector3.up, disappearVFXScale);
+        Destroy(gameObject, destroyDelayAfterFinish);
+    }
 
-        Destroy(gameObject);
+    private void FinishWithoutDisappear()
+    {
+        if (state == State.Done)
+            return;
+
+        state = State.Done;
+        ReleaseTrail();
+        Destroy(gameObject, destroyDelayAfterFinish);
+    }
+
+    private void SpawnTrail()
+    {
+        GameObject trail = Instantiate(trailPrefab);
+        trailInstance = trail.transform;
+        PositionTrail();
+    }
+
+    private void UpdateTrail()
+    {
+        if (trailInstance != null)
+            PositionTrail();
+    }
+
+    private void PositionTrail()
+    {
+        Quaternion flightRotation = Quaternion.LookRotation(direction, Vector3.up);
+        trailInstance.position = transform.position + flightRotation * trailLocalOffset;
+        trailInstance.rotation = flightRotation * Quaternion.Euler(trailLocalEuler);
+    }
+
+    private void ReleaseTrail()
+    {
+        if (trailInstance == null)
+            return;
+
+        Transform trail = trailInstance;
+        trailInstance = null;
+        PowerVFXUtility.StopAndDestroyTrail(trail, trailLingerAfterFinish);
     }
 
     private void SpawnVFX(GameObject prefab, Vector3 position, Vector3 normal, float scale)
@@ -412,16 +574,13 @@ public class UFOSwapProjectile : MonoBehaviour
             ? Quaternion.LookRotation(normal.normalized, Vector3.up)
             : Quaternion.identity;
 
-        GameObject vfx = Instantiate(prefab, position, rotation);
-
-        if (!Mathf.Approximately(scale, 1f))
-            vfx.transform.localScale *= scale;
+        PowerVFXUtility.SpawnOneShot(prefab, position, rotation, vfxFallbackLifetime, 0f, scale);
     }
 
-    private static Vector3 Planar(Vector3 v)
+    private static Vector3 Planar(Vector3 value)
     {
-        v.y = 0f;
-        return v;
+        value.y = 0f;
+        return value;
     }
 
     private void EnsurePhysics()
@@ -440,5 +599,20 @@ public class UFOSwapProjectile : MonoBehaviour
 
         sphere.radius = radius;
         sphere.isTrigger = true;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (!debugMode)
+            return;
+
+        Gizmos.color = debugPathColor;
+        Gizmos.DrawWireSphere(transform.position, radius);
+        Gizmos.DrawLine(transform.position, transform.position + Planar(transform.forward).normalized * 4f);
+    }
+
+    private static bool IsInMask(int layer, LayerMask mask)
+    {
+        return (mask.value & (1 << layer)) != 0;
     }
 }

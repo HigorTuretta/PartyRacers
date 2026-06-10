@@ -20,6 +20,8 @@ public class KartShieldVisual : MonoBehaviour
     [SerializeField] private float manualScale = 0f;
     [Tooltip("Deslocamento extra da âncora em relação ao centro medido do carro.")]
     [SerializeField] private Vector3 rootLocalOffset = Vector3.zero;
+    [Tooltip("Offset vertical absoluto da ancora. Use valores negativos para fazer a base do domo entrar no chao.")]
+    [SerializeField] private float verticalOffset = -0.18f;
     [Tooltip("Afunda o domo do escudo em direção ao chão (fração do raio do carro). Em vez de uma bolha flutuando acima do carro, cria uma cúpula de proteção cuja base entra um pouco no chão.")]
     [SerializeField, Range(0f, 1f)] private float groundSink = 0.4f;
     [Tooltip("Correção de rotação aplicada ao prefab do escudo, se necessário.")]
@@ -141,7 +143,7 @@ public class KartShieldVisual : MonoBehaviour
         EnsureRoot();
 
         MeasureCar(out Vector3 localCenter, out float radius);
-        shieldRoot.localPosition = localCenter + rootLocalOffset + Vector3.down * radius * groundSink;
+        shieldRoot.localPosition = localCenter + rootLocalOffset + Vector3.up * verticalOffset + Vector3.down * radius * groundSink;
 
         shieldInstance = Instantiate(shieldPrefab, shieldRoot);
         shieldInstance.transform.localPosition = Vector3.zero;

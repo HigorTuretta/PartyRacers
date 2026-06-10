@@ -75,6 +75,7 @@ GameObject:
   - component: {fileID: 6424580973894995666}
   - component: {fileID: 1050988082005415647}
   - component: {fileID: 557555256139649974}
+  - component: {fileID: 7112400000000001002}
   - component: {fileID: 616438850191443198}
   - component: {fileID: 2456961690461143285}
   - component: {fileID: 3055232242946257551}
@@ -177,10 +178,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 79ce1a35e5fe1f14ba15fe931d9a3e44, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::KartController
   rb: {fileID: 6424580973894995666}
   suspension: {fileID: 4236779978090343101}
+  arcadeCollisionResponse: {fileID: 7112400000000001002}
   maxForwardSpeedKmh: 200
   maxReverseSpeedKmh: 70
   acceleration: 20
@@ -281,8 +283,6 @@ MonoBehaviour:
   wallSlideRetention: 0.82
   collisionGlideMinSpeed: 2
   impactDecaySpeed: 2.6
-  carBumpRetention: 0.96
-  carBumpPush: 2.5
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
@@ -293,6 +293,31 @@ MonoBehaviour:
   isBurningOut: 0
   driftDirection: 0
   driftBlend: 0
+--- !u!114 &7112400000000001002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0aeb108fbfe481fadf6d9fc9d68fec7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::KartArcadeCollisionResponse
+  minRelativeSpeed: 2.2
+  strongImpactSpeed: 16
+  minimumSolverSpeedRetention: 0.84
+  pushVelocityChange: 4.2
+  sidePushMultiplier: 1.3
+  rearQuarterPushMultiplier: 1.55
+  maxPushVelocityChange: 8
+  yawTorqueVelocityChange: 5.4
+  rearQuarterYawMultiplier: 1.7
+  angularDampingAfterContact: 0.82
+  verticalVelocityClamp: 2.2
+  debugMode: 0
+  debugDrawSeconds: 0.35
 --- !u!114 &616438850191443198
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -532,11 +557,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KartPowerUser
   inventory: {fileID: 5102941980696658742}
   kart: {fileID: 557555256139649974}
-  shieldVisual: {fileID: 0}
+  shieldVisual: {fileID: 7838859324014391471}
   identity: {fileID: 0}
   localRig: {fileID: 0}
   shieldDuration: 4
   shieldBlockVFXPrefab: {fileID: 0}
+  shieldBlockVFXFallbackLifetime: 1.5
   rocketProjectilePrefab: {fileID: 7186750064376574076, guid: e96a0f02ee0ac654f857c5a420d8f29a, type: 3}
   rocketEquippedPrefab: {fileID: 4250853822560015088, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
   explosionVFXPrefab: {fileID: 2433282508537954060, guid: a0b6e1ed3240b4947b27b773e5333e28, type: 3}
@@ -550,7 +576,7 @@ MonoBehaviour:
   ufoMagicCirclePrefab: {fileID: 3377181292992421420, guid: 48c5715f9603c3842a353516a8baefbb, type: 3}
   ufoMissVFXPrefab: {fileID: 7647375919561907788, guid: 035ce8c9cfc34104991ce416daf8aebe, type: 3}
   ufoEquippedSocket: {fileID: 0}
-  ufoSocketLocalPosition: {x: 0, y: 1.9, z: 0}
+  ufoSocketLocalPosition: {x: 0, y: 0, z: 0}
   ufoLaunchForwardOffset: 1.2
   useKey: 19
 --- !u!114 &4236779978090343101
@@ -724,7 +750,8 @@ MonoBehaviour:
   fitMultiplier: 1.15
   manualScale: 0
   rootLocalOffset: {x: 0, y: 0, z: 0}
-  groundSink: 0.4
+  verticalOffset: -0.18
+  groundSink: 0.46
   prefabEulerOffset: {x: 0, y: 0, z: 0}
   ignoreNameContains:
   - Shield

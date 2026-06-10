@@ -10,6 +10,7 @@ public class KartController : MonoBehaviour
     [Header("Referências")]
     [SerializeField] private Rigidbody rb;
     [SerializeField] private KartSuspension suspension;
+    [SerializeField] private KartArcadeCollisionResponse arcadeCollisionResponse;
 
     [Header("Velocidade")]
     [SerializeField] private float maxForwardSpeedKmh = 200f;
@@ -154,11 +155,6 @@ public class KartController : MonoBehaviour
     [SerializeField] private float collisionGlideMinSpeed = 2f;
     [Tooltip("Velocidade com que o sinal de impacto (usado pela câmera) decai.")]
     [SerializeField] private float impactDecaySpeed = 2.6f;
-    [Tooltip("ARCADE: fração da velocidade preservada ao esbarrar em OUTRO kart (1 = não perde nada).")]
-    [SerializeField, Range(0.5f, 1f)] private float carBumpRetention = 0.92f;
-    [Tooltip("ARCADE: empurrão leve (m/s) ao esbarrar em outro kart, para 'esbarrão' em vez de parada seca.")]
-    [SerializeField] private float carBumpPush = 4f;
-
     private float recentImpact01;
     public float RecentImpact01 => recentImpact01;
 
@@ -265,6 +261,12 @@ public class KartController : MonoBehaviour
 
         if (suspension == null)
             suspension = GetComponent<KartSuspension>();
+
+        if (arcadeCollisionResponse == null)
+            arcadeCollisionResponse = GetComponent<KartArcadeCollisionResponse>();
+
+        if (arcadeCollisionResponse == null)
+            arcadeCollisionResponse = gameObject.AddComponent<KartArcadeCollisionResponse>();
 
         localRig = GetComponent<KartLocalRig>();
 
@@ -1278,32 +1280,19 @@ public class KartController : MonoBehaviour
         if (blockingNormal.y >= collisionGroundNormalY)
             return;
 
-        // Esbarrão ARCADE entre karts: preserva quase toda a velocidade e dá um empurrão leve
-        // na direção da normal, em vez de parar seco (autoridade única do contato kart-a-kart;
-        // KartCollision ignora outros karts para não punir em dobro).
-        if (collision.rigidbody != null && collision.rigidbody.GetComponent<KartController>() != null)
+        KartController otherKart = collision.rigidbody != null ? collision.rigidbody.GetComponent<KartController>() : null;
+        if (otherKart != null && otherKart != this)
         {
-            // O solver de física já removeu energia neste contato ANTES deste callback rodar.
-            // Por isso restauramos o movimento a partir da velocidade PRÉ-impacto (capturada no
-            // fim do FixedUpdate anterior): o esbarrão perde só (1 - carBumpRetention) da
-            // velocidade tangencial, em vez de parar seco no toque lateral.
-            Vector3 preImpactVelocity = transform.TransformDirection(previousLocalVelocity);
-            Vector3 referenceVelocity = preImpactVelocity.sqrMagnitude > velocity.sqrMagnitude
-                ? preImpactVelocity
-                : velocity;
-
-            Vector3 alongCar = Vector3.ProjectOnPlane(referenceVelocity, blockingNormal);
-            Vector3 newVelocity = alongCar * carBumpRetention;
-            newVelocity.y = velocity.y; // preserva a componente vertical atual (gravidade/suspensão)
-            rb.linearVelocity = newVelocity;
-            rb.AddForce(blockingNormal * carBumpPush, ForceMode.VelocityChange);
-
-            // Amortece o giro brusco que o contato gera (evita o kart "rodar" no esbarrão).
-            Vector3 angular = rb.angularVelocity;
-            angular.y *= 0.45f;
-            rb.angularVelocity = angular;
-
-            recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, worstInto / Mathf.Max(1f, GetCurrentMaxForwardSpeedMps())));
+            if (arcadeCollisionResponse != null &&
+                arcadeCollisionResponse.TryHandleCollision(
+                    collision,
+                    otherKart,
+                    transform.TransformDirection(previousLocalVelocity),
+                    GetCurrentMaxForwardSpeedMps(),
+                    out float kartImpact01))
+            {
+                recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, kartImpact01));
+            }
             return;
         }
 

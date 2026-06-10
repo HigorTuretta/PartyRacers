@@ -29,8 +29,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 5731488291587083408}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6315313594139559345
@@ -45,106 +44,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b27dd7f96a170c94e925c5b1e50cec2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UFOSwapProjectile
-  speed: 52
-  lifetime: 7
-  maxDistance: 130
-  radius: 0.8
+  speed: 58
+  lifetime: 18
+  maxDistance: 500
+  radius: 4
   collisionMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  homingTurnRate: 140
-  hoverHeight: 1.6
-  heightAdjustSpeed: 14
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  homingTurnRate: 0
+  hoverHeight: 1.65
+  heightAdjustSpeed: 16
   groundMask:
     serializedVersion: 2
     m_Bits: 4294967295
   groundNormalMinY: 0.55
-  maxBounces: 2
+  allowOwnerHitAfterIgnore: 1
+  ignoreOwnerTime: 0.45
+  ignoreOwnerDistance: 5
+  maxBounces: 4
   bounceSpeedRetention: 0.95
   boingVFXPrefab: {fileID: 8547867254204328264, guid: c8538b28dffcefd45aade4380d4448a9, type: 3}
   boingScale: 1
   modelScale: 0.35
-  spinSpeed: 320
-  bobAmplitude: 0.15
+  spinSpeed: 340
+  bobAmplitude: 0.12
   bobSpeed: 4
   captureRiseHeight: 2.4
-  captureRiseDuration: 0.55
-  swapDelay: 1.5
-  magicCirclePrefab: {fileID: 3377181292992421420, guid: 48c5715f9603c3842a353516a8baefbb, type: 3}
+  captureRiseDuration: 0.45
+  swapDelay: 1.2
+  magicCirclePrefab: {fileID: 3744133877081091469, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
   magicCircleLinger: 0.6
-  missVFXPrefab: {fileID: 7647375919561907788, guid: 035ce8c9cfc34104991ce416daf8aebe, type: 3}
-  missVFXScale: 1
---- !u!1001 &4772209535025693938
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 8816890500216162807}
-    m_Modifications:
-    - target: {fileID: 503222116013560536, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_Name
-      value: Model
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.5161041
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.5161041
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 0.5161041
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -5.540706
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 3.962558
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -30.479666
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
---- !u!4 &5731488291587083408 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 986320709807212642, guid: 96aeffe1bfd1d4b04908e4a5d7e36d36, type: 3}
-  m_PrefabInstance: {fileID: 4772209535025693938}
-  m_PrefabAsset: {fileID: 0}
+  trailPrefab: {fileID: 0}
+  trailLocalOffset: {x: 0, y: -0.05, z: -0.65}
+  trailLocalEuler: {x: 90, y: 0, z: 0}
+  trailLingerAfterFinish: 0.9
+  impactVFXPrefab: {fileID: 2708598583397607911, guid: 027c6af196b1698468241c3690c28d03, type: 3}
+  blockVFXPrefab: {fileID: 2708598583397607911, guid: 027c6af196b1698468241c3690c28d03, type: 3}
+  disappearVFXPrefab: {fileID: 2708598583397607911, guid: 027c6af196b1698468241c3690c28d03, type: 3}
+  missVFXPrefab: {fileID: 2708598583397607911, guid: 027c6af196b1698468241c3690c28d03, type: 3}
+  vfxFallbackLifetime: 2
+  disappearVFXScale: 1
+  destroyDelayAfterFinish: 0
+  debugMode: 0
+  debugPathColor: {r: 0, g: 1, b: 1, a: 1}
+  debugHitColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}

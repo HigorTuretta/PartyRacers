@@ -16,6 +16,7 @@ public class KartPowerUser : MonoBehaviour
     [Header("Escudo")]
     [SerializeField] private float shieldDuration = 4f;
     [SerializeField] private GameObject shieldBlockVFXPrefab;
+    [SerializeField, Min(0.1f)] private float shieldBlockVFXFallbackLifetime = 1.5f;
 
     [Header("Foguete")]
     [SerializeField] private GameObject rocketProjectilePrefab;
@@ -40,7 +41,7 @@ public class KartPowerUser : MonoBehaviour
     [Tooltip("Efeito ativado dentro do disco quando ele não acerta ninguém (ex.: AoE slash blue).")]
     [SerializeField] private GameObject ufoMissVFXPrefab;
     [SerializeField] private Transform ufoEquippedSocket;
-    [SerializeField] private Vector3 ufoSocketLocalPosition = new Vector3(0f, 1.9f, 0f);
+    [SerializeField] private Vector3 ufoSocketLocalPosition = Vector3.zero;
     [Tooltip("Quão à frente do socket o disco nasce ao disparar.")]
     [SerializeField] private float ufoLaunchForwardOffset = 1.2f;
 
@@ -115,8 +116,6 @@ public class KartPowerUser : MonoBehaviour
 
         KartPowerType power = inventory.CurrentPower;
         GameObject target = ResolvePowerTarget(power);
-        if (power == KartPowerType.SwapPosition && target == null)
-            return false;
 
         inventory.ConsumeCurrentPower();
         RaceHudEvents.Raise(gameObject, target, RaceHudEventKind.PowerUsed, power);
@@ -177,7 +176,7 @@ public class KartPowerUser : MonoBehaviour
 
         GameObject vfx = blockVFXPrefab != null ? blockVFXPrefab : shieldBlockVFXPrefab;
         if (vfx != null)
-            Instantiate(vfx, impactPoint, Quaternion.identity);
+            PowerVFXUtility.SpawnOneShot(vfx, impactPoint, Quaternion.identity, shieldBlockVFXFallbackLifetime);
     }
 
     // ------------------------------------------------------------------ Foguete
@@ -320,6 +319,15 @@ public class KartPowerUser : MonoBehaviour
         // Colliders desligados no idle: o disco equipado não pode disparar ItemBox/checkpoints.
         foreach (Collider col in equippedUfoInstance.GetComponentsInChildren<Collider>(true))
             col.enabled = false;
+
+        foreach (Rigidbody body in equippedUfoInstance.GetComponentsInChildren<Rigidbody>(true))
+        {
+            body.isKinematic = true;
+            body.detectCollisions = false;
+        }
+
+        foreach (TrailRenderer trail in equippedUfoInstance.GetComponentsInChildren<TrailRenderer>(true))
+            trail.enabled = false;
 
         if (equippedUfoInstance.GetComponent<UfoEquippedVisual>() == null)
             equippedUfoInstance.AddComponent<UfoEquippedVisual>();

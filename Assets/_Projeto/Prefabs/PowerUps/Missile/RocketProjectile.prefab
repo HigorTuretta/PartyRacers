@@ -10,15 +10,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3581982019086534730, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 151.95178
       objectReference: {fileID: 0}
     - target: {fileID: 3581982019086534730, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 19.849285
       objectReference: {fileID: 0}
     - target: {fileID: 3581982019086534730, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -188.81439
       objectReference: {fileID: 0}
     - target: {fileID: 3581982019086534730, guid: 951cef78dd3bf9746a5b10d777394a79, type: 3}
       propertyPath: m_LocalRotation.w
@@ -77,34 +77,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 171c508d6b002c54787ce7f1e55e7765, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RocketProjectile
-  speed: 52
-  lifetime: 6
-  maxDistance: 110
-  radius: 0.45
+  speed: 170
+  lifetime: 17
+  maxDistance: 350
+  radius: 0.85
   collisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  obstacleMask:
     serializedVersion: 2
     m_Bits: 4294967295
   keepHorizontal: 1
   maintainGroundHeight: 1
-  hoverHeight: 1.1
-  heightAdjustSpeed: 12
+  hoverHeight: 1.15
+  heightAdjustSpeed: 16
   groundMask:
     serializedVersion: 2
     m_Bits: 4294967295
   groundNormalMinY: 0.55
-  maxBounces: 3
+  allowOwnerHitAfterIgnore: 1
+  ignoreOwnerTime: 0.35
+  ignoreOwnerDistance: 4
+  maxBounces: 4
   bounceSpeedRetention: 0.96
   forwardAxisOffset: {x: 90, y: 0, z: 0}
   modelScale: 0.07
   wobbleAngle: 8
   wobbleSpeed: 15
   spinOutDuration: 1.6
-  knockbackForce: 14
-  knockbackTorque: 12
+  knockbackForce: 16
+  knockbackTorque: 14
   explosionVFXPrefab: {fileID: 2433282508537954060, guid: a0b6e1ed3240b4947b27b773e5333e28, type: 3}
+  blockVFXPrefab: {fileID: 8547867254204328264, guid: c8538b28dffcefd45aade4380d4448a9, type: 3}
   boingVFXPrefab: {fileID: 8547867254204328264, guid: c8538b28dffcefd45aade4380d4448a9, type: 3}
   boingScale: 1
   trailPrefab: {fileID: 8764043878647920493, guid: e0dce86fb77070c409ed9906591c2b8e, type: 3}
   trailLocalOffset: {x: -0.0135, y: -0.364, z: -0.0002}
   trailLocalEuler: {x: 90, y: 90, z: 0}
   trailLingerAfterExplode: 1.2
+  vfxFallbackLifetime: 2
+  destroyDelayAfterImpact: 0
+  impactSound: {fileID: 0}
+  bounceSound: {fileID: 0}
+  blockSound: {fileID: 0}
+  soundVolume: 0.85
+  debugMode: 0
+  debugPathColor: {r: 1, g: 0, b: 0, a: 1}
+  debugHitColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
