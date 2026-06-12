@@ -36,6 +36,12 @@ namespace PartyRacers.AI
         [Tooltip("Tempo após a liberação da corrida em que o bot acelera full, sem freio/handbrake.")]
         [SerializeField] private float launchFullThrottleSeconds = 1.4f;
 
+        [Header("Linha de corrida (variação por bot)")]
+        [Tooltip("Deslocamento lateral máximo (m) da linha de corrida. Cada bot recebe um offset " +
+                 "próprio (por seed) dentro de ±este valor — o pelotão se espalha pela pista em vez " +
+                 "de todos disputarem o mesmo trilho. Reduzido automaticamente em curvas.")]
+        [SerializeField] private float maxRacingLineOffset = 2.2f;
+
         [Header("Wall avoidance")]
         [SerializeField] private LayerMask wallProbeMask = ~0;
         [SerializeField] private float wallProbeHeight = 0.8f;
@@ -84,6 +90,16 @@ namespace PartyRacers.AI
         [Tooltip("Se transform.up.y ficar abaixo disso (capotado/de lado) por 'flippedSeconds', respawna.")]
         [SerializeField, Range(-1f, 1f)] private float flippedUpThreshold = 0.35f;
         [SerializeField] private float flippedSeconds = 1.5f;
+        [Tooltip("Watchdog final: parado (qualquer motivo/input) por este tempo → respawn direto. " +
+                 "Garante que nenhum bot fique preso indefinidamente (ex.: oscilando freio/ré num fosso).")]
+        [SerializeField] private float hardStuckSeconds = 8f;
+        [Tooltip("Se o bot ficar afastado da rota rastreada por este tempo (s), refaz a busca global " +
+                 "do trecho mais próximo. É o que faz o bot que RAMPOU e caiu em outro pedaço da pista " +
+                 "adotar o trecho onde caiu e dar a volta, em vez de socar a parede tentando voltar.")]
+        [SerializeField] private float wrongSectionResearchSeconds = 4f;
+        [Tooltip("Sem passar NENHUM checkpoint novo por este tempo (s) → respawn no último checkpoint. " +
+                 "Pega qualquer caso de 'andando sem sair do lugar' (preso na parede, rodando em círculo...).")]
+        [SerializeField] private float checkpointStallSeconds = 30f;
 
         private KartController kart;
         private KartRaceTracker tracker;
@@ -94,6 +110,11 @@ namespace PartyRacers.AI
         private int seed;
 
         private float stuckTimer;
+        private float hardStuckTimer;
+        private float offPathTimer;
+        private float lastCheckpointProgress = -1f;
+        private float lastCheckpointProgressTime;
+        private float racingLineOffset;
         private float reverseTimer;
         private int stuckEscalation;
         private float offTrackTimer;
@@ -127,6 +148,13 @@ namespace PartyRacers.AI
             if (matchKartMaxSpeed && kart != null && kart.MaxForwardSpeedKmh > 1f)
                 maxStraightSpeedKmh = kart.MaxForwardSpeedKmh * kartMaxSpeedFraction;
             wanderPhase = (seed % 1000) * 0.137f;
+
+            // Offset lateral próprio deste bot (determinístico por seed): espalha o pelotão
+            // pela largura da pista — cada bot "tem a sua linha" em vez de todos no mesmo trilho.
+            uint offsetHash = (uint)seed * 2654435761u; // hash de Knuth, barato e bem distribuído
+            float offset01 = (offsetHash % 1000u) / 999f;
+            racingLineOffset = (offset01 * 2f - 1f) * maxRacingLineOffset;
+
             ResetRecoveryState();
             handbrakeHeldLastRead = false;
             lastInput = KartInputState.Neutral;
@@ -180,6 +208,14 @@ namespace PartyRacers.AI
             if (!wasControlEnabled)
                 OnControlEnabled();
 
+            // Voando após pancada de obstáculo: input neutro (o KartController ignora forças
+            // de controle durante o knockback de qualquer forma).
+            if (kart.IsInKnockback)
+            {
+                handbrakeHeldLastRead = false;
+                return StoreInput(KartInputState.Neutral);
+            }
+
             float dt = Time.deltaTime;
             driftPulseTimer = Mathf.Max(0f, driftPulseTimer - dt);
             driftCooldownTimer = Mathf.Max(0f, driftCooldownTimer - dt);
@@ -212,6 +248,16 @@ namespace PartyRacers.AI
             frame = path.GetPathFrame(pos, lookAhead);
 
             Vector3 aim = frame.AimPoint;
+
+            // Linha de corrida própria do bot: desloca a mira lateralmente. Encolhe em curvas
+            // (UpcomingTurn01) e em recuperação (offPath01) para não jogar o bot na parede.
+            if (Mathf.Abs(racingLineOffset) > 0.01f)
+            {
+                Vector3 right = Vector3.Cross(Vector3.up, frame.Tangent);
+                float offsetScale = (1f - frame.UpcomingTurn01 * 0.7f) * (1f - offPath01);
+                aim += right * (racingLineOffset * offsetScale);
+            }
+
             if (offPath01 > 0f)
             {
                 Vector3 recoveryAim = frame.NearestPoint + frame.Tangent * Mathf.Max(5f, lookAhead * 0.55f);
@@ -343,6 +389,10 @@ namespace PartyRacers.AI
         private void ResetRecoveryState()
         {
             stuckTimer = 0f;
+            hardStuckTimer = 0f;
+            offPathTimer = 0f;
+            lastCheckpointProgress = -1f;
+            lastCheckpointProgressTime = Time.time;
             reverseTimer = 0f;
             stuckEscalation = 0;
             offTrackTimer = 0f;
@@ -381,10 +431,77 @@ namespace PartyRacers.AI
 
             bool inLaunchGrace = Time.time - controlEnabledTime < launchRecoveryGraceSeconds;
 
-            UpdateFlippedDetection(dt);
-            UpdateStuckDetection(dt, inLaunchGrace);
-            UpdateNoProgressDetection(dt, inLaunchGrace);
+            // Sendo arremessado por um obstáculo: voar/cambalhotar é esperado — nada de
+            // detectar capotamento/parado durante o voo (a recuperação age após o pouso).
+            bool inKnockback = kart.IsInKnockback;
+            if (inKnockback)
+                flippedTimer = 0f;
+
+            if (!inKnockback)
+                UpdateFlippedDetection(dt);
+
+            UpdateStuckDetection(dt, inLaunchGrace || inKnockback);
+            UpdateHardStuckWatchdog(dt, inLaunchGrace || inKnockback);
+            UpdateNoProgressDetection(dt, inLaunchGrace || inKnockback);
             UpdateOffTrackDetection(dt);
+            UpdateCheckpointStallDetection(inLaunchGrace || inKnockback);
+        }
+
+        // Sem avançar NENHUM checkpoint por muito tempo = andando sem sair do lugar (preso numa
+        // parede tentando ir na direção do checkpoint, rodando em loop no trecho errado etc.).
+        // Respawna no último checkpoint — garantia final de progresso para qualquer pista.
+        private void UpdateCheckpointStallDetection(bool paused)
+        {
+            if (tracker == null || tracker.RaceFinished || checkpointStallSeconds <= 0f)
+                return;
+
+            float progress = tracker.CurrentLap * 1000f + tracker.NextCheckpointIndex;
+            if (!Mathf.Approximately(progress, lastCheckpointProgress))
+            {
+                lastCheckpointProgress = progress;
+                lastCheckpointProgressTime = Time.time;
+                return;
+            }
+
+            if (paused)
+            {
+                lastCheckpointProgressTime = Mathf.Max(lastCheckpointProgressTime, Time.time - checkpointStallSeconds * 0.5f);
+                return;
+            }
+
+            if (Time.time - lastCheckpointProgressTime >= checkpointStallSeconds)
+            {
+                RespawnRecovery();
+                lastCheckpointProgressTime = Time.time;
+            }
+        }
+
+        // Watchdog FINAL, independente de input: o stuck normal exige que o bot esteja tentando
+        // acelerar — mas um bot oscilando entre freio/ré (ex.: caiu num fosso, mira atrás dele)
+        // nunca dispara aquela detecção e ficava parado para sempre.
+        //
+        // Acumulador com VAZAMENTO (não zera): num scrum de karts os empurrões fazem a velocidade
+        // dar picos curtos acima do limiar — com reset duro o timer nunca enchia e o bolo de karts
+        // ficava eterno. Aqui andar rápido de verdade drena o acumulador aos poucos; jitter de
+        // colisão não consegue mais "alimentar" o watchdog para sempre.
+        private void UpdateHardStuckWatchdog(float dt, bool inLaunchGrace)
+        {
+            if (inLaunchGrace || hardStuckSeconds <= 0f)
+            {
+                hardStuckTimer = 0f;
+                return;
+            }
+
+            if (kart.SpeedKmh < stuckSpeedKmh * 2f)
+                hardStuckTimer += dt;
+            else
+                hardStuckTimer = Mathf.Max(0f, hardStuckTimer - dt * 1.5f);
+
+            if (hardStuckTimer >= hardStuckSeconds)
+            {
+                RespawnRecovery();
+                hardStuckTimer = 0f;
+            }
         }
 
         // Capotado / muito inclinado: não há recuperação por input — respawn direto.
@@ -408,7 +525,10 @@ namespace PartyRacers.AI
         // Parado tentando acelerar: recuperação gradual (ré curta → ré maior → respawn).
         private void UpdateStuckDetection(float dt, bool inLaunchGrace)
         {
-            bool tryingForward = lastInput.Throttle > stuckThrottleThreshold && lastInput.Brake < 0.75f;
+            // Conta também o freio como "tentando se mover": um bot com a mira atrás de si fica
+            // segurando freio/ré e antes não disparava esta detecção (ficava preso oscilando).
+            bool tryingForward = (lastInput.Throttle > stuckThrottleThreshold && lastInput.Brake < 0.75f)
+                || lastInput.Brake > stuckThrottleThreshold;
 
             if (!inLaunchGrace && tryingForward && kart.SpeedKmh < stuckSpeedKmh)
             {
@@ -444,7 +564,8 @@ namespace PartyRacers.AI
             Vector3 delta = transform.position - progressAnchor;
             delta.y = 0f;
 
-            if (delta.magnitude < noProgressMinDistance && lastInput.Throttle > stuckThrottleThreshold)
+            bool tryingToMove = lastInput.Throttle > stuckThrottleThreshold || lastInput.Brake > stuckThrottleThreshold;
+            if (delta.magnitude < noProgressMinDistance && tryingToMove)
                 EscalateRecovery();
 
             progressAnchor = transform.position;
@@ -469,6 +590,24 @@ namespace PartyRacers.AI
             else
             {
                 offTrackTimer = Mathf.Max(0f, offTrackTimer - dt);
+            }
+
+            // Afastado do trecho RASTREADO há alguns segundos (ex.: rampou e caiu em outro pedaço
+            // da pista): joga fora o hint de continuidade e procura na rota inteira. Se o bot
+            // estiver em cima de outro trecho válido, ele o adota, segue por ele e dá a volta —
+            // em vez de ficar dando de cara na parede tentando voltar ao trecho antigo.
+            if (dist > pathRecoveryDistance)
+            {
+                offPathTimer += dt;
+                if (offPathTimer >= wrongSectionResearchSeconds)
+                {
+                    path.ForceGlobalResearch();
+                    offPathTimer = 0f;
+                }
+            }
+            else
+            {
+                offPathTimer = 0f;
             }
         }
 

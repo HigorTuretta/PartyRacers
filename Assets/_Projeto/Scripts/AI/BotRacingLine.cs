@@ -8,9 +8,19 @@ using UnityEditor;
 namespace PartyRacers.AI
 {
     /// <summary>
-    /// Optional hand-authored racing line for bots.
-    /// Create this object in the race scene, add child transforms in driving order, and move them
-    /// along the center/racing line of the road. BotPathFollower uses this line before checkpoints.
+    /// Linha de corrida autorada à mão para os bots.
+    ///
+    /// COMO MONTAR EM UMA PISTA NOVA:
+    /// 1. Crie um GameObject vazio "BotRacingLine" e adicione este componente.
+    /// 2. Crie FILHOS vazios em ordem de condução marcando o traçado (P00, P01, ...).
+    ///    Use o menu de contexto "AI/Create Points From Race Checkpoints" para começar
+    ///    a partir dos checkpoints e depois refine adicionando pontos entre eles.
+    /// 3. Mantenha os pontos no MEIO da pista (ou na linha de corrida desejada), próximos
+    ///    do chão. Use "AI/Snap Points To Ground" para colar tudo no asfalto.
+    /// 4. Espaçamento recomendado: 15–40 m em retas, 8–15 m em curvas. A curva amarela
+    ///    desenhada na Scene View é EXATAMENTE o caminho que os bots vão seguir.
+    /// 5. O Inspector valida a rota automaticamente e lista problemas (ponto sem chão,
+    ///    segmento longo demais, checkpoint fora da rota etc.). Corrija o que aparecer.
     ///
     /// ATALHOS / ROTAS ALTERNATIVAS: crie um GameObject FILHO deste objeto com o componente
     /// BotRouteBranch (os filhos do branch desenham a rota alternativa). Filhos com BotRouteBranch
@@ -28,17 +38,71 @@ namespace PartyRacers.AI
         [Tooltip("Connects the last point back to the first point.")]
         [SerializeField] private bool loop = true;
 
+        [Header("Validação")]
+        [Tooltip("Altura máxima (m) tolerada de um ponto acima do chão antes de virar aviso.")]
+        [SerializeField] private float maxPointHeightAboveGround = 3f;
+        [Tooltip("Comprimento máximo (m) recomendado de um segmento entre pontos.")]
+        [SerializeField] private float maxSegmentLength = 80f;
+        [Tooltip("Distância máxima (m) entre um RaceCheckpoint e a rota para considerá-lo coberto.")]
+        [SerializeField] private float checkpointCoverageDistance = 25f;
+
         [Header("Gizmos")]
         [SerializeField] private Color gizmoColor = new Color(1f, 0.85f, 0.1f, 1f);
         [SerializeField] private Color selectedColor = new Color(0.1f, 0.9f, 1f, 1f);
+        [SerializeField] private Color issueColor = new Color(1f, 0.25f, 0.2f, 1f);
         [SerializeField] private float pointRadius = 1.2f;
         [SerializeField] private float lineYOffset = 0.35f;
         [SerializeField] private bool drawDirectionArrows = true;
         [SerializeField] private bool drawLabelsWhenSelected = true;
+        [Tooltip("Desenha a curva suavizada que os bots realmente seguem (recomendado).")]
+        [SerializeField] private bool drawSmoothedCurve = true;
 
         public bool Loop => loop;
+        public float MaxPointHeightAboveGround => maxPointHeightAboveGround;
+        public float MaxSegmentLength => maxSegmentLength;
+        public float CheckpointCoverageDistance => checkpointCoverageDistance;
 
         private readonly List<Vector3> worldBuffer = new List<Vector3>();
+
+        // ------------------------------------------------------------------ rota compartilhada (runtime)
+        // Cache estático usado por sistemas fora da IA (ex.: KartRespawn detecta queda abaixo da
+        // pista comparando a altura do kart com a altura da rota). Construído uma vez por cena.
+        private static BotRacingLine runtimeSource;
+        private static BotPath runtimePath;
+
+        /// <summary>
+        /// Ponto mais próximo da rota da cena (planar). Retorna false se a cena não tem
+        /// BotRacingLine válida. Barato o suficiente para checagens periódicas (não por frame).
+        /// </summary>
+        public static bool TryGetNearestRoutePoint(Vector3 position, out Vector3 nearestOnRoute)
+        {
+            if (runtimeSource == null)
+            {
+                runtimeSource = FindAnyObjectByType<BotRacingLine>(FindObjectsInactive.Exclude);
+                runtimePath = null;
+            }
+
+            if (runtimeSource == null || !runtimeSource.HasEnoughPoints())
+            {
+                nearestOnRoute = default;
+                return false;
+            }
+
+            if (runtimePath == null)
+            {
+                runtimePath = new BotPath();
+                runtimePath.BuildFrom(runtimeSource.GetWorldPoints(), runtimeSource.loop, 6f);
+            }
+
+            if (!runtimePath.IsValid)
+            {
+                nearestOnRoute = default;
+                return false;
+            }
+
+            nearestOnRoute = runtimePath.FindNearestGlobal(position).Point;
+            return true;
+        }
 
         public List<Vector3> GetWorldPoints()
         {
@@ -88,6 +152,30 @@ namespace PartyRacers.AI
             return branches;
         }
 
+        /// <summary>Transforms dos pontos do traçado principal, na ordem de condução.</summary>
+        public List<Transform> GetPointTransformList()
+        {
+            var list = new List<Transform>();
+            if (useChildrenAsPoints)
+            {
+                foreach (Transform child in transform)
+                {
+                    if (child != null && child.GetComponent<BotRouteBranch>() == null)
+                        list.Add(child);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < points.Count; i++)
+                {
+                    if (points[i] != null)
+                        list.Add(points[i]);
+                }
+            }
+
+            return list;
+        }
+
         private int CountValidPoints()
         {
             int count = 0;
@@ -112,8 +200,291 @@ namespace PartyRacers.AI
         }
 
 #if UNITY_EDITOR
+        // ------------------------------------------------------------------ validação (Editor)
+        public enum IssueSeverity { Info, Warning, Error }
+
+        public struct RouteIssue
+        {
+            public IssueSeverity Severity;
+            public string Message;
+            public Vector3 Position;
+            public bool HasPosition;
+
+            public RouteIssue(IssueSeverity severity, string message)
+            {
+                Severity = severity;
+                Message = message;
+                Position = Vector3.zero;
+                HasPosition = false;
+            }
+
+            public RouteIssue(IssueSeverity severity, string message, Vector3 position)
+            {
+                Severity = severity;
+                Message = message;
+                Position = position;
+                HasPosition = true;
+            }
+        }
+
+        // Cache do preview/validação para não recalcular a cada gizmo frame.
+        private BotPath cachedPreviewPath;
+        private List<RouteIssue> cachedIssues;
+        private HashSet<int> cachedIssuePointIndices;
+        private int cachedHash;
+
+        /// <summary>Curva suavizada (a mesma que o BotPathFollower constrói). Pode ser null.</summary>
+        public BotPath GetEditorPreviewPath()
+        {
+            RefreshEditorCache();
+            return cachedPreviewPath;
+        }
+
+        /// <summary>Valida a rota e devolve a lista de problemas encontrados (Editor).</summary>
+        public List<RouteIssue> GetValidationIssues()
+        {
+            RefreshEditorCache();
+            return cachedIssues;
+        }
+
+        /// <summary>Força revalidação no próximo acesso (ex.: após mover pontos por script).</summary>
+        public void InvalidateEditorCache()
+        {
+            cachedHash = 0;
+            cachedPreviewPath = null;
+            cachedIssues = null;
+            cachedIssuePointIndices = null;
+        }
+
+        private void RefreshEditorCache()
+        {
+            int hash = ComputeRouteHash();
+            if (hash == cachedHash && cachedIssues != null && cachedPreviewPath != null)
+                return;
+
+            cachedHash = hash;
+            cachedPreviewPath = new BotPath();
+            cachedPreviewPath.BuildFrom(GetWorldPoints(), loop, 4f);
+
+            cachedIssues = new List<RouteIssue>();
+            cachedIssuePointIndices = new HashSet<int>();
+            RunValidation(cachedIssues, cachedIssuePointIndices);
+        }
+
+        private int ComputeRouteHash()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + (loop ? 1 : 0);
+                foreach (Vector3 p in GetWorldPoints())
+                {
+                    hash = hash * 31 + Mathf.RoundToInt(p.x * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(p.y * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(p.z * 10f);
+                }
+
+                foreach (BotRouteBranch branch in GetBranches())
+                {
+                    foreach (Vector3 p in branch.GetWorldPoints())
+                    {
+                        hash = hash * 31 + Mathf.RoundToInt(p.x * 10f);
+                        hash = hash * 31 + Mathf.RoundToInt(p.z * 10f);
+                    }
+                }
+
+                return hash;
+            }
+        }
+
+        private void RunValidation(List<RouteIssue> issues, HashSet<int> issuePoints)
+        {
+            List<Vector3> pts = GetWorldPoints();
+
+            if (pts.Count < 3)
+            {
+                issues.Add(new RouteIssue(IssueSeverity.Error,
+                    $"A rota precisa de pelo menos 3 pontos (tem {pts.Count}). Com menos que isso os bots usam o fallback de checkpoints."));
+                return;
+            }
+
+            ValidatePointsAgainstGround(pts, issues, issuePoints);
+            ValidateSegments(pts, issues, issuePoints);
+            ValidateCheckpointCoverage(issues);
+            ValidateBranches(issues);
+
+            if (!loop)
+                issues.Add(new RouteIssue(IssueSeverity.Info,
+                    "Loop desligado: a rota não fecha no primeiro ponto. Para pistas de circuito, ligue 'Loop'."));
+        }
+
+        private void ValidatePointsAgainstGround(List<Vector3> pts, List<RouteIssue> issues, HashSet<int> issuePoints)
+        {
+            for (int i = 0; i < pts.Count; i++)
+            {
+                Vector3 p = pts[i];
+                // Origem logo acima do ponto: evita falsos positivos com obstáculos suspensos
+                // sobre a pista (pás de moinho, pontes, faixas).
+                Vector3 origin = p + Vector3.up * 2f;
+
+                if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 300f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    // Sem chão a partir de +2 m: ou o ponto está fora da pista, ou está ENTERRADO
+                    // (a pista fica acima da origem do raio). Tenta de novo de mais alto.
+                    if (Physics.Raycast(p + Vector3.up * 25f, Vector3.down, out RaycastHit highHit, 300f, ~0, QueryTriggerInteraction.Ignore)
+                        && highHit.point.y > p.y + 0.5f)
+                    {
+                        issues.Add(new RouteIssue(IssueSeverity.Error,
+                            $"Ponto {i:00}: está {highHit.point.y - p.y:F1} m ABAIXO da pista ({highHit.collider.name}) — suba o ponto ou use 'Snap Points To Ground'.", p));
+                    }
+                    else
+                    {
+                        issues.Add(new RouteIssue(IssueSeverity.Error,
+                            $"Ponto {i:00}: sem chão abaixo (raycast não acertou nada). O ponto está fora da pista?", p));
+                    }
+
+                    issuePoints.Add(i);
+                    continue;
+                }
+
+                float dy = p.y - hit.point.y;
+                if (dy > maxPointHeightAboveGround)
+                {
+                    issues.Add(new RouteIssue(IssueSeverity.Warning,
+                        $"Ponto {i:00}: está {dy:F1} m acima do chão (máx. recomendado {maxPointHeightAboveGround:F0} m). Use 'Snap Points To Ground'.", p));
+                    issuePoints.Add(i);
+                }
+                else if (dy < -0.5f)
+                {
+                    issues.Add(new RouteIssue(IssueSeverity.Warning,
+                        $"Ponto {i:00}: está {-dy:F1} m ABAIXO da superfície detectada ({hit.collider.name}).", p));
+                    issuePoints.Add(i);
+                }
+            }
+        }
+
+        private void ValidateSegments(List<Vector3> pts, List<RouteIssue> issues, HashSet<int> issuePoints)
+        {
+            int count = pts.Count;
+            int segments = loop ? count : count - 1;
+
+            for (int i = 0; i < segments; i++)
+            {
+                Vector3 a = pts[i];
+                Vector3 b = pts[(i + 1) % count];
+                float length = BotPath.PlanarDistance(a, b);
+
+                if (length < 1.5f)
+                {
+                    issues.Add(new RouteIssue(IssueSeverity.Warning,
+                        $"Pontos {i:00} e {(i + 1) % count:00} estão muito próximos ({length:F1} m). Remova um deles.", a));
+                    issuePoints.Add(i);
+                }
+                else if (length > maxSegmentLength)
+                {
+                    issues.Add(new RouteIssue(IssueSeverity.Warning,
+                        $"Segmento {i:00}→{(i + 1) % count:00} tem {length:F0} m (máx. recomendado {maxSegmentLength:F0} m). " +
+                        "Adicione pontos intermediários para a curva não cortar fora da pista.",
+                        Vector3.Lerp(a, b, 0.5f)));
+                }
+
+                // Reversão brusca: a rota dobra sobre si mesma neste ponto.
+                Vector3 inDir = b - a;
+                Vector3 c = pts[(i + 2) % count];
+                Vector3 outDir = c - b;
+                inDir.y = 0f;
+                outDir.y = 0f;
+                bool lastOpenSegment = !loop && i >= segments - 1;
+                if (!lastOpenSegment && inDir.sqrMagnitude > 0.01f && outDir.sqrMagnitude > 0.01f)
+                {
+                    float angle = Vector3.Angle(inDir, outDir);
+                    if (angle > 120f)
+                    {
+                        issues.Add(new RouteIssue(IssueSeverity.Warning,
+                            $"Ponto {(i + 1) % count:00}: curva de {angle:F0}° — a rota dobra sobre si mesma. Ordem dos pontos está certa?",
+                            b));
+                        issuePoints.Add((i + 1) % count);
+                    }
+                }
+            }
+        }
+
+        private void ValidateCheckpointCoverage(List<RouteIssue> issues)
+        {
+            if (cachedPreviewPath == null || !cachedPreviewPath.IsValid)
+                return;
+
+            RaceCheckpoint[] checkpoints = FindObjectsByType<RaceCheckpoint>(FindObjectsInactive.Exclude);
+            foreach (RaceCheckpoint cp in checkpoints)
+            {
+                if (cp == null)
+                    continue;
+
+                BotPath.NearestResult nearest = cachedPreviewPath.FindNearestGlobal(cp.transform.position);
+                float distance = Mathf.Sqrt(nearest.SqrPlanarDistance);
+                if (distance > checkpointCoverageDistance)
+                {
+                    issues.Add(new RouteIssue(IssueSeverity.Error,
+                        $"Checkpoint {cp.CheckpointIndex} ('{cp.name}') está a {distance:F0} m da rota — os bots não vão passar por ele. " +
+                        "A rota está incompleta ou o checkpoint ficou fora do traçado.",
+                        cp.transform.position));
+                }
+            }
+        }
+
+        private void ValidateBranches(List<RouteIssue> issues)
+        {
+            if (cachedPreviewPath == null || !cachedPreviewPath.IsValid)
+                return;
+
+            foreach (Transform child in transform)
+            {
+                if (child == null)
+                    continue;
+
+                BotRouteBranch branch = child.GetComponent<BotRouteBranch>();
+                if (branch == null)
+                    continue;
+
+                List<Vector3> bpts = branch.GetWorldPoints();
+                if (bpts.Count < 2)
+                {
+                    issues.Add(new RouteIssue(IssueSeverity.Error,
+                        $"Branch '{branch.name}': precisa de pelo menos 2 pontos (tem {bpts.Count}).", child.position));
+                    continue;
+                }
+
+                BotPath.NearestResult entry = cachedPreviewPath.FindNearestGlobal(bpts[0]);
+                BotPath.NearestResult exit = cachedPreviewPath.FindNearestGlobal(bpts[bpts.Count - 1]);
+
+                float entryDistance = Mathf.Sqrt(entry.SqrPlanarDistance);
+                float exitDistance = Mathf.Sqrt(exit.SqrPlanarDistance);
+
+                if (entryDistance > 15f)
+                    issues.Add(new RouteIssue(IssueSeverity.Warning,
+                        $"Branch '{branch.name}': o PRIMEIRO ponto está a {entryDistance:F0} m da linha principal — aproxime-o do ponto de entrada.",
+                        bpts[0]));
+
+                if (exitDistance > 15f)
+                    issues.Add(new RouteIssue(IssueSeverity.Warning,
+                        $"Branch '{branch.name}': o ÚLTIMO ponto está a {exitDistance:F0} m da linha principal — aproxime-o do ponto de saída.",
+                        bpts[bpts.Count - 1]));
+
+                // Saída deve ficar À FRENTE da entrada no sentido da corrida.
+                if (loop && cachedPreviewPath.TotalLength > 1f)
+                {
+                    float ahead = Mathf.Repeat(exit.DistanceOnPath - entry.DistanceOnPath, cachedPreviewPath.TotalLength);
+                    if (ahead > cachedPreviewPath.TotalLength * 0.6f)
+                        issues.Add(new RouteIssue(IssueSeverity.Warning,
+                            $"Branch '{branch.name}': a saída projeta ATRÁS da entrada no sentido da corrida — os pontos podem estar em ordem invertida.",
+                            bpts[0]));
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------ ferramentas (Editor)
         [ContextMenu("AI/Create Points From Race Checkpoints")]
-        private void CreatePointsFromRaceCheckpoints()
+        public void CreatePointsFromRaceCheckpoints()
         {
             Undo.RegisterFullObjectHierarchyUndo(gameObject, "Create Bot Racing Line Points");
             ClearChildPoints();
@@ -133,36 +504,50 @@ namespace PartyRacers.AI
 
             useChildrenAsPoints = true;
             loop = true;
+            InvalidateEditorCache();
             EditorUtility.SetDirty(this);
         }
 
         [ContextMenu("AI/Snap Points To Ground")]
-        private void SnapPointsToGround()
+        public void SnapPointsToGround()
         {
             foreach (Transform point in GetPointTransforms())
             {
                 if (point == null)
                     continue;
 
-                Vector3 origin = point.position + Vector3.up * 30f;
-                if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 90f, ~0, QueryTriggerInteraction.Ignore))
-                    continue;
+                // Origem logo acima do ponto: não puxa o ponto para cima de obstáculos
+                // suspensos (pás de moinho, pontes) que estejam sobre a pista.
+                Vector3 origin = point.position + Vector3.up * 2f;
+                if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 300f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    // Ponto enterrado: a pista está acima da origem — tenta de mais alto.
+                    if (!Physics.Raycast(point.position + Vector3.up * 25f, Vector3.down, out hit, 300f, ~0, QueryTriggerInteraction.Ignore))
+                        continue;
+                }
 
                 Undo.RecordObject(point, "Snap Bot Racing Line Point");
                 point.position = hit.point + Vector3.up * 0.05f;
                 EditorUtility.SetDirty(point);
             }
+
+            InvalidateEditorCache();
         }
 
         [ContextMenu("AI/Renumber Child Points")]
-        private void RenumberChildPoints()
+        public void RenumberChildPoints()
         {
+            int mainIndex = 0;
             for (int i = 0; i < transform.childCount; i++)
             {
                 Transform child = transform.GetChild(i);
+                if (child.GetComponent<BotRouteBranch>() != null)
+                    continue;
+
                 Undo.RecordObject(child.gameObject, "Renumber Bot Racing Line Point");
-                child.name = $"P{i:00}";
+                child.name = $"P{mainIndex:00}";
                 EditorUtility.SetDirty(child.gameObject);
+                mainIndex++;
             }
         }
 
@@ -212,10 +597,43 @@ namespace PartyRacers.AI
             if (pts.Count == 0)
                 return;
 
-            Gizmos.color = selected ? selectedColor : gizmoColor;
+            Color baseColor = selected ? selectedColor : gizmoColor;
+
+#if UNITY_EDITOR
+            // Curva suavizada = caminho REAL dos bots.
+            if (drawSmoothedCurve && pts.Count >= 3)
+            {
+                BotPath preview = GetEditorPreviewPath();
+                if (preview != null && preview.IsValid)
+                {
+                    Gizmos.color = new Color(baseColor.r, baseColor.g, baseColor.b, selected ? 1f : 0.8f);
+                    int sampleCount = preview.Points.Count;
+                    for (int i = 0; i < sampleCount; i++)
+                    {
+                        int next = i + 1;
+                        if (next >= sampleCount)
+                        {
+                            if (!preview.Looped)
+                                break;
+                            next = 0;
+                        }
+
+                        Gizmos.DrawLine(Offset(preview.Points[i]), Offset(preview.Points[next]));
+                    }
+                }
+            }
+#endif
+
             for (int i = 0; i < pts.Count; i++)
             {
                 Vector3 current = Offset(pts[i]);
+
+#if UNITY_EDITOR
+                bool hasIssue = cachedIssuePointIndices != null && cachedIssuePointIndices.Contains(i);
+                Gizmos.color = hasIssue ? issueColor : baseColor;
+#else
+                Gizmos.color = baseColor;
+#endif
                 Gizmos.DrawWireSphere(current, pointRadius);
 
                 int next = i + 1;
@@ -224,11 +642,13 @@ namespace PartyRacers.AI
                     if (loop)
                         next = 0;
                     else
-                        break;
+                        continue;
                 }
 
                 Vector3 nextPoint = Offset(pts[next]);
-                Gizmos.DrawLine(current, nextPoint);
+
+                if (!drawSmoothedCurve)
+                    Gizmos.DrawLine(current, nextPoint);
 
                 if (drawDirectionArrows)
                     DrawArrow(current, nextPoint);
@@ -242,6 +662,17 @@ namespace PartyRacers.AI
             {
                 for (int i = 0; i < pts.Count; i++)
                     Handles.Label(Offset(pts[i]) + Vector3.up * (pointRadius * 1.2f), i.ToString("00"));
+            }
+
+            // Marca os pontos com problema mesmo sem seleção (esfera vermelha maior).
+            if (cachedIssuePointIndices != null)
+            {
+                Gizmos.color = issueColor;
+                foreach (int index in cachedIssuePointIndices)
+                {
+                    if (index >= 0 && index < pts.Count)
+                        Gizmos.DrawWireSphere(Offset(pts[index]), pointRadius * 1.8f);
+                }
             }
 #endif
         }

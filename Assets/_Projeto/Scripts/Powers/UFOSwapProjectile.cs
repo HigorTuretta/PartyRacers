@@ -21,8 +21,6 @@ public class UFOSwapProjectile : MonoBehaviour
     [SerializeField] private float hoverHeight = 1.65f;
     [SerializeField] private float heightAdjustSpeed = 16f;
     [SerializeField] private LayerMask groundMask = ~0;
-    [Tooltip("Normais com Y acima disso contam como CHAO/RAMPA: o UFO sobrevoa, nunca quica.")]
-    [SerializeField, Range(0f, 1f)] private float groundNormalMinY = 0.55f;
     [Tooltip("Folga minima (m) acima do chao. Trava rigida: o UFO NUNCA entra no chao mesmo se atrasar.")]
     [SerializeField] private float minGroundClearance = 0.7f;
     [Tooltip("Profundidade da sonda de chao (m). Maior evita 'sumico' ao passar por desniveis/rampas.")]

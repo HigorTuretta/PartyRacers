@@ -174,6 +174,14 @@ public class KartController : MonoBehaviour
     public float CollisionRecovery01 =>
         collisionRecoveryDuration > 0.001f ? Mathf.Clamp01(collisionRecoveryTimer / collisionRecoveryDuration) : 0f;
 
+    [Header("Knockback (obstáculos do cenário)")]
+    [Tooltip("Escala da gravidade extra durante o arremesso (menor = arco mais flutuante, estilo Fall Guys).")]
+    [SerializeField, Range(0.1f, 1f)] private float knockbackGravityScale = 0.6f;
+    private float knockbackTimer;
+
+    /// <summary>True enquanto o kart está sendo arremessado por um obstáculo (sem controle/grip/clamps).</summary>
+    public bool IsInKnockback => knockbackTimer > 0f;
+
     [Header("Boost")]
     [SerializeField] private float boostSpeedMultiplier = 1f;
     [SerializeField] private float boostAccelerationMultiplier = 1f;
@@ -311,6 +319,15 @@ public class KartController : MonoBehaviour
         }
 
         ReadInput();
+
+        // Sem burnout/drift novos enquanto está sendo arremessado.
+        if (IsInKnockback)
+        {
+            isBurningOut = false;
+            UpdateDriftBlend();
+            return;
+        }
+
         UpdateBurnoutState();
         UpdateDriftState();
         UpdateDriftBlend();
@@ -319,6 +336,20 @@ public class KartController : MonoBehaviour
     private void FixedUpdate()
     {
         CheckGround();
+        TickKnockback();
+
+        // Durante o knockback o kart é um projétil: nenhuma força de controle, grip ou clamp
+        // pode "comer" o arremesso. Só gravidade (reduzida) e damping de ar agem.
+        if (IsInKnockback)
+        {
+            UpdateLocalAcceleration();
+            prevGrounded = isGrounded;
+            TickCollisionRecovery();
+            rb.AddForce(Vector3.down * extraGravity * knockbackGravityScale, ForceMode.Acceleration);
+            ApplyDamping();
+            CapturePostPhysicsVelocity();
+            return;
+        }
 
         AbsorbLandingImpact();
         ClampGroundedUpwardVelocity();
@@ -405,6 +436,37 @@ public class KartController : MonoBehaviour
         boostAccelerationMultiplier = Mathf.Max(boostAccelerationMultiplier, accelerationMultiplier);
 
         rb.AddForce(transform.forward * instantPush, ForceMode.VelocityChange);
+    }
+
+    // ------------------------------------------------------------------ Knockback arcade
+    // Arremesso por obstáculo do cenário (pá de moinho, taco de golfe gigante, bola...).
+    // Durante a janela o kart vira "boneco": nada de grip lateral, clamp de velocidade,
+    // estabilização no ar ou forças de direção — a velocidade aplicada aqui sobrevive e o
+    // carro voa/cambalhota de verdade (estilo Fall Guys). Tudo volta ao normal no fim do timer;
+    // a recuperação (player corrige / bot respawna se capotar) já existe nos sistemas atuais.
+    public void BeginKnockback(Vector3 launchVelocity, float duration, Vector3 angularVelocity)
+    {
+        if (rb == null)
+            return;
+
+        knockbackTimer = Mathf.Max(knockbackTimer, Mathf.Max(0.2f, duration));
+
+        ForceEndDrift();
+        isBurningOut = false;
+
+        rb.linearVelocity = launchVelocity;
+        rb.angularVelocity = angularVelocity;
+
+        // Sinaliza o impacto para câmera/HUD e abre a janela de aderência reduzida pós-batida,
+        // para o pouso escorregar de forma arcade em vez de "colar" no chão instantaneamente.
+        recentImpact01 = 1f;
+        NotifyKartCollisionRecovery(1f);
+    }
+
+    private void TickKnockback()
+    {
+        if (knockbackTimer > 0f)
+            knockbackTimer -= Time.fixedDeltaTime;
     }
 
     // Chamado pela KartArcadeCollisionResponse logo após uma batida kart-a-kart. Abre uma janela
@@ -1317,6 +1379,15 @@ public class KartController : MonoBehaviour
     private void HandleCollisionGlide(Collision collision)
     {
         if (rb == null)
+            return;
+
+        // Em pleno arremesso o kart é um projétil — o solver resolve o contato sozinho.
+        if (IsInKnockback)
+            return;
+
+        // Obstáculos com ObstacleKnockback cuidam da própria resposta (arremesso). Sem isto o
+        // glide tratava a pá do moinho como parede e o kart ficava "agarrado" deslizando nela.
+        if (collision.collider != null && collision.collider.GetComponentInParent<ObstacleKnockback>() != null)
             return;
 
         Vector3 velocity = rb.linearVelocity;

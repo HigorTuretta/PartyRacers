@@ -218,8 +218,8 @@ namespace PartyRacers.AI
             DisableComponent<KartCameraDynamics>(go);
             DisableComponent<KartTurboScreenEffect>(go);
 
-            // KartRespawn escuta a tecla R no Update (respawnaria todos). O bot chama Respawn() direto.
-            DisableComponent<KartRespawn>(go);
+            // KartRespawn fica ATIVO nos bots: a tecla R já é ignorada por karts não-locais e o
+            // componente agora cuida do respawn automático fora da pista (Terreno) + ghost.
 
             // Fumaça/marcas de pneu dos bots: emissores caros (instanciam muitos GameObjects/meshes).
             // Desligados por padrão — o player mantém os efeitos. Reduz drasticamente o custo com 16 karts.

@@ -17,7 +17,31 @@ public class KartRespawn : MonoBehaviour
     [SerializeField] private float groundProbeDistance = 35f;
     [SerializeField] private float groundClearance = 0.2f;
 
+    [Header("Ghost pós-respawn")]
+    [Tooltip("Todo respawn (manual, automático ou da IA) deixa o kart em modo ghost por este tempo: " +
+             "sem colisão kart-a-kart, piscando, mas dirigível.")]
+    [SerializeField] private float ghostDurationAfterRespawn = 3f;
+
+    [Header("Respawn automático fora da pista")]
+    [Tooltip("Respawna sozinho ao cair fora da pista (no Terreno) ou despencar abaixo do traçado.")]
+    [SerializeField] private bool autoRespawnOutOfBounds = true;
+    [Tooltip("Nomes (parciais) de colliders de chão que contam como FORA da pista (terreno/grama do mapa).")]
+    [SerializeField] private string[] outOfBoundsGroundNames = { "Terreno", "Terrain" };
+    [Tooltip("Quantos metros ABAIXO do traçado dos bots o kart precisa estar para o chão fora-da-pista contar. " +
+             "Evita falso positivo em pistas onde dá para encostar na grama no mesmo nível da pista.")]
+    [SerializeField] private float belowRouteThreshold = 4f;
+    [Tooltip("Queda livre: abaixo do traçado por mais que isto (m) respawna mesmo sem identificar o chão.")]
+    [SerializeField] private float hardBelowRouteDistance = 20f;
+    [Tooltip("Tempo (s) na condição de fora-da-pista antes do respawn automático.")]
+    [SerializeField] private float outOfBoundsSeconds = 1.0f;
+    [Tooltip("Intervalo (s) entre checagens de fora-da-pista (barato; não precisa ser por frame).")]
+    [SerializeField] private float outOfBoundsCheckInterval = 0.2f;
+
     private Collider[] kartColliders;
+    private KartController kart;
+    private KartLocalRig localRig;
+    private float outOfBoundsTimer;
+    private float nextOutOfBoundsCheck;
 
     private void Awake()
     {
@@ -30,11 +54,19 @@ public class KartRespawn : MonoBehaviour
         if (kartCollision == null)
             kartCollision = GetComponent<KartCollision>();
 
+        kart = GetComponent<KartController>();
+        localRig = GetComponent<KartLocalRig>();
         kartColliders = GetComponentsInChildren<Collider>();
     }
 
     private void Update()
     {
+        UpdateOutOfBounds();
+
+        // Tecla R: somente o kart do PLAYER LOCAL (bots/remotos respawnariam todos juntos).
+        if (localRig != null && !localRig.IsLocalPlayer)
+            return;
+
         Keyboard keyboard = Keyboard.current;
 
         if (keyboard == null)
@@ -42,6 +74,76 @@ public class KartRespawn : MonoBehaviour
 
         if (keyboard.rKey.wasPressedThisFrame)
             Respawn();
+    }
+
+    // ------------------------------------------------------------------ fora da pista
+    private void UpdateOutOfBounds()
+    {
+        if (!autoRespawnOutOfBounds || Time.time < nextOutOfBoundsCheck)
+            return;
+
+        nextOutOfBoundsCheck = Time.time + Mathf.Max(0.05f, outOfBoundsCheckInterval);
+
+        if (kart != null && !kart.CanControl)
+        {
+            outOfBoundsTimer = 0f;
+            return;
+        }
+
+        if (IsOutOfBounds())
+            outOfBoundsTimer += outOfBoundsCheckInterval;
+        else
+            outOfBoundsTimer = 0f;
+
+        if (outOfBoundsTimer >= outOfBoundsSeconds)
+        {
+            outOfBoundsTimer = 0f;
+            Respawn();
+        }
+    }
+
+    private bool IsOutOfBounds()
+    {
+        bool hasRoute = PartyRacers.AI.BotRacingLine.TryGetNearestRoutePoint(transform.position, out Vector3 onRoute);
+        float belowRoute = hasRoute ? onRoute.y - transform.position.y : 0f;
+
+        // Despencou muito abaixo do traçado (caiu da pista no vazio/terreno distante).
+        if (hasRoute && belowRoute > hardBelowRouteDistance)
+            return true;
+
+        // Está apoiado em chão de fora da pista (Terreno) E abaixo do nível do traçado.
+        // A condição de altura evita falso positivo em pista no nível da grama.
+        if (IsGroundedOnOutOfBoundsSurface() && (!hasRoute || belowRoute > belowRouteThreshold))
+            return true;
+
+        return false;
+    }
+
+    private bool IsGroundedOnOutOfBoundsSurface()
+    {
+        if (outOfBoundsGroundNames == null || outOfBoundsGroundNames.Length == 0)
+            return false;
+
+        Vector3 origin = transform.position + Vector3.up * 0.6f;
+        if (!Physics.SphereCast(origin, 0.4f, Vector3.down, out RaycastHit hit, 2.5f, groundMask, QueryTriggerInteraction.Ignore))
+            return false;
+
+        if (hit.collider == null || IsKartCollider(hit.collider))
+            return false;
+
+        string groundName = hit.collider.name;
+        for (int i = 0; i < outOfBoundsGroundNames.Length; i++)
+        {
+            string token = outOfBoundsGroundNames[i];
+            if (!string.IsNullOrEmpty(token) &&
+                groundName.IndexOf(token, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        // Terrenos Unity nativos contam mesmo sem bater o nome.
+        return hit.collider is TerrainCollider;
     }
 
     public void Respawn()
@@ -60,6 +162,13 @@ public class KartRespawn : MonoBehaviour
 
         rb.Sleep();
         rb.WakeUp();
+
+        outOfBoundsTimer = 0f;
+
+        // Qualquer respawn (manual, automático ou da IA) ganha alguns segundos de ghost:
+        // sem colisão kart-a-kart e piscando — não nasce dentro de um bolo de karts.
+        if (ghostDurationAfterRespawn > 0f)
+            KartTemporaryGhostState.Apply(gameObject, ghostDurationAfterRespawn);
     }
 
     private Vector3 FindSafeRespawnPosition(Vector3 basePosition)

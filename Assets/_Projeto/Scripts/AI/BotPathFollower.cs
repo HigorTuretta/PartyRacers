@@ -11,6 +11,12 @@ namespace PartyRacers.AI
     /// Suporta rotas alternativas: cada BotRouteBranch filho do BotRacingLine vira um caminho
     /// opcional com ponto de entrada/saída projetados na linha principal. A decisão de usar o
     /// atalho é por bot (seed + habilidade + chance configurada no branch) a cada passagem.
+    ///
+    /// Navegação com CONTINUIDADE: o ponto-mais-próximo é procurado apenas numa janela em volta
+    /// do último segmento conhecido (BotPath.FindNearestLocal). Sem isso, trechos da pista que
+    /// passam perto um do outro (ida/volta, fechamento do loop na largada) faziam o progresso
+    /// "teleportar" e o bot orbitar um ponto. A busca global só roda na inicialização, respawn
+    /// ou quando o bot se afasta demais da janela local.
     /// </summary>
     [DisallowMultipleComponent]
     public class BotPathFollower : MonoBehaviour
@@ -20,6 +26,12 @@ namespace PartyRacers.AI
 
         [Tooltip("Distance in meters between sampled points when smoothing the source line.")]
         [SerializeField] private float sampleSpacing = 4f;
+
+        [Header("Continuidade da navegação")]
+        [Tooltip("Janela (m) em volta do último segmento conhecido onde o ponto-mais-próximo é procurado.")]
+        [SerializeField] private float nearestSearchWindow = 60f;
+        [Tooltip("Se o ponto-mais-próximo local ficar além disso (m), o bot é considerado perdido e refaz a busca global.")]
+        [SerializeField] private float lostDistance = 30f;
 
         [Header("Atalhos / rotas alternativas")]
         [Tooltip("Distância (m) antes da entrada do atalho em que o bot decide se vai usá-lo.")]
@@ -31,13 +43,14 @@ namespace PartyRacers.AI
         [Tooltip("Se o bot se afastar mais que isso do atalho, abandona e volta à linha principal.")]
         [SerializeField] private float branchAbandonDistance = 14f;
 
-        private PathData mainPath;
+        private BotPath mainPath;
         private readonly List<BranchRuntime> branches = new List<BranchRuntime>();
 
         // Estado de navegação atual (linha principal ou um branch).
-        private PathData currentPath;
+        private BotPath currentPath;
         private int currentBranchIndex = -1;
         private int nearestSegment;
+        private bool hasNearestHint;
         private Vector3 nearestPoint;
         private float nearestDistanceOnPath;
         private bool ready;
@@ -93,12 +106,24 @@ namespace PartyRacers.AI
             botSkill01 = Mathf.Clamp01(skill01);
         }
 
+        /// <summary>
+        /// Joga fora o hint de continuidade: na próxima consulta o ponto-mais-próximo é procurado
+        /// na rota INTEIRA. Use quando o kart foi parar num lugar inesperado (ex.: rampou e caiu
+        /// em outro trecho da pista) — assim ele adota o trecho onde está, segue por ele e dá a
+        /// volta, em vez de insistir em voltar para o trecho antigo através de uma parede.
+        /// </summary>
+        public void ForceGlobalResearch()
+        {
+            hasNearestHint = false;
+        }
+
         /// <summary>Abandona qualquer atalho e volta a navegar pela linha principal (ex.: após respawn).</summary>
         public void ResetToMainPath()
         {
             currentBranchIndex = -1;
             currentPath = mainPath;
             nearestSegment = 0;
+            hasNearestHint = false;
             decidedBranchIndex = -1;
         }
 
@@ -109,13 +134,14 @@ namespace PartyRacers.AI
             currentBranchIndex = -1;
             decidedBranchIndex = -1;
             nearestSegment = 0;
+            hasNearestHint = false;
 
             BotRacingLine line;
             List<Vector3> source = ResolveSourcePoints(lapCheckpointCount, out bool looped, out line);
             if (source == null || source.Count < 2)
                 return;
 
-            mainPath = new PathData();
+            mainPath = new BotPath();
             mainPath.BuildFrom(source, looped, sampleSpacing);
             currentPath = mainPath;
 
@@ -138,14 +164,14 @@ namespace PartyRacers.AI
                 if (pts.Count < 2)
                     continue;
 
-                var path = new PathData();
+                var path = new BotPath();
                 path.BuildFrom(pts, false, sampleSpacing);
                 if (!path.IsValid)
                     continue;
 
                 // Entrada/saída: projeção do primeiro/último ponto do branch na linha principal.
-                PathData.NearestResult entry = mainPath.FindNearest(pts[0], 0);
-                PathData.NearestResult exit = mainPath.FindNearest(pts[pts.Count - 1], 0);
+                BotPath.NearestResult entry = mainPath.FindNearestGlobal(pts[0]);
+                BotPath.NearestResult exit = mainPath.FindNearestGlobal(pts[pts.Count - 1]);
 
                 branches.Add(new BranchRuntime
                 {
@@ -252,13 +278,28 @@ namespace PartyRacers.AI
                 return 0f;
 
             UpdateNearest(pos);
-            return Mathf.Sqrt(SqrPlanar(nearestPoint, pos));
+            return BotPath.PlanarDistance(nearestPoint, pos);
         }
 
         // ------------------------------------------------------------------ navegação
         private void UpdateNearest(Vector3 pos)
         {
-            PathData.NearestResult result = currentPath.FindNearest(pos, nearestSegment);
+            BotPath.NearestResult result;
+
+            if (!hasNearestHint)
+            {
+                result = currentPath.FindNearestGlobal(pos);
+                hasNearestHint = true;
+            }
+            else
+            {
+                result = currentPath.FindNearestLocal(pos, nearestSegment, nearestSearchWindow);
+
+                // Perdeu a janela local (ex.: empurrado/teleportado para longe): busca global.
+                if (result.SqrPlanarDistance > lostDistance * lostDistance)
+                    result = currentPath.FindNearestGlobal(pos);
+            }
+
             nearestSegment = result.Segment;
             nearestPoint = result.Point;
             nearestDistanceOnPath = result.DistanceOnPath;
@@ -289,11 +330,16 @@ namespace PartyRacers.AI
             {
                 BranchRuntime branch = branches[currentBranchIndex];
                 bool nearEnd = nearestDistanceOnPath >= branch.Path.TotalLength - branchExitDistance;
-                bool tooFar = Mathf.Sqrt(SqrPlanar(nearestPoint, pos)) > branchAbandonDistance;
+                bool tooFar = BotPath.PlanarDistance(nearestPoint, pos) > branchAbandonDistance;
 
                 if (nearEnd || tooFar)
                 {
+                    int exitSegmentHint = SegmentHintForDistance(mainPath, branch.ExitDistanceOnMain);
                     ResetToMainPath();
+                    // Reaproveita a posição de saída do branch como hint na linha principal
+                    // (evita que a busca global escolha outro trecho da pista que passe perto).
+                    nearestSegment = exitSegmentHint;
+                    hasNearestHint = !tooFar;
                     UpdateNearest(pos);
                 }
 
@@ -339,9 +385,20 @@ namespace PartyRacers.AI
                 currentBranchIndex = upcoming;
                 currentPath = branches[upcoming].Path;
                 nearestSegment = 0;
+                hasNearestHint = false; // branch é curto — busca global nele é barata e segura
                 decidedBranchIndex = -1;
                 UpdateNearest(pos);
             }
+        }
+
+        private static int SegmentHintForDistance(BotPath path, float distance)
+        {
+            int segments = path.SegmentCount;
+            if (segments <= 0 || path.TotalLength < 0.01f)
+                return 0;
+
+            float normalized = Mathf.Repeat(distance, path.TotalLength) / path.TotalLength;
+            return Mathf.Clamp(Mathf.FloorToInt(normalized * segments), 0, segments - 1);
         }
 
         private float DistanceAheadOnMain(float targetDistance)
@@ -370,218 +427,15 @@ namespace PartyRacers.AI
         private class BranchRuntime
         {
             public BotRouteBranch Source;
-            public PathData Path;
+            public BotPath Path;
             public float EntryDistanceOnMain;
             public float ExitDistanceOnMain;
-        }
-
-        /// <summary>Caminho amostrado (suavizado por Catmull-Rom) com cache de distâncias.</summary>
-        private class PathData
-        {
-            public readonly List<Vector3> Points = new List<Vector3>();
-            private readonly List<float> distanceAt = new List<float>();
-
-            public float TotalLength { get; private set; }
-            public bool Looped { get; private set; }
-            public bool IsValid => Points.Count >= 2 && TotalLength > 0.1f;
-
-            public struct NearestResult
-            {
-                public int Segment;
-                public Vector3 Point;
-                public float DistanceOnPath;
-            }
-
-            public void BuildFrom(List<Vector3> source, bool loop, float spacing)
-            {
-                Points.Clear();
-                distanceAt.Clear();
-                TotalLength = 0f;
-                Looped = loop;
-
-                if (source == null || source.Count < 2)
-                    return;
-
-                if (source.Count < 3)
-                    Points.AddRange(source);
-                else
-                    BuildSmoothed(source, loop, spacing);
-
-                RemoveDuplicates();
-                BuildDistanceCache();
-            }
-
-            private void BuildSmoothed(List<Vector3> pts, bool loop, float spacing)
-            {
-                int count = pts.Count;
-                int segments = loop ? count : count - 1;
-
-                for (int s = 0; s < segments; s++)
-                {
-                    Vector3 p0 = loop ? pts[(s - 1 + count) % count] : pts[Mathf.Max(0, s - 1)];
-                    Vector3 p1 = pts[s % count];
-                    Vector3 p2 = pts[(s + 1) % count];
-                    Vector3 p3 = loop ? pts[(s + 2) % count] : pts[Mathf.Min(count - 1, s + 2)];
-
-                    float segLen = PlanarDistance(p1, p2);
-                    int steps = Mathf.Max(1, Mathf.CeilToInt(segLen / Mathf.Max(0.5f, spacing)));
-
-                    for (int i = 0; i < steps; i++)
-                    {
-                        float t = i / (float)steps;
-                        Points.Add(CatmullRom(p0, p1, p2, p3, t));
-                    }
-                }
-
-                if (!loop)
-                    Points.Add(pts[count - 1]);
-            }
-
-            private void RemoveDuplicates()
-            {
-                for (int i = Points.Count - 1; i > 0; i--)
-                {
-                    if (SqrPlanar(Points[i], Points[i - 1]) < 0.01f)
-                        Points.RemoveAt(i);
-                }
-
-                if (Looped && Points.Count > 2 && SqrPlanar(Points[0], Points[Points.Count - 1]) < 0.01f)
-                    Points.RemoveAt(Points.Count - 1);
-            }
-
-            private void BuildDistanceCache()
-            {
-                if (Points.Count == 0)
-                    return;
-
-                distanceAt.Add(0f);
-                TotalLength = 0f;
-
-                for (int i = 1; i < Points.Count; i++)
-                {
-                    TotalLength += PlanarDistance(Points[i - 1], Points[i]);
-                    distanceAt.Add(TotalLength);
-                }
-
-                if (Looped && Points.Count > 2)
-                    TotalLength += PlanarDistance(Points[Points.Count - 1], Points[0]);
-            }
-
-            public int SegmentCount => Points.Count < 2 ? 0 : (Looped ? Points.Count : Points.Count - 1);
-
-            public int NextIndex(int segment)
-            {
-                int next = segment + 1;
-                if (next >= Points.Count)
-                    return Looped ? 0 : Points.Count - 1;
-
-                return next;
-            }
-
-            public float SegmentLength(int segment)
-            {
-                return PlanarDistance(Points[segment], Points[NextIndex(segment)]);
-            }
-
-            public NearestResult FindNearest(Vector3 pos, int hintSegment)
-            {
-                var result = new NearestResult { Segment = hintSegment, Point = Points.Count > 0 ? Points[0] : pos };
-
-                int segments = SegmentCount;
-                if (segments <= 0)
-                    return result;
-
-                float best = float.MaxValue;
-
-                for (int s = 0; s < segments; s++)
-                {
-                    Vector3 a = Points[s];
-                    Vector3 b = Points[NextIndex(s)];
-                    float t = ClosestTPlanar(a, b, pos);
-                    Vector3 projected = Vector3.Lerp(a, b, t);
-                    float sqr = SqrPlanar(projected, pos);
-
-                    if (sqr < best)
-                    {
-                        best = sqr;
-                        result.Segment = s;
-                        result.Point = projected;
-                        result.DistanceOnPath = distanceAt[s] + SegmentLength(s) * t;
-                    }
-                }
-
-                if (Looped && TotalLength > 0.01f)
-                    result.DistanceOnPath = Mathf.Repeat(result.DistanceOnPath, TotalLength);
-
-                return result;
-            }
-
-            public Vector3 PointAtDistance(float distance)
-            {
-                if (!IsValid)
-                    return Points.Count > 0 ? Points[0] : Vector3.zero;
-
-                float target = Looped
-                    ? Mathf.Repeat(distance, TotalLength)
-                    : Mathf.Clamp(distance, 0f, TotalLength);
-
-                int segments = SegmentCount;
-                for (int s = 0; s < segments; s++)
-                {
-                    float start = distanceAt[s];
-                    float length = SegmentLength(s);
-                    float end = start + length;
-
-                    if (target <= end || s == segments - 1)
-                    {
-                        float t = length > 0.001f ? Mathf.Clamp01((target - start) / length) : 0f;
-                        return Vector3.Lerp(Points[s], Points[NextIndex(s)], t);
-                    }
-                }
-
-                return Points[Points.Count - 1];
-            }
-        }
-
-        // ------------------------------------------------------------------ helpers
-        private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
-        {
-            float t2 = t * t;
-            float t3 = t2 * t;
-            return 0.5f * (
-                2f * p1 +
-                (-p0 + p2) * t +
-                (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
-                (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
-        }
-
-        private static float ClosestTPlanar(Vector3 a, Vector3 b, Vector3 p)
-        {
-            Vector3 ab = Planar(b - a);
-            float lenSq = ab.sqrMagnitude;
-            if (lenSq < 0.0001f)
-                return 0f;
-
-            Vector3 ap = Planar(p - a);
-            return Mathf.Clamp01(Vector3.Dot(ap, ab) / lenSq);
         }
 
         private static Vector3 Planar(Vector3 v)
         {
             v.y = 0f;
             return v;
-        }
-
-        private static float PlanarDistance(Vector3 a, Vector3 b)
-        {
-            return Mathf.Sqrt(SqrPlanar(a, b));
-        }
-
-        private static float SqrPlanar(Vector3 a, Vector3 b)
-        {
-            float dx = a.x - b.x;
-            float dz = a.z - b.z;
-            return dx * dx + dz * dz;
         }
     }
 }

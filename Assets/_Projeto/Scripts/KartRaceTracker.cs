@@ -8,6 +8,10 @@ public class KartRaceTracker : MonoBehaviour
     [SerializeField] private int totalCheckpoints = 8;
     [SerializeField] private bool autoDetectCheckpointCount = true;
 
+    [Header("Debug")]
+    [Tooltip("Loga passagem/ignoro de checkpoints e voltas. Com 16 karts isso inunda o console — ligue só para depurar.")]
+    [SerializeField] private bool logCheckpoints = false;
+
     [Header("Estado Atual")]
     [SerializeField] private int currentLap = 1;
     [SerializeField] private int nextCheckpointIndex = 1;
@@ -154,13 +158,15 @@ public class KartRaceTracker : MonoBehaviour
 
         if (checkpointIndex != nextCheckpointIndex)
         {
-            Debug.Log($"Checkpoint ignorado. Esperado: {nextCheckpointIndex}, recebido: {checkpointIndex}");
+            if (logCheckpoints)
+                Debug.Log($"Checkpoint ignorado. Esperado: {nextCheckpointIndex}, recebido: {checkpointIndex}");
             return;
         }
 
         SaveRespawnPoint(checkpoint);
 
-        Debug.Log($"Checkpoint {checkpointIndex} passou.");
+        if (logCheckpoints)
+            Debug.Log($"Checkpoint {checkpointIndex} passou.");
 
         if (checkpoint.IsStartFinish)
         {
@@ -184,14 +190,16 @@ public class KartRaceTracker : MonoBehaviour
     {
         RecordLapTime();
 
-        Debug.Log($"Volta {currentLap} completa.");
+        if (logCheckpoints)
+            Debug.Log($"Volta {currentLap} completa.");
 
         if (currentLap >= totalLaps)
         {
             raceFinished = true;
             timing = false;
             finishRealtime = Time.time;
-            Debug.Log("Corrida finalizada!");
+            if (logCheckpoints)
+                Debug.Log("Corrida finalizada!");
             RaceJustFinished?.Invoke(this);
             return;
         }
@@ -199,7 +207,8 @@ public class KartRaceTracker : MonoBehaviour
         currentLap++;
         nextCheckpointIndex = 1;
 
-        Debug.Log($"Iniciando volta {currentLap}.");
+        if (logCheckpoints)
+            Debug.Log($"Iniciando volta {currentLap}.");
     }
 
     private void RecordLapTime()

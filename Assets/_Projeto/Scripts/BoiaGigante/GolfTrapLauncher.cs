@@ -14,6 +14,21 @@ public class GolfTrapLauncher : MonoBehaviour
 
     void Start()
     {
+        // Referências ausentes derrubavam a coroutine com exceção a cada spawn.
+        // Tenta resolver pelos filhos antes de desistir, e desliga com aviso claro se faltar algo.
+        if (suporteBola == null)
+            suporteBola = transform.Find("SuporteBola");
+
+        if (direcaoTacada == null)
+            direcaoTacada = suporteBola != null ? suporteBola : transform;
+
+        if (golfBallPrefab == null || suporteBola == null)
+        {
+            Debug.LogWarning($"[GolfTrapLauncher] '{name}' sem 'golfBallPrefab' ou 'suporteBola' — armadilha desativada.", this);
+            enabled = false;
+            return;
+        }
+
         StartCoroutine(SpawnLoop());
     }
 

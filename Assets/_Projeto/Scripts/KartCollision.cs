@@ -5,6 +5,11 @@ using UnityEngine;
 public class KartCollision : MonoBehaviour
 {
     [Header("Detecção")]
+    [Tooltip("LEGADO: resposta de parede própria deste componente. O KartController.HandleCollisionGlide " +
+             "já faz o deslizamento arcade em paredes/rampas; com os dois ligados as duas respostas " +
+             "disputavam o rb.linearVelocity no mesmo frame (ordem indefinida = batidas inconsistentes). " +
+             "Mantenha desligado, a menos que esteja testando o comportamento antigo.")]
+    [SerializeField] private bool enableLegacyWallResponse = false;
     [SerializeField] private float minImpactSpeed = 2.5f;
     [SerializeField] private float minWallNormalXZ = 0.85f;
     [Tooltip("Normal.y acima disso é tratado como CHÃO (não como parede). Evita travar em rampas/lombadas.")]
@@ -167,6 +172,7 @@ public class KartCollision : MonoBehaviour
 
     private void OnCollisionEnter(Collision col)
     {
+        if (!enableLegacyWallResponse) return;
         if (col.contactCount == 0) return;
         if (IsAnotherKart(col)) return;
 
@@ -189,6 +195,7 @@ public class KartCollision : MonoBehaviour
 
     private void OnCollisionStay(Collision col)
     {
+        if (!enableLegacyWallResponse) return;
         if (col.contactCount == 0) return;
         if (IsAnotherKart(col)) return;
         if (!TryGetWallNormal(col, out Vector3 wallNormal)) return;

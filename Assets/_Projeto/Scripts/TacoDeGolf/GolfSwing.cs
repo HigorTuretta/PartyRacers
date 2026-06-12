@@ -2,9 +2,19 @@ using UnityEngine;
 
 public class AutoGolfSwing : MonoBehaviour
 {
-    [Header("Força do Golpe")]
+    [Header("Força do Golpe (corpos físicos genéricos)")]
     public float forcaHorizontal = 200f;
     public float forcaVertical = 50f;
+
+    [Header("Arremesso de karts (arcade, estilo Fall Guys)")]
+    [Tooltip("Velocidade horizontal (m/s) do arremesso do kart. 25 ≈ tacada forte.")]
+    public float velocidadeArremesso = 25f;
+    [Tooltip("Velocidade vertical (m/s) do arremesso do kart.")]
+    public float velocidadeVertical = 12f;
+    [Tooltip("Tempo (s) em que o kart fica sem controle (projétil).")]
+    public float duracaoKnockback = 1.2f;
+    [Tooltip("Cambalhota (rad/s) aplicada ao kart.")]
+    public float giroArremesso = 8f;
 
     [Header("Detecção")]
     public Transform pontoDeImpacto;
@@ -61,23 +71,30 @@ public class AutoGolfSwing : MonoBehaviour
             raioImpacto
         );
 
+        direcao.Normalize();
+
         foreach (Collider hit in hits)
         {
-            Rigidbody rb = hit.GetComponentInParent<Rigidbody>();
-
-            if (rb != null && rb.CompareTag("Player"))
+            // Karts (player E bots): arremesso arcade via knockback — a velocidade sobrevive
+            // aos clamps/grip do KartController e o carro voa de verdade, estilo Fall Guys.
+            // (Antes: só funcionava com tag "Player" e o KartController esmagava a velocidade
+            // no FixedUpdate seguinte — o carro "mal se movia".)
+            KartController kart = hit.GetComponentInParent<KartController>();
+            if (kart != null)
             {
-                direcao.Normalize();
+                Vector3 launch = direcao * velocidadeArremesso + Vector3.up * velocidadeVertical;
+                Vector3 tumble = Vector3.Cross(Vector3.up, direcao) * giroArremesso
+                    + Vector3.up * Random.Range(-giroArremesso, giroArremesso) * 0.4f;
 
-                rb.linearVelocity =
-                    (direcao * forcaHorizontal) +
-                    (Vector3.up * forcaVertical);
+                kart.BeginKnockback(launch, duracaoKnockback, tumble);
+                continue;
+            }
 
-                rb.angularVelocity = new Vector3(
-                    Random.Range(-15f, 15f),
-                    Random.Range(-15f, 15f),
-                    Random.Range(-15f, 15f)
-                );
+            // Outros corpos físicos (bolas etc.): empurrão simples.
+            Rigidbody rb = hit.GetComponentInParent<Rigidbody>();
+            if (rb != null && !rb.isKinematic)
+            {
+                rb.linearVelocity = (direcao * forcaHorizontal) + (Vector3.up * forcaVertical);
             }
         }
     }

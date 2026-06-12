@@ -96,8 +96,60 @@ namespace PartyRacers.AI
                 Gizmos.DrawWireSphere(current, isEndpoint ? pointRadius * 1.6f : pointRadius);
 
                 if (i + 1 < pts.Count)
-                    Gizmos.DrawLine(current, pts[i + 1] + Vector3.up * lineYOffset);
+                {
+                    Vector3 next = pts[i + 1] + Vector3.up * lineYOffset;
+                    Gizmos.DrawLine(current, next);
+                    DrawArrow(current, next);
+                }
             }
+
+#if UNITY_EDITOR
+            DrawEntryExitLinks(pts);
+#endif
         }
+
+        private void DrawArrow(Vector3 from, Vector3 to)
+        {
+            Vector3 direction = to - from;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.001f)
+                return;
+
+            direction.Normalize();
+            Vector3 mid = Vector3.Lerp(from, to, 0.62f);
+            Vector3 back = -direction * pointRadius * 1.5f;
+            Gizmos.DrawLine(mid, mid + Quaternion.Euler(0f, 28f, 0f) * back);
+            Gizmos.DrawLine(mid, mid + Quaternion.Euler(0f, -28f, 0f) * back);
+        }
+
+#if UNITY_EDITOR
+        // Mostra onde a entrada (verde) e a saída (vermelho) do branch projetam na linha
+        // principal — exatamente o que o BotPathFollower calcula em runtime.
+        private void DrawEntryExitLinks(List<Vector3> pts)
+        {
+            if (pts.Count < 2)
+                return;
+
+            BotRacingLine line = GetComponentInParent<BotRacingLine>();
+            if (line == null)
+                return;
+
+            BotPath main = line.GetEditorPreviewPath();
+            if (main == null || !main.IsValid)
+                return;
+
+            Vector3 up = Vector3.up * lineYOffset;
+
+            BotPath.NearestResult entry = main.FindNearestGlobal(pts[0]);
+            Gizmos.color = new Color(0.2f, 1f, 0.3f, 0.9f);
+            Gizmos.DrawLine(pts[0] + up, entry.Point + up);
+            Gizmos.DrawWireCube(entry.Point + up, Vector3.one * 1.2f);
+
+            BotPath.NearestResult exit = main.FindNearestGlobal(pts[pts.Count - 1]);
+            Gizmos.color = new Color(1f, 0.3f, 0.25f, 0.9f);
+            Gizmos.DrawLine(pts[pts.Count - 1] + up, exit.Point + up);
+            Gizmos.DrawWireCube(exit.Point + up, Vector3.one * 1.2f);
+        }
+#endif
     }
 }
