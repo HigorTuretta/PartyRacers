@@ -586,50 +586,6 @@ public class GarageController : MonoBehaviour
         return label;
     }
 
-    private TMP_InputField CreateInputField(Transform parent, string name, string placeholder, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 size)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(TMP_InputField));
-        go.layer = LayerMask.NameToLayer("UI");
-        go.transform.SetParent(parent, false);
-
-        var rt = (RectTransform)go.transform;
-        rt.anchorMin = anchorMin;
-        rt.anchorMax = anchorMax;
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = size;
-        rt.anchoredPosition = anchoredPos;
-
-        var img = go.GetComponent<Image>();
-        img.sprite = _roundSprite;
-        img.type = Image.Type.Sliced;
-        img.color = buttonColor * 0.65f;
-
-        TMP_Text text = CreateText(rt, "Text", "", 16, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, textColor);
-        StretchFull(text.rectTransform);
-        text.rectTransform.offsetMin = new Vector2(12f, 0f);
-        text.rectTransform.offsetMax = new Vector2(-12f, 0f);
-        text.raycastTarget = true;
-
-        TMP_Text placeholderText = CreateText(rt, "Placeholder", placeholder, 14, FontStyles.Italic, TextAlignmentOptions.MidlineLeft, textDimColor);
-        StretchFull(placeholderText.rectTransform);
-        placeholderText.rectTransform.offsetMin = new Vector2(12f, 0f);
-        placeholderText.rectTransform.offsetMax = new Vector2(-12f, 0f);
-
-        TMP_InputField input = go.GetComponent<TMP_InputField>();
-        input.textComponent = (TextMeshProUGUI)text;
-        input.placeholder = (TextMeshProUGUI)placeholderText;
-        input.characterLimit = 8;
-        input.textViewport = rt;
-        input.onValueChanged.AddListener(value =>
-        {
-            string upper = value.ToUpperInvariant();
-            if (value != upper)
-                input.SetTextWithoutNotify(upper);
-        });
-
-        return input;
-    }
-
     private static void Anchor(RectTransform rect, Vector2 min, Vector2 max, Vector2 anchoredPos, Vector2 size)
     {
         rect.anchorMin = min;
