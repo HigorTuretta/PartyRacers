@@ -64,8 +64,10 @@ namespace PartyRacers.AI
         [SerializeField] private bool matchKartMaxSpeed = true;
         [SerializeField, Range(0.6f, 1f)] private float kartMaxSpeedFraction = 0.96f;
         [SerializeField] private float maxStraightSpeedKmh = 150f;
-        [Tooltip("Piso de velocidade em curva fechada — ALTO de propósito: bots devem seguir competitivos, não medrosos.")]
-        [SerializeField] private float minCornerSpeedKmh = 82f;
+        [Tooltip("Piso de velocidade em curva fechada. Em curva de 90° apertada e murada, alto demais = " +
+                 "o kart não fecha o raio e bate na parede externa; baixo o bastante para FAZER a curva " +
+                 "limpa (o drift segura mais que isto na maioria das curvas).")]
+        [SerializeField] private float minCornerSpeedKmh = 68f;
         [Tooltip("Piso ABSOLUTO de velocidade-alvo em qualquer trecho (evita bot rastejando).")]
         [SerializeField] private float hardMinSpeedKmh = 55f;
         [Tooltip("Velocidade-alvo ao voltar para o traçado (RejoiningRoute).")]
@@ -78,7 +80,19 @@ namespace PartyRacers.AI
         [Tooltip("Ângulo (graus) de curvatura à frente que JÁ conta como curva severa (satura o freio de curva).")]
         [SerializeField] private float cornerFullAngle = 70f;
         [Tooltip("Ângulo (graus) a partir do qual a IA entra no estado ApproachingCorner.")]
-        [SerializeField] private float cornerEnterAngle = 24f;
+        [SerializeField] private float cornerEnterAngle = 18f;
+
+        [Header("Anti corte de quina (curva fechada)")]
+        [Tooltip("Em curva fechada a mira é PUXADA para perto (acompanha o ápice em vez de cortar reto " +
+                 "para a saída, o que jogava o nariz na quina interna). Distância da mira (m) no pico de " +
+                 "severidade; em reta usa o look-ahead normal. NÃO baixar demais: muito curto faz o bot " +
+                 "virar cedo e bater na quina INTERNA (efeito oposto).")]
+        [SerializeField] private float cornerAimLookAhead = 12f;
+        [Tooltip("Severidade de curva (0..1) a partir da qual começa a encurtar a mira.")]
+        [SerializeField, Range(0f, 1f)] private float cornerAimSeverityStart = 0.5f;
+        [Tooltip("Intensidade máxima do puxão da mira (0..1). Mantido moderado para só dar um viés de " +
+                 "ápice, sem cravar o nariz na mureta interna.")]
+        [SerializeField, Range(0f, 1f)] private float cornerAimStrength = 0.5f;
 
         [Header("Linha de corrida (variação por bot)")]
         [SerializeField] private float maxRacingLineOffset = 3.6f;
@@ -93,13 +107,13 @@ namespace PartyRacers.AI
         [Header("Drift Driver")]
         [SerializeField] private bool useDrift = true;
         [Tooltip("Curva começa a ser preparada para drift acima deste ângulo lido no look-ahead.")]
-        [SerializeField] private float driftPrepareAngle = 24f;
+        [SerializeField] private float driftPrepareAngle = 18f;
         [Tooltip("Ângulo mínimo para iniciar drift sem uma zona explícita de CurvaForte.")]
-        [SerializeField] private float driftEnterAngle = 32f;
+        [SerializeField] private float driftEnterAngle = 26f;
         [SerializeField] private float driftExitAngle = 12f;
         [SerializeField] private float driftMinSpeedKmh = 48f;
         [SerializeField] private float driftTargetSpeedKmh = 102f;
-        [SerializeField] private float driftHardCornerTargetSpeedKmh = 88f;
+        [SerializeField] private float driftHardCornerTargetSpeedKmh = 72f;
         [SerializeField, Range(0.25f, 1f)] private float driftSteerMinimum = 0.48f;
         [SerializeField] private float driftEntryHandbrakeHold = 0.12f;
         [SerializeField] private float driftCooldownSeconds = 0.45f;
@@ -136,7 +150,7 @@ namespace PartyRacers.AI
         [Tooltip("Acima desta normal.y a superfície é CHÃO/rampa (não conta como parede).")]
         [SerializeField, Range(0f, 1f)] private float wallMaxNormalY = 0.6f;
         [Tooltip("Força do esterço de desvio (quanto a IA vira para o lado livre).")]
-        [SerializeField, Range(0f, 1.5f)] private float avoidSteerStrength = 1f;
+        [SerializeField, Range(0f, 1.5f)] private float avoidSteerStrength = 1.3f;
         [Tooltip("Distância (m) abaixo da qual a IA freia SE não houver lado livre (escapatória).")]
         [SerializeField] private float avoidBrakeDistance = 3.5f;
         [SerializeField] private float obstacleSlalomOffset = 2.8f;
@@ -748,6 +762,14 @@ namespace PartyRacers.AI
             float offPath01 = Mathf.InverseLerp(rejoinDistance, offTrackDistance, distToPath);
 
             Vector3 aim = frame.AimPoint;
+            // Anti corte de quina: em curva fechada (e fora de rampa/salto), puxa a mira para PERTO —
+            // o kart acompanha o ápice em vez de mirar reto na saída e jogar o nariz na quina interna.
+            if (!rampState && sensing.cornerSeverity > cornerAimSeverityStart)
+            {
+                float tcut = Mathf.InverseLerp(cornerAimSeverityStart, 1f, sensing.cornerSeverity);
+                Vector3 tightAim = path.PointAhead(Mathf.Lerp(baseLookAheadMeters, cornerAimLookAhead, tcut));
+                aim = Vector3.Lerp(aim, tightAim, tcut * cornerAimStrength);
+            }
             Vector3 routeRight = Vector3.Cross(Vector3.up, frame.Tangent).normalized;
 
             // Linha de corrida própria: desloca a mira lateralmente; encolhe em curva, na zona com
@@ -809,7 +831,9 @@ namespace PartyRacers.AI
             float effOffset = laneSmoothedOffset;
             if (Mathf.Abs(effOffset) > 0.01f)
             {
-                float scale = (1f - sensing.cornerSeverity * 0.30f) * (1f - offPath01);
+                // Em curva fechada o offset lateral encolhe MUITO: todos convergem para a linha limpa
+                // pelo ápice (offset grande na quina = bot raspa a mureta interna/externa).
+                float scale = (1f - sensing.cornerSeverity * 0.7f) * (1f - offPath01);
                 aim += routeRight * (effOffset * scale);
             }
 
@@ -986,7 +1010,9 @@ namespace PartyRacers.AI
             float curveFloor = drift.Beneficial || kart.IsDrifting
                 ? Mathf.Lerp(driftTargetSpeedKmh, driftHardCornerTargetSpeedKmh, speedSeverity)
                 : minCornerSpeedKmh;
-            float curvePower = drift.Beneficial || kart.IsDrifting ? 1.45f : 1.2f;
+            // Potência ALTA concentra a frenagem nas curvas MAIS fechadas: curva média segue rápida
+            // (atende "não diminuir a velocidade exceto quando necessário"), só a 90° de verdade cai ao piso.
+            float curvePower = drift.Beneficial || kart.IsDrifting ? 1.6f : 1.4f;
             float cornerV = Mathf.Lerp(maxStraightSpeedKmh, curveFloor, Mathf.Pow(speedSeverity, curvePower));
             float target = cornerV;
             if (sensing.cornerSeverity > 0.25f)
