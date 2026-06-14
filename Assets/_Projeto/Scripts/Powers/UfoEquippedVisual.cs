@@ -35,6 +35,11 @@ public class UfoEquippedVisual : MonoBehaviour
     [SerializeField] private float minGroundClearance = 0.4f;
     [SerializeField] private LayerMask groundMask = ~0;
 
+    /// <summary>Altura do disco acima do socket (usada pelo ajuste adaptativo do socket).</summary>
+    public float Height => height;
+    /// <summary>Amplitude do bob vertical (o disco desce até height - bob).</summary>
+    public float BobAmplitude => bobAmplitude;
+
     private float orbitAngle;
     private float spinAngle;
     private float seed;

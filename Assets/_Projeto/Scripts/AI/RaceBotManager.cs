@@ -45,10 +45,20 @@ namespace PartyRacers.AI
         [SerializeField]
         private List<BotDifficultyProfile> difficultyProfiles = new List<BotDifficultyProfile>
         {
-            new BotDifficultyProfile { label = "Tranquilo", throttleScale = 0.82f, corneringCaution = 0.6f, steerSharpness = 1.3f, lookAheadDistance = 12f, steerWander = 0.10f, mistakeChance = 0.06f },
-            new BotDifficultyProfile { label = "Normal",    throttleScale = 0.92f, corneringCaution = 0.5f, steerSharpness = 1.5f, lookAheadDistance = 13f, steerWander = 0.07f, mistakeChance = 0.04f },
-            new BotDifficultyProfile { label = "Veloz",     throttleScale = 1.0f,  corneringCaution = 0.4f, steerSharpness = 1.7f, lookAheadDistance = 15f, steerWander = 0.05f, mistakeChance = 0.02f }
+            new BotDifficultyProfile { label = "Competitivo", throttleScale = 0.96f, corneringCaution = 0.34f, steerSharpness = 1.75f, lookAheadDistance = 17f, steerWander = 0.055f, mistakeChance = 0.025f },
+            new BotDifficultyProfile { label = "Agressivo",   throttleScale = 1.02f, corneringCaution = 0.26f, steerSharpness = 1.95f, lookAheadDistance = 19f, steerWander = 0.045f, mistakeChance = 0.018f },
+            new BotDifficultyProfile { label = "Elite",       throttleScale = 1.06f, corneringCaution = 0.18f, steerSharpness = 2.12f, lookAheadDistance = 21f, steerWander = 0.035f, mistakeChance = 0.010f }
         };
+
+        [Header("Competitividade")]
+        [Tooltip("Garante que perfis antigos serializados na cena não deixem bots lentos demais.")]
+        [SerializeField] private bool enforceCompetitiveProfiles = true;
+        [SerializeField, Range(0.8f, 1.1f)] private float minCompetitiveThrottleScale = 0.96f;
+        [SerializeField, Range(0f, 1f)] private float maxCompetitiveCorneringCaution = 0.38f;
+        [SerializeField, Range(0.5f, 3f)] private float minCompetitiveSteerSharpness = 1.7f;
+        [SerializeField, Range(4f, 30f)] private float minCompetitiveLookAhead = 16f;
+        [SerializeField, Range(0f, 0.35f)] private float maxCompetitiveSteerWander = 0.07f;
+        [SerializeField, Range(0f, 1f)] private float maxCompetitiveMistakeChance = 0.035f;
 
         [Header("Visual dos bots")]
         [Tooltip("Sorteia o modelo do carro de cada bot entre as variantes do KartVisualCustomizer (ex.: 15 rigs).")]
@@ -69,8 +79,17 @@ namespace PartyRacers.AI
         [Tooltip("Semente base da corrida (cor/perfil/nome derivam dela + índice do bot).")]
         [SerializeField] private int raceSeed = 1000;
 
+        [Header("Telemetria de validação")]
+        [SerializeField] private bool logBotTelemetry = true;
+        [SerializeField] private float telemetryLogInterval = 30f;
+        [SerializeField] private float firstLapSnapshotAfterSeconds = 180f;
+
         private readonly List<KartController> spawnedBots = new List<KartController>();
         private bool filled;
+        private bool raceWasStarted;
+        private bool firstLapSnapshotLogged;
+        private float raceStartTime = -1f;
+        private float nextTelemetryLogTime;
 
         public int MaxCompetitors => maxCompetitors;
         public IReadOnlyList<KartController> SpawnedBots => spawnedBots;
@@ -79,6 +98,36 @@ namespace PartyRacers.AI
         {
             if (fillOnStart)
                 StartCoroutine(FillRoutine());
+        }
+
+        private void Update()
+        {
+            if (!logBotTelemetry || raceManager == null)
+                return;
+
+            bool raceStarted = raceManager.RaceStarted;
+            if (raceStarted && !raceWasStarted)
+            {
+                raceStartTime = Time.time;
+                nextTelemetryLogTime = Time.time + telemetryLogInterval;
+                firstLapSnapshotLogged = false;
+            }
+
+            raceWasStarted = raceStarted;
+            if (!raceStarted || spawnedBots.Count == 0)
+                return;
+
+            if (Time.time >= nextTelemetryLogTime)
+            {
+                LogTelemetrySummary(false);
+                nextTelemetryLogTime = Time.time + telemetryLogInterval;
+            }
+
+            if (!firstLapSnapshotLogged && ShouldLogFirstLapSnapshot())
+            {
+                LogTelemetrySummary(true);
+                firstLapSnapshotLogged = true;
+            }
         }
 
         private IEnumerator FillRoutine()
@@ -120,6 +169,9 @@ namespace PartyRacers.AI
                 SpawnBot(realCount + i, i);
 
             filled = true;
+            nextTelemetryLogTime = Time.time + telemetryLogInterval;
+            if (logBotTelemetry)
+                BotFailureAnalyzer.EnsureInstance();
             Debug.Log($"[RaceBotManager] Players reais={realCount}, bots criados={botsNeeded}, total={realCount + botsNeeded}.");
         }
 
@@ -189,6 +241,7 @@ namespace PartyRacers.AI
                 driver = go.AddComponent<BotDriverController>();
 
             BotDifficultyProfile profile = PickProfile(botIndex).Varied(seed);
+            ApplyCompetitiveProfileFloor(profile);
             driver.Initialize(kart, profile, seed);
 
             BotPowerController powerController = go.GetComponent<BotPowerController>();
@@ -269,6 +322,155 @@ namespace PartyRacers.AI
                 return new BotDifficultyProfile();
 
             return difficultyProfiles[botIndex % difficultyProfiles.Count];
+        }
+
+        private void ApplyCompetitiveProfileFloor(BotDifficultyProfile profile)
+        {
+            if (!enforceCompetitiveProfiles || profile == null)
+                return;
+
+            profile.throttleScale = Mathf.Max(profile.throttleScale, minCompetitiveThrottleScale);
+            profile.corneringCaution = Mathf.Min(profile.corneringCaution, maxCompetitiveCorneringCaution);
+            profile.steerSharpness = Mathf.Max(profile.steerSharpness, minCompetitiveSteerSharpness);
+            profile.lookAheadDistance = Mathf.Max(profile.lookAheadDistance, minCompetitiveLookAhead);
+            profile.steerWander = Mathf.Min(profile.steerWander, maxCompetitiveSteerWander);
+            profile.mistakeChance = Mathf.Min(profile.mistakeChance, maxCompetitiveMistakeChance);
+        }
+
+        private bool ShouldLogFirstLapSnapshot()
+        {
+            if (raceStartTime < 0f || spawnedBots.Count == 0)
+                return false;
+
+            int completed = 0;
+            for (int i = 0; i < spawnedBots.Count; i++)
+            {
+                KartRaceTracker tracker = spawnedBots[i] != null ? spawnedBots[i].GetComponent<KartRaceTracker>() : null;
+                if (tracker != null && tracker.LapTimes.Count > 0)
+                    completed++;
+            }
+
+            int majority = Mathf.FloorToInt(spawnedBots.Count * 0.5f) + 1;
+            return completed >= majority || Time.time - raceStartTime >= firstLapSnapshotAfterSeconds;
+        }
+
+        private void LogTelemetrySummary(bool firstLapSnapshot)
+        {
+            int botCount = spawnedBots.Count;
+            if (botCount == 0)
+                return;
+
+            int completedFirstLap = 0;
+            int stuck = 0;
+            float bestLap = float.MaxValue;
+            float worstLap = -1f;
+            float lapSum = 0f;
+            float avgSpeedSum = 0f;
+            float maxSpeed = 0f;
+            float below70 = 0f;
+            float telemetryTime = 0f;
+            int recoveries = 0;
+            int respawns = 0;
+            int drifts = 0;
+            int artificial = 0;
+            int laneChanges = 0;
+            int yielding = 0;
+            float driftEntrySum = 0f;
+            float driftExitSum = 0f;
+            int driftEntrySamples = 0;
+            int driftExitSamples = 0;
+            string stuckPoints = "";
+
+            for (int i = 0; i < botCount; i++)
+            {
+                KartController kart = spawnedBots[i];
+                if (kart == null)
+                    continue;
+
+                KartRaceTracker tracker = kart.GetComponent<KartRaceTracker>();
+                BotDriverController driver = kart.GetComponent<BotDriverController>();
+
+                if (tracker != null && tracker.LapTimes.Count > 0)
+                {
+                    float lap = tracker.LapTimes[0];
+                    completedFirstLap++;
+                    bestLap = Mathf.Min(bestLap, lap);
+                    worstLap = Mathf.Max(worstLap, lap);
+                    lapSum += lap;
+                }
+
+                if (driver != null)
+                {
+                    avgSpeedSum += driver.AverageSpeedKmh;
+                    maxSpeed = Mathf.Max(maxSpeed, driver.MaxObservedSpeedKmh);
+                    below70 += driver.Below70Seconds;
+                    telemetryTime += driver.TelemetrySeconds;
+                    recoveries += driver.RecoveryCount;
+                    respawns += driver.RespawnCount;
+                    drifts += driver.DriftCount;
+                    artificial += driver.ArtificialCheckpointAdvances;
+                    laneChanges += driver.LaneChangeCount;
+                    if (driver.IsYieldingLane)
+                        yielding++;
+
+                    if (driver.DriftCount > 0)
+                    {
+                        driftEntrySum += driver.MeanDriftEntrySpeedKmh;
+                        driftEntrySamples++;
+                    }
+
+                    if (driver.MeanDriftExitSpeedKmh > 0f)
+                    {
+                        driftExitSum += driver.MeanDriftExitSpeedKmh;
+                        driftExitSamples++;
+                    }
+
+                    bool isStuck = tracker == null || !tracker.RaceFinished;
+                    isStuck = isStuck && (driver.State == BotDriverController.BotState.Reversing
+                        || driver.State == BotDriverController.BotState.Respawning
+                        || driver.SecondsWithoutProgress > 3f
+                        || (kart.SpeedKmh < 8f && driver.LastInput.Throttle > 0.35f));
+
+                    if (isStuck)
+                    {
+                        stuck++;
+                        if (stuckPoints.Length < 420)
+                        {
+                            Vector3 p = kart.transform.position;
+                            stuckPoints += $"{kart.name}@seg{kart.GetComponent<BotPathFollower>()?.CurrentSegmentIndex ?? -1}({p.x:F1},{p.y:F1},{p.z:F1}) {driver.LastRecoveryReason}; ";
+                        }
+                    }
+                }
+            }
+
+            float avgLap = completedFirstLap > 0 ? lapSum / completedFirstLap : -1f;
+            float avgSpeed = botCount > 0 ? avgSpeedSum / botCount : 0f;
+            float below70Pct = telemetryTime > 0.01f ? below70 / telemetryTime * 100f : 0f;
+            float meanDriftEntry = driftEntrySamples > 0 ? driftEntrySum / driftEntrySamples : 0f;
+            float meanDriftExit = driftExitSamples > 0 ? driftExitSum / driftExitSamples : 0f;
+            string prefix = firstLapSnapshot ? "[RaceBotManager][AI_VALIDATION][FIRST_LAP]" : "[RaceBotManager][AI_VALIDATION]";
+
+            Debug.Log(
+                $"{prefix} bots={botCount} completaramPrimeiraVolta={completedFirstLap}/{botCount} " +
+                $"melhor={FormatTime(bestLap)} media={FormatTime(avgLap)} pior={FormatTime(worstLap)} " +
+                $"presos={stuck} velocidadeMedia={avgSpeed:F1}km/h velocidadeMax={maxSpeed:F1}km/h " +
+                $"tempoAbaixo70={below70:F1}s({below70Pct:F1}%) recuperacoes={recoveries} respawns={respawns} " +
+                $"drifts={drifts} entradaDriftMedia={meanDriftEntry:F1}km/h saidaDriftMedia={meanDriftExit:F1}km/h " +
+                $"trocasDeFaixa={laneChanges} cedendoFaixa={yielding} " +
+                $"checkpointArtificial={artificial} pontosPresos={stuckPoints}");
+
+            if (firstLapSnapshot)
+                BotFailureAnalyzer.EnsureInstance()?.LogWorst();
+        }
+
+        private static string FormatTime(float seconds)
+        {
+            if (seconds < 0f || seconds == float.MaxValue)
+                return "--:--";
+
+            int minutes = Mathf.FloorToInt(seconds / 60f);
+            float sec = seconds - minutes * 60f;
+            return $"{minutes:00}:{sec:00.0}";
         }
 
         private Pose ResolveSpawnPose(int spawnIndex)

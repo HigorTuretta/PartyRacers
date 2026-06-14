@@ -67,41 +67,107 @@ namespace PartyRacers.AI
         // ------------------------------------------------------------------ rota compartilhada (runtime)
         // Cache estático usado por sistemas fora da IA (ex.: KartRespawn detecta queda abaixo da
         // pista comparando a altura do kart com a altura da rota). Construído uma vez por cena.
+        //
+        // IMPORTANTE: o cache inclui a linha PRINCIPAL **e todos os branches/atalhos**. Assim um
+        // kart que está num atalho válido (ex.: o anel leste da MiniGolfeRun, longe da main) é
+        // reconhecido como "em cima de uma rota válida" e NÃO sofre respawn automático indevido.
         private static BotRacingLine runtimeSource;
-        private static BotPath runtimePath;
+        private static BotPath runtimeMainPath;
+        private static System.Collections.Generic.List<BotPath> runtimeAllPaths;
 
-        /// <summary>
-        /// Ponto mais próximo da rota da cena (planar). Retorna false se a cena não tem
-        /// BotRacingLine válida. Barato o suficiente para checagens periódicas (não por frame).
-        /// </summary>
-        public static bool TryGetNearestRoutePoint(Vector3 position, out Vector3 nearestOnRoute)
+        private static void EnsureRuntimePaths()
         {
             if (runtimeSource == null)
             {
                 runtimeSource = FindAnyObjectByType<BotRacingLine>(FindObjectsInactive.Exclude);
-                runtimePath = null;
+                runtimeMainPath = null;
+                runtimeAllPaths = null;
             }
 
             if (runtimeSource == null || !runtimeSource.HasEnoughPoints())
+                return;
+
+            if (runtimeMainPath == null)
             {
-                nearestOnRoute = default;
+                runtimeMainPath = new BotPath();
+                runtimeMainPath.BuildFrom(runtimeSource.GetWorldPoints(), runtimeSource.loop, 6f);
+
+                runtimeAllPaths = new System.Collections.Generic.List<BotPath>();
+                if (runtimeMainPath.IsValid)
+                    runtimeAllPaths.Add(runtimeMainPath);
+
+                foreach (BotRouteBranch branch in runtimeSource.GetBranches())
+                {
+                    var bp = new BotPath();
+                    bp.BuildFrom(branch.GetWorldPoints(), false, 6f);
+                    if (bp.IsValid)
+                        runtimeAllPaths.Add(bp);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ponto mais próximo de QUALQUER rota válida da cena (principal + branches), planar.
+        /// Retorna false se a cena não tem BotRacingLine válida. Use para checagens de fora-da-pista:
+        /// um kart num atalho válido fica perto de uma rota e não é tratado como OOB.
+        /// </summary>
+        public static bool TryGetNearestRoutePoint(Vector3 position, out Vector3 nearestOnRoute)
+        {
+            nearestOnRoute = default;
+            EnsureRuntimePaths();
+            if (runtimeAllPaths == null || runtimeAllPaths.Count == 0)
                 return false;
+
+            float bestSqr = float.MaxValue;
+            for (int i = 0; i < runtimeAllPaths.Count; i++)
+            {
+                BotPath.NearestResult n = runtimeAllPaths[i].FindNearestGlobal(position);
+                if (n.SqrPlanarDistance < bestSqr)
+                {
+                    bestSqr = n.SqrPlanarDistance;
+                    nearestOnRoute = n.Point;
+                }
             }
 
-            if (runtimePath == null)
-            {
-                runtimePath = new BotPath();
-                runtimePath.BuildFrom(runtimeSource.GetWorldPoints(), runtimeSource.loop, 6f);
-            }
+            return bestSqr < float.MaxValue;
+        }
 
-            if (!runtimePath.IsValid)
-            {
-                nearestOnRoute = default;
+        /// <summary>
+        /// Info sobre a rota PRINCIPAL: ponto mais próximo + distância percorrida + comprimento +
+        /// loop. Usado para ordenar "o quão à frente" duas posições estão no sentido da corrida
+        /// (pose segura à frente do checkpoint). Mede só na principal de propósito.
+        /// </summary>
+        public static bool TryGetNearestRouteInfo(
+            Vector3 position,
+            out Vector3 nearestOnRoute,
+            out float distanceOnRoute,
+            out float routeTotalLength,
+            out bool routeLooped)
+        {
+            nearestOnRoute = default;
+            distanceOnRoute = 0f;
+            routeTotalLength = 0f;
+            routeLooped = false;
+
+            EnsureRuntimePaths();
+            if (runtimeMainPath == null || !runtimeMainPath.IsValid)
                 return false;
-            }
 
-            nearestOnRoute = runtimePath.FindNearestGlobal(position).Point;
+            BotPath.NearestResult nearest = runtimeMainPath.FindNearestGlobal(position);
+            nearestOnRoute = nearest.Point;
+            distanceOnRoute = nearest.DistanceOnPath;
+            routeTotalLength = runtimeMainPath.TotalLength;
+            routeLooped = runtimeMainPath.Looped;
             return true;
+        }
+
+        // Filhos com BotRouteBranch (rotas alternativas) ou BotTrackZone (marcadores de trecho)
+        // NÃO contam como pontos do traçado principal.
+        private static bool IsRoutePointChild(Transform child)
+        {
+            return child != null
+                && child.GetComponent<BotRouteBranch>() == null
+                && child.GetComponent<BotTrackZone>() == null;
         }
 
         public List<Vector3> GetWorldPoints()
@@ -112,8 +178,7 @@ namespace PartyRacers.AI
             {
                 foreach (Transform child in transform)
                 {
-                    // Filhos com BotRouteBranch são rotas alternativas, não pontos da linha principal.
-                    if (child != null && child.GetComponent<BotRouteBranch>() == null)
+                    if (IsRoutePointChild(child))
                         worldBuffer.Add(child.position);
                 }
             }
@@ -152,6 +217,23 @@ namespace PartyRacers.AI
             return branches;
         }
 
+        /// <summary>Zonas especiais (rampa, salto, curva forte...) autoradas como filhos deste objeto.</summary>
+        public List<BotTrackZone> GetZones()
+        {
+            var zones = new List<BotTrackZone>();
+            foreach (Transform child in transform)
+            {
+                if (child == null)
+                    continue;
+
+                BotTrackZone zone = child.GetComponent<BotTrackZone>();
+                if (zone != null)
+                    zones.Add(zone);
+            }
+
+            return zones;
+        }
+
         /// <summary>Transforms dos pontos do traçado principal, na ordem de condução.</summary>
         public List<Transform> GetPointTransformList()
         {
@@ -160,7 +242,7 @@ namespace PartyRacers.AI
             {
                 foreach (Transform child in transform)
                 {
-                    if (child != null && child.GetComponent<BotRouteBranch>() == null)
+                    if (IsRoutePointChild(child))
                         list.Add(child);
                 }
             }
@@ -183,7 +265,7 @@ namespace PartyRacers.AI
             {
                 foreach (Transform child in transform)
                 {
-                    if (child != null && child.GetComponent<BotRouteBranch>() == null)
+                    if (IsRoutePointChild(child))
                         count++;
                 }
             }
@@ -541,7 +623,7 @@ namespace PartyRacers.AI
             for (int i = 0; i < transform.childCount; i++)
             {
                 Transform child = transform.GetChild(i);
-                if (child.GetComponent<BotRouteBranch>() != null)
+                if (!IsRoutePointChild(child))
                     continue;
 
                 Undo.RecordObject(child.gameObject, "Renumber Bot Racing Line Point");

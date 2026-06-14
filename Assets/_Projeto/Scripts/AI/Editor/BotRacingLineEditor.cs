@@ -36,10 +36,11 @@ namespace PartyRacers.AI.Editor
             BotPath preview = line.GetEditorPreviewPath();
             int pointCount = line.GetWorldPoints().Count;
             int branchCount = line.GetBranches().Count;
+            int zoneCount = line.GetZones().Count;
             float length = preview != null && preview.IsValid ? preview.TotalLength : 0f;
 
             EditorGUILayout.LabelField("Rota", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField($"Pontos: {pointCount}    Branches: {branchCount}    Comprimento: {length:F0} m");
+            EditorGUILayout.LabelField($"Pontos: {pointCount}    Branches: {branchCount}    Zonas: {zoneCount}    Comprimento: {length:F0} m");
         }
 
         private void DrawTools(BotRacingLine line)

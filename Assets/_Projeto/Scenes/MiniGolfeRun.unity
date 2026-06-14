@@ -14,7 +14,7 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 1
+  m_Fog: 0
   m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   m_FogMode: 3
   m_FogDensity: 0.006
@@ -149,7 +149,7 @@ Transform:
   m_GameObject: {fileID: 6275540}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 234.5, y: -2.0197353, z: 232.5}
+  m_LocalPosition: {x: 234.49994, y: -2.2697353, z: 232.50003}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1018,6 +1018,64 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &41988364
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 41988365}
+  - component: {fileID: 41988366}
+  m_Layer: 0
+  m_Name: Zona_Rampa_Subida01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &41988365
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 41988364}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 513.5, y: -0.19285583, z: -38.357185}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &41988366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 41988364}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 0
+  metersBefore: 12
+  metersAfter: 92
+  approachDistance: 25
+  minSpeedKmh: 90
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.9
+  maxLateralOffset: 0.3
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &52589856
 GameObject:
   m_ObjectHideFlags: 0
@@ -2026,7 +2084,7 @@ Transform:
   m_GameObject: {fileID: 87352123}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 609.5, y: -2.0316334, z: 109.5}
+  m_LocalPosition: {x: 609.5, y: -2.2816334, z: 109.500114}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2057,7 +2115,7 @@ Transform:
   m_GameObject: {fileID: 88238005}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 629.5, y: -2.0312862, z: 155.5}
+  m_LocalPosition: {x: 629.5, y: -2.2812862, z: 155.49988}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2322,6 +2380,64 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 93156552}
   m_Mesh: {fileID: 7012877367616175069, guid: b97103bb282a8834bb2fca7a7b78b8be, type: 3}
+--- !u!1 &93686076
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 93686077}
+  - component: {fileID: 93686078}
+  m_Layer: 0
+  m_Name: Zona_Obstaculo_Pegs_Centro
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &93686077
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93686076}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 122.54169, y: -2.0192814, z: 91.48094}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &93686078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 93686076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 4
+  metersBefore: 140
+  metersAfter: 140
+  approachDistance: 18
+  minSpeedKmh: 0
+  maxSpeedKmh: 90
+  recommendedSpeedKmh: 0
+  aggressiveness: 2
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.45
+  maxLateralOffset: 3
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &104054644
 GameObject:
   m_ObjectHideFlags: 0
@@ -2492,7 +2608,7 @@ Transform:
   m_GameObject: {fileID: 109508679}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 537.5, y: -2.0189285, z: 1.5}
+  m_LocalPosition: {x: 537.5, y: -2, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3367,6 +3483,64 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 141154994}
   m_Mesh: {fileID: -8380799211911860181, guid: b97103bb282a8834bb2fca7a7b78b8be, type: 3}
+--- !u!1 &154363084
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 154363085}
+  - component: {fileID: 154363086}
+  m_Layer: 0
+  m_Name: Zona_Rampa_RetaFinal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &154363085
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 154363084}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -127.6, y: 0.67451286, z: 143.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &154363086
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 154363084}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 0
+  metersBefore: 30
+  metersAfter: 50
+  approachDistance: 25
+  minSpeedKmh: 80
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.9
+  maxLateralOffset: 0.3
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!64 &156411423
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -3471,7 +3645,7 @@ Transform:
   m_GameObject: {fileID: 166253006}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 147.5, y: -2.0070229, z: 145.5}
+  m_LocalPosition: {x: 147.5, y: -2.2570229, z: 145.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3502,7 +3676,7 @@ Transform:
   m_GameObject: {fileID: 168162814}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 281.5, y: 1.2035522, z: 190.5}
+  m_LocalPosition: {x: 281.5, y: 0.95355225, z: 190.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3628,7 +3802,7 @@ Transform:
   m_GameObject: {fileID: 174470487}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 554.5, y: -2.0189247, z: 4.5}
+  m_LocalPosition: {x: 554.5, y: -2.2689247, z: 4.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3679,6 +3853,64 @@ CapsuleCollider:
   m_Height: 0.99999994
   m_Direction: 1
   m_Center: {x: 0, y: 0.49999997, z: 0}
+--- !u!1 &180729104
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 180729105}
+  - component: {fileID: 180729106}
+  m_Layer: 0
+  m_Name: Zona_Estreita_ForkInicial
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &180729105
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 180729104}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 537.5, y: -2, z: 1.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &180729106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 180729104}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 3
+  metersBefore: 45
+  metersAfter: 35
+  approachDistance: 8
+  minSpeedKmh: 0
+  maxSpeedKmh: 122
+  recommendedSpeedKmh: 120
+  aggressiveness: 2
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.72
+  maxLateralOffset: 1.1
+  allowDrift: 0
+  suppressKartAvoidance: 0
 --- !u!1 &191408837
 GameObject:
   m_ObjectHideFlags: 0
@@ -3704,7 +3936,7 @@ Transform:
   m_GameObject: {fileID: 191408837}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 277.5, y: -2.012148, z: 223.5}
+  m_LocalPosition: {x: 277.50006, y: -2.262148, z: 223.49994}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5317,7 +5549,7 @@ Transform:
   m_GameObject: {fileID: 247620757}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: 85.5}
+  m_LocalPosition: {x: 559.5, y: -2.2689247, z: 85.500015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6234,7 +6466,7 @@ Transform:
   m_GameObject: {fileID: 291634634}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 206.5, y: 0.61748695, z: 153.5}
+  m_LocalPosition: {x: 206.5, y: 0.36748695, z: 153.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7120,12 +7352,8 @@ Transform:
   - {fileID: 1877053926}
   - {fileID: 87352124}
   - {fileID: 2084348020}
+  - {fileID: 535408674}
   - {fileID: 1791692754}
-  - {fileID: 2098394534}
-  - {fileID: 681192819}
-  - {fileID: 1929151417}
-  - {fileID: 1028998014}
-  - {fileID: 677355589}
   m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &360382439
@@ -7140,8 +7368,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63d24cba612151348a7c681dd8ee0c69, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotRouteBranch
-  takeChance: 0.3
-  minSkill01: 0
+  takeChance: 0.06
+  minSkill01: 0.9
   useChildrenAsPoints: 1
   points: []
   gizmoColor: {r: 1, g: 0.55, b: 0.1, a: 1}
@@ -7454,7 +7682,7 @@ Transform:
   m_GameObject: {fileID: 373664506}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 206.5, y: -1.5732822, z: 210.5}
+  m_LocalPosition: {x: 213, y: -2.269394, z: 226.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7485,7 +7713,7 @@ Transform:
   m_GameObject: {fileID: 375004168}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 200.5, y: -2.006691, z: 124.5}
+  m_LocalPosition: {x: 200.5, y: -2.256691, z: 124.50001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7743,7 +7971,7 @@ Transform:
   m_GameObject: {fileID: 387780162}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 545.5, y: -2.0189285, z: 1.5}
+  m_LocalPosition: {x: 545.5, y: -2.2689285, z: 1.4999018}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7940,7 +8168,7 @@ Transform:
   m_GameObject: {fileID: 403808715}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 153.5, y: -2.0070229, z: 138.5}
+  m_LocalPosition: {x: 153.5, y: -2.2570229, z: 138.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8107,8 +8335,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63d24cba612151348a7c681dd8ee0c69, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotRouteBranch
-  takeChance: 0.5
-  minSkill01: 0
+  takeChance: 0.16
+  minSkill01: 0.72
   useChildrenAsPoints: 1
   points: []
   gizmoColor: {r: 1, g: 0.55, b: 0.1, a: 1}
@@ -8709,7 +8937,7 @@ Transform:
   m_GameObject: {fileID: 432008766}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 401.5, y: -2.018587, z: 15.5}
+  m_LocalPosition: {x: 401.5, y: -2.268587, z: 15.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8830,7 +9058,7 @@ Transform:
   m_GameObject: {fileID: 441648850}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: 45.5}
+  m_LocalPosition: {x: 559.5, y: -2.2689247, z: 45.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9137,7 +9365,7 @@ Transform:
   m_GameObject: {fileID: 452005119}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 430.5, y: -2.0189285, z: -24.5}
+  m_LocalPosition: {x: 431.5, y: -2, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9527,12 +9755,22 @@ MonoBehaviour:
     steerWander: 0.05
     wanderFrequency: 0.6
     mistakeChance: 0.02
+  enforceCompetitiveProfiles: 1
+  minCompetitiveThrottleScale: 0.96
+  maxCompetitiveCorneringCaution: 0.38
+  minCompetitiveSteerSharpness: 1.7
+  minCompetitiveLookAhead: 16
+  maxCompetitiveSteerWander: 0.07
+  maxCompetitiveMistakeChance: 0.035
   randomizeBotCarModels: 1
   avoidPlayerCarModel: 1
   randomizeBotCarElements: 1
   allowedBotCarIndices: 
   disableBotSmokeEffects: 0
   raceSeed: 1000
+  logBotTelemetry: 1
+  telemetryLogInterval: 30
+  firstLapSnapshotAfterSeconds: 180
 --- !u!4 &461686089
 Transform:
   m_ObjectHideFlags: 0
@@ -9883,15 +10121,12 @@ Transform:
   - {fileID: 1570536384}
   - {fileID: 1751812232}
   - {fileID: 373664507}
-  - {fileID: 1599237243}
-  - {fileID: 1311731097}
   - {fileID: 6275541}
   - {fileID: 1728437114}
   - {fileID: 1116368084}
   - {fileID: 191408838}
   - {fileID: 1399229303}
   - {fileID: 168162815}
-  - {fileID: 865031320}
   m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &479773851
@@ -9906,8 +10141,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63d24cba612151348a7c681dd8ee0c69, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotRouteBranch
-  takeChance: 0.3
-  minSkill01: 0
+  takeChance: 0.12
+  minSkill01: 0.7
   useChildrenAsPoints: 1
   points: []
   gizmoColor: {r: 1, g: 0.55, b: 0.1, a: 1}
@@ -10013,7 +10248,7 @@ Transform:
   m_GameObject: {fileID: 490394556}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 536.5, y: -2.0189266, z: -82.5}
+  m_LocalPosition: {x: 536.5, y: -2, z: -82}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10572,7 +10807,7 @@ Transform:
   m_GameObject: {fileID: 515208720}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 551.5, y: -2.019041, z: -81.5}
+  m_LocalPosition: {x: 546.5, y: -2, z: -81.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10603,7 +10838,7 @@ Transform:
   m_GameObject: {fileID: 517293274}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 155.5, y: -2.0066814, z: 129.5}
+  m_LocalPosition: {x: 155.49997, y: -2.2566814, z: 129.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10665,7 +10900,7 @@ Transform:
   m_GameObject: {fileID: 518886835}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -1.7133446, z: -32.5}
+  m_LocalPosition: {x: 559.5, y: -1.6999989, z: -32.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10696,7 +10931,7 @@ Transform:
   m_GameObject: {fileID: 522158235}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 461.5, y: -2.0189285, z: 3.5}
+  m_LocalPosition: {x: 461.5, y: -2.2689285, z: 3.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10935,6 +11170,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &535408673
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 535408674}
+  m_Layer: 0
+  m_Name: AnelMid_410
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &535408674
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 535408673}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 549.5, y: -2.75, z: 108.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 360382438}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &537542315
 GameObject:
@@ -11527,7 +11793,7 @@ Transform:
   m_GameObject: {fileID: 561430121}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 564.5, y: -2.0312862, z: 155.5}
+  m_LocalPosition: {x: 564.5, y: -2.2812862, z: 155.49998}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12081,7 +12347,7 @@ Transform:
   m_GameObject: {fileID: 603313314}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 459.5, y: -2.0189285, z: -4.5}
+  m_LocalPosition: {x: 459.5, y: -2, z: 3.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12226,7 +12492,7 @@ Transform:
   m_GameObject: {fileID: 610849442}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 453.5, y: -2.0189285, z: 13.5}
+  m_LocalPosition: {x: 453.5, y: -2.2689285, z: 13.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12416,7 +12682,7 @@ Transform:
   m_GameObject: {fileID: 627401827}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 147.5, y: -2.019724, z: 293.5}
+  m_LocalPosition: {x: 134.22, y: -2.019724, z: 293.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12849,7 +13115,7 @@ Transform:
   m_GameObject: {fileID: 657538374}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 309.5, y: -1.814415, z: 292.5}
+  m_LocalPosition: {x: 309.5, y: -1.7999992, z: 292.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13362,68 +13628,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 324944378106232417, guid: aa70a7b27e483214a8986451c4733835, type: 3}
   m_PrefabInstance: {fileID: 673505888}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &677355588
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 677355589}
-  m_Layer: 0
-  m_Name: B23
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &677355589
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 677355588}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 558.5, y: -2.0189247, z: -2.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 360382438}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &681192818
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 681192819}
-  m_Layer: 0
-  m_Name: B20
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &681192819
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 681192818}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: 75.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 360382438}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &681954559
 GameObject:
   m_ObjectHideFlags: 0
@@ -13449,7 +13653,7 @@ Transform:
   m_GameObject: {fileID: 681954559}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 189.5, y: -2.0070324, z: 120.5}
+  m_LocalPosition: {x: 189.49997, y: -2.2570324, z: 120.500015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13480,7 +13684,7 @@ Transform:
   m_GameObject: {fileID: 682159072}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 448.5, y: -2.018587, z: -20.5}
+  m_LocalPosition: {x: 448.5, y: -2, z: 2.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13990,7 +14194,7 @@ Transform:
   m_GameObject: {fileID: 691308606}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 553.5, y: -2.0189247, z: -0.5}
+  m_LocalPosition: {x: 553.5, y: -2, z: -0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14052,7 +14256,7 @@ Transform:
   m_GameObject: {fileID: 695563214}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 558.5, y: -2.019041, z: -72.5}
+  m_LocalPosition: {x: 555.5, y: -2, z: -76.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14411,7 +14615,7 @@ Transform:
   m_GameObject: {fileID: 717784934}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 205.5, y: -1.9943295, z: 135.5}
+  m_LocalPosition: {x: 205.5, y: -2.2443295, z: 135.50002}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14734,7 +14938,7 @@ Transform:
   m_GameObject: {fileID: 721718054}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 413.5, y: -2.018587, z: -19.5}
+  m_LocalPosition: {x: 415.5, y: -2, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -15159,7 +15363,7 @@ Transform:
   m_GameObject: {fileID: 735933832}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: -10.5}
+  m_LocalPosition: {x: 559.5, y: -2, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -15484,7 +15688,7 @@ Transform:
   m_GameObject: {fileID: 749346681}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 594.5, y: -2.0316277, z: 161.5}
+  m_LocalPosition: {x: 594.49994, y: -2.2816277, z: 161.50012}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -17343,37 +17547,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 324944378106232417, guid: aa70a7b27e483214a8986451c4733835, type: 3}
   m_PrefabInstance: {fileID: 863615708}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &865031319
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 865031320}
-  m_Layer: 0
-  m_Name: B20
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &865031320
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 865031319}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 281.5, y: -2.0102081, z: 173.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 479773850}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &866254865
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18952,7 +19125,7 @@ Transform:
   m_GameObject: {fileID: 917826444}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 174.5, y: -2.0070324, z: 120.5}
+  m_LocalPosition: {x: 174.49997, y: -2.2570324, z: 120.50001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -19543,7 +19716,7 @@ Transform:
   m_GameObject: {fileID: 933169376}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 574.5, y: -2.0316277, z: 160.5}
+  m_LocalPosition: {x: 574.49994, y: -2.2816277, z: 160.50012}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -21179,37 +21352,6 @@ Transform:
   - {fileID: 1237388990}
   m_Father: {fileID: 1121021039}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1028998013
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1028998014}
-  m_Layer: 0
-  m_Name: B22
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1028998014
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1028998013}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: 17.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 360382438}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1032412464
 GameObject:
   m_ObjectHideFlags: 0
@@ -21442,7 +21584,7 @@ Transform:
   m_GameObject: {fileID: 1039678806}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 560.5, y: -2.0189247, z: 145.5}
+  m_LocalPosition: {x: 560.5, y: -2.2689247, z: 145.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -22475,7 +22617,7 @@ Transform:
   m_GameObject: {fileID: 1104526407}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: 125.5}
+  m_LocalPosition: {x: 559.5, y: -2.2689247, z: 125.500015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -22772,7 +22914,7 @@ Transform:
   m_GameObject: {fileID: 1116368083}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 269.5, y: -2.012148, z: 230.5}
+  m_LocalPosition: {x: 269.50006, y: -2.262148, z: 230.49994}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23377,7 +23519,7 @@ Transform:
   m_GameObject: {fileID: 1153475240}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 638.5, y: -2.0316277, z: 133.5}
+  m_LocalPosition: {x: 638.5, y: -2.2816277, z: 133.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23860,6 +24002,64 @@ Transform:
   - {fileID: 1735751873}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1193642388
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1193642389}
+  - component: {fileID: 1193642390}
+  m_Layer: 0
+  m_Name: Zona_Estreita_CornerLeste
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1193642389
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1193642388}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 513.9635, y: -2.019186, z: 171.849}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1193642390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1193642388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 3
+  metersBefore: 44
+  metersAfter: 36
+  approachDistance: 15
+  minSpeedKmh: 0
+  maxSpeedKmh: 62
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.85
+  maxLateralOffset: 0.25
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &1195568624
 GameObject:
   m_ObjectHideFlags: 0
@@ -24070,6 +24270,64 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1237827652249727188, guid: 3007f24466db0fb43b9ec398808a54a2, type: 3}
   m_PrefabInstance: {fileID: 1202431330}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1204278845
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1204278846}
+  - component: {fileID: 1204278847}
+  m_Layer: 0
+  m_Name: Zona_Salto_RampaLeste
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1204278846
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204278845}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 287.8, y: -0.8999996, z: 292.6}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1204278847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204278845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 1
+  metersBefore: 36
+  metersAfter: 72
+  approachDistance: 38
+  minSpeedKmh: 115
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 2
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.92
+  maxLateralOffset: 0.35
+  allowDrift: 0
+  suppressKartAvoidance: 0
 --- !u!1 &1209640129
 GameObject:
   m_ObjectHideFlags: 0
@@ -24415,6 +24673,64 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1229950102
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1229950103}
+  - component: {fileID: 1229950104}
+  m_Layer: 0
+  m_Name: Zona_Rampa_SubidaFinal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1229950103
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1229950102}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -79.408264, y: 0.67451286, z: 1.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1229950104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1229950102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 0
+  metersBefore: 30
+  metersAfter: 50
+  approachDistance: 25
+  minSpeedKmh: 70
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.9
+  maxLateralOffset: 0.3
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &1234517373
 GameObject:
   m_ObjectHideFlags: 0
@@ -25590,37 +25906,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1311338025}
   m_Mesh: {fileID: -8380799211911860181, guid: b97103bb282a8834bb2fca7a7b78b8be, type: 3}
---- !u!1 &1311731096
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1311731097}
-  m_Layer: 0
-  m_Name: B13
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1311731097
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1311731096}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 217.5, y: -2.019394, z: 230.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 479773850}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1312871153
 GameObject:
   m_ObjectHideFlags: 0
@@ -26133,7 +26418,7 @@ Transform:
   m_GameObject: {fileID: 1353299088}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 403.5, y: -2.0189285, z: -4.5}
+  m_LocalPosition: {x: 403.5, y: -2, z: 3.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -26893,7 +27178,7 @@ Transform:
   m_GameObject: {fileID: 1399229302}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 280.5, y: -1.5764732, z: 210.5}
+  m_LocalPosition: {x: 280.5, y: -1.8264732, z: 210.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -27051,7 +27336,7 @@ Transform:
   m_GameObject: {fileID: 1413897945}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 239.5, y: -2.019724, z: 296.5}
+  m_LocalPosition: {x: 237.98, y: -2, z: 292.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -27341,7 +27626,7 @@ Transform:
   m_GameObject: {fileID: 1426135964}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189266, z: -56.5}
+  m_LocalPosition: {x: 559.5, y: -2, z: -56.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -28340,7 +28625,7 @@ Transform:
   m_GameObject: {fileID: 1479129483}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 161.5, y: -2.0066814, z: 121.5}
+  m_LocalPosition: {x: 161.49997, y: -2.2566814, z: 121.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -28377,6 +28662,64 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1489184230
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1489184231}
+  - component: {fileID: 1489184232}
+  m_Layer: 0
+  m_Name: Zona_Obstaculo_Pegs_Sul
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1489184231
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1489184230}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 536.5, y: -2, z: -82}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1489184232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1489184230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 4
+  metersBefore: 16
+  metersAfter: 26
+  approachDistance: 22
+  minSpeedKmh: 0
+  maxSpeedKmh: 90
+  recommendedSpeedKmh: 0
+  aggressiveness: 2
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.45
+  maxLateralOffset: 3
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &1490459476
 GameObject:
   m_ObjectHideFlags: 0
@@ -29249,7 +29592,7 @@ Transform:
   m_GameObject: {fileID: 1519283790}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 277.5, y: -0.7455139, z: 296.5}
+  m_LocalPosition: {x: 277.5, y: -0.69999886, z: 292.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -29671,6 +30014,64 @@ MonoBehaviour:
   perKartCooldown: 1
   minRelativeSpeed: 0
   debugMode: 0
+--- !u!1 &1541539411
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1541539412}
+  - component: {fileID: 1541539413}
+  m_Layer: 0
+  m_Name: Zona_Salto_Rampa1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1541539412
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541539411}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 452.3, y: -0.9441967, z: 153.4}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1541539413
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541539411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 1
+  metersBefore: 32
+  metersAfter: 45
+  approachDistance: 22
+  minSpeedKmh: 100
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 1
+  maxLateralOffset: 0.2
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &1543022451
 GameObject:
   m_ObjectHideFlags: 0
@@ -29696,7 +30097,7 @@ Transform:
   m_GameObject: {fileID: 1543022451}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 430.5, y: -2.0189285, z: 23.5}
+  m_LocalPosition: {x: 430.5, y: -2.2689285, z: 23.499926}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -29820,7 +30221,7 @@ Transform:
   m_GameObject: {fileID: 1567014479}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 635.5, y: -2.031742, z: 117.5}
+  m_LocalPosition: {x: 635.5, y: -2.281742, z: 117.50001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -29851,7 +30252,7 @@ Transform:
   m_GameObject: {fileID: 1570536383}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 206.5, y: -2.0197353, z: 170.5}
+  m_LocalPosition: {x: 206.50003, y: -2.75, z: 184.30005}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -30271,7 +30672,7 @@ Transform:
   m_GameObject: {fileID: 1592573983}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 325.5, y: -2.0193825, z: 289.5}
+  m_LocalPosition: {x: 325.5, y: -2, z: 292.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -30405,37 +30806,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1598932672}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1599237242
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1599237243}
-  m_Layer: 0
-  m_Name: B12
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1599237243
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1599237242}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 209.5, y: -2.019394, z: 223.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 479773850}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1599400064
 GameObject:
   m_ObjectHideFlags: 0
@@ -32458,7 +32828,7 @@ Transform:
   m_GameObject: {fileID: 1723697731}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 558.5, y: -2.0189247, z: 15.5}
+  m_LocalPosition: {x: 558.5, y: -2.2689247, z: 15.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -32489,7 +32859,7 @@ Transform:
   m_GameObject: {fileID: 1724890160}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 636.5, y: -2.0316277, z: 145.5}
+  m_LocalPosition: {x: 636.5, y: -2.2816277, z: 145.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -32632,7 +33002,7 @@ Transform:
   m_GameObject: {fileID: 1728437113}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 254.5, y: -2.0197353, z: 232.5}
+  m_LocalPosition: {x: 254.49994, y: -2.2697353, z: 232.50003}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -33333,7 +33703,7 @@ Transform:
   m_GameObject: {fileID: 1751812231}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 206.5, y: 1.2067451, z: 190.5}
+  m_LocalPosition: {x: 206.5, y: -1.8232822, z: 210.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -34230,6 +34600,64 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
+--- !u!1 &1782753534
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1782753535}
+  - component: {fileID: 1782753536}
+  m_Layer: 0
+  m_Name: Zona_Salto_Rampa2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1782753535
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782753534}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 593.2, y: -0.9441967, z: 109.6}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1782753536
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782753534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 1
+  metersBefore: 32
+  metersAfter: 45
+  approachDistance: 22
+  minSpeedKmh: 100
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 1
+  maxLateralOffset: 0.2
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &1790522346
 GameObject:
   m_ObjectHideFlags: 0
@@ -34369,7 +34797,7 @@ Transform:
   m_GameObject: {fileID: 1791692753}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 572.5, y: 1.6608849, z: 107.5}
+  m_LocalPosition: {x: 509.6, y: -2.2558823, z: 107.4999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -34620,6 +35048,18 @@ Transform:
   - {fileID: 408461043}
   - {fileID: 360382438}
   - {fileID: 479773850}
+  - {fileID: 1204278846}
+  - {fileID: 1541539412}
+  - {fileID: 1782753535}
+  - {fileID: 2115861094}
+  - {fileID: 1926877133}
+  - {fileID: 41988365}
+  - {fileID: 1229950103}
+  - {fileID: 154363085}
+  - {fileID: 1489184231}
+  - {fileID: 93686077}
+  - {fileID: 1193642389}
+  - {fileID: 180729105}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!64 &1805086068
@@ -35345,7 +35785,7 @@ Transform:
   m_GameObject: {fileID: 1832789396}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 617.5, y: -2.0316277, z: 160.5}
+  m_LocalPosition: {x: 617.49994, y: -2.2816277, z: 160.50012}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -35750,7 +36190,7 @@ Transform:
   m_GameObject: {fileID: 1847439921}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 513.5, y: -2.0189266, z: -49.5}
+  m_LocalPosition: {x: 513.5, y: -2, z: -49.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -36500,7 +36940,7 @@ Transform:
   m_GameObject: {fileID: 1877053925}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 627.5, y: -2.031742, z: 111.5}
+  m_LocalPosition: {x: 627.5, y: -2.281742, z: 111.50001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -37321,13 +37761,13 @@ Transform:
   m_GameObject: {fileID: 1924704745}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 513.5, y: -2.0185852, z: -72.5}
+  m_LocalPosition: {x: 514.5, y: -2, z: -78.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1929151416
+--- !u!1 &1926877132
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -37335,29 +37775,56 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1929151417}
+  - component: {fileID: 1926877133}
+  - component: {fileID: 1926877134}
   m_Layer: 0
-  m_Name: B21
+  m_Name: Zona_Salto_RampaOeste
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1929151417
+--- !u!4 &1926877133
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1929151416}
+  m_GameObject: {fileID: 1926877132}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 559.5, y: -2.0189247, z: 45.5}
+  m_LocalPosition: {x: 186.5, y: -1.2999992, z: 292.7}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 360382438}
+  m_Father: {fileID: 1797022570}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1926877134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1926877132}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 1
+  metersBefore: 42
+  metersAfter: 68
+  approachDistance: 38
+  minSpeedKmh: 115
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 2
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.92
+  maxLateralOffset: 0.35
+  allowDrift: 0
+  suppressKartAvoidance: 0
 --- !u!1 &1929563777
 GameObject:
   m_ObjectHideFlags: 0
@@ -37599,7 +38066,7 @@ Transform:
   m_GameObject: {fileID: 1949612927}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 543.5, y: -2.0189285, z: 1.5}
+  m_LocalPosition: {x: 543.5, y: -2, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -39796,7 +40263,7 @@ Transform:
   m_GameObject: {fileID: 2059906762}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 387.5, y: -2.0062237, z: 3.5}
+  m_LocalPosition: {x: 387.50003, y: -2.2562237, z: 3.4999375}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -40124,7 +40591,7 @@ Transform:
   m_GameObject: {fileID: 2084348019}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 589.5, y: -1.9551716, z: 109.5}
+  m_LocalPosition: {x: 589.5, y: -2.2051716, z: 109.5001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -40213,37 +40680,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1797022570}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2098394533
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2098394534}
-  m_Layer: 0
-  m_Name: B19
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2098394534
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2098394533}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 563.5, y: -2.0189247, z: 99.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 360382438}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2100702658
 GameObject:
@@ -40686,7 +41122,7 @@ Transform:
   m_GameObject: {fileID: 2111847689}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 520.5, y: -2.0185852, z: -81.5}
+  m_LocalPosition: {x: 524.57855, y: -2, z: -81.50621}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -40984,6 +41420,64 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2115599377}
   m_Mesh: {fileID: -4950556409272316762, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
+--- !u!1 &2115861093
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2115861094}
+  - component: {fileID: 2115861095}
+  m_Layer: 0
+  m_Name: Zona_Salto_Rampa2 (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2115861094
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2115861093}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 513.3, y: -0.9441967, z: -50.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1797022570}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2115861095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2115861093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0fc028c20b67e54abb6a410ebf12990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyRacers.AI.BotTrackZone
+  type: 1
+  metersBefore: 8
+  metersAfter: 45
+  approachDistance: 10
+  minSpeedKmh: 100
+  maxSpeedKmh: 0
+  recommendedSpeedKmh: 0
+  aggressiveness: 1
+  avoidAutoRespawn: 0
+  alignToRoute: 1
+  alignmentStrength: 0.92
+  maxLateralOffset: 0.55
+  allowDrift: 0
+  suppressKartAvoidance: 1
 --- !u!1 &2121750342
 GameObject:
   m_ObjectHideFlags: 0

@@ -45,6 +45,7 @@ namespace PartyRacers.AI
 
         private BotPath mainPath;
         private readonly List<BranchRuntime> branches = new List<BranchRuntime>();
+        private readonly List<ZoneRuntime> zones = new List<ZoneRuntime>();
 
         // Estado de navegação atual (linha principal ou um branch).
         private BotPath currentPath;
@@ -69,6 +70,32 @@ namespace PartyRacers.AI
         public Vector3 CurrentNearestPoint => IsReady ? nearestPoint : transform.position;
         public bool IsOnBranch => currentBranchIndex >= 0;
         public int BranchCount => branches.Count;
+        public int ZoneCount => zones.Count;
+
+        /// <summary>Identifica o caminho atual: -1 = linha principal, >= 0 = índice do branch.</summary>
+        public int CurrentPathId => currentBranchIndex;
+        public int CurrentSegmentIndex => nearestSegment;
+
+        /// <summary>Distância percorrida (m) ao longo do caminho ATUAL até o ponto mais próximo.</summary>
+        public float CurrentDistanceOnPath => nearestDistanceOnPath;
+
+        /// <summary>
+        /// Delta de progresso (m) entre duas distâncias no caminho atual, ciente do loop:
+        /// positivo = avançou no sentido da corrida, negativo = recuou. Usado pela detecção
+        /// de progresso REAL do bot (raspar parede sem avançar = delta ~0).
+        /// </summary>
+        public float SignedRouteDelta(float fromDistance, float toDistance)
+        {
+            BotPath p = currentPath ?? mainPath;
+            if (p == null || !p.IsValid)
+                return 0f;
+
+            if (!p.Looped)
+                return toDistance - fromDistance;
+
+            float half = p.TotalLength * 0.5f;
+            return Mathf.Repeat(toDistance - fromDistance + half, p.TotalLength) - half;
+        }
 
         public struct PathFrame
         {
@@ -88,6 +115,9 @@ namespace PartyRacers.AI
                 DistanceToPath = distanceToPath;
                 SignedLateralError = signedLateralError;
                 UpcomingTurn01 = upcomingTurn01;
+                ActiveZone = null;
+                UpcomingZone = null;
+                DistanceToUpcomingZone = float.MaxValue;
             }
 
             public bool IsValid { get; }
@@ -97,6 +127,13 @@ namespace PartyRacers.AI
             public float DistanceToPath { get; }
             public float SignedLateralError { get; }
             public float UpcomingTurn01 { get; }
+
+            /// <summary>Zona especial em que o bot está AGORA (null = nenhuma).</summary>
+            public BotTrackZone ActiveZone { get; internal set; }
+            /// <summary>Próxima zona à frente, quando dentro da distância de aproximação dela.</summary>
+            public BotTrackZone UpcomingZone { get; internal set; }
+            /// <summary>Metros até o início da UpcomingZone.</summary>
+            public float DistanceToUpcomingZone { get; internal set; }
         }
 
         /// <summary>Identidade do bot usada nas decisões de atalho (determinística por corrida).</summary>
@@ -127,10 +164,30 @@ namespace PartyRacers.AI
             decidedBranchIndex = -1;
         }
 
+        private float branchSuppressUntil = float.NegativeInfinity;
+
+        /// <summary>
+        /// Abandona a branch ATUAL e volta para a linha principal, suprimindo a entrada em
+        /// qualquer atalho por alguns segundos. Usado quando o bot trava na boca de um atalho
+        /// (ex.: scrum de tráfego num fork): em vez de insistir/respawnar, ele segue pela rota
+        /// principal — que também passa pelos checkpoints. Retorna false se não estava em branch.
+        /// </summary>
+        public bool ForceAbandonBranch(float suppressSeconds)
+        {
+            if (currentBranchIndex < 0)
+                return false;
+
+            ResetToMainPath();
+            branchSuppressUntil = Time.time + Mathf.Max(0f, suppressSeconds);
+            UpdateNearest(transform.position);
+            return true;
+        }
+
         public void Build(int lapCheckpointCount)
         {
             ready = false;
             branches.Clear();
+            zones.Clear();
             currentBranchIndex = -1;
             decidedBranchIndex = -1;
             nearestSegment = 0;
@@ -149,11 +206,33 @@ namespace PartyRacers.AI
                 return;
 
             if (line != null)
+            {
                 BuildBranches(line);
+                BuildZones(line);
+            }
 
             ready = true;
             nearestPoint = mainPath.Points[0];
             nearestDistanceOnPath = 0f;
+        }
+
+        // Projeta cada BotTrackZone na linha principal e guarda o intervalo [início, fim] em
+        // metros de rota. A consulta em GetPathFrame é uma comparação barata de distâncias.
+        private void BuildZones(BotRacingLine line)
+        {
+            foreach (BotTrackZone zone in line.GetZones())
+            {
+                if (zone == null || zone.TotalLength < 0.1f)
+                    continue;
+
+                float center = mainPath.FindNearestGlobal(zone.transform.position).DistanceOnPath;
+                zones.Add(new ZoneRuntime
+                {
+                    Source = zone,
+                    StartDistance = center - zone.MetersBefore,
+                    Length = zone.TotalLength
+                });
+            }
         }
 
         private void BuildBranches(BotRacingLine line)
@@ -241,6 +320,20 @@ namespace PartyRacers.AI
             return frame.IsValid ? frame.AimPoint : pos + transform.forward * 5f;
         }
 
+        /// <summary>
+        /// Ponto no caminho ATUAL (principal ou branch) a 'aheadDistance' metros à frente do
+        /// ponto-mais-próximo corrente. Exige que GetPathFrame tenha sido chamado neste frame
+        /// (o estado de navegação precisa estar atualizado). Usado pela IA para "ler" a pista à
+        /// frente (curvatura, ponto de mira pós-rampa) como um piloto faria.
+        /// </summary>
+        public Vector3 PointAhead(float aheadDistance)
+        {
+            if (!IsReady)
+                return transform.position + transform.forward * Mathf.Max(1f, aheadDistance);
+
+            return GetPointAhead(Mathf.Max(0f, aheadDistance));
+        }
+
         public PathFrame GetPathFrame(Vector3 pos, float lookAhead)
         {
             if (!IsReady)
@@ -269,7 +362,59 @@ namespace PartyRacers.AI
             float distanceToPath = offset.magnitude;
             float signedError = Vector3.Cross(tangent, offset).y;
 
-            return new PathFrame(true, aim, nearestPoint, tangent, distanceToPath, signedError, upcomingTurn01);
+            var frame = new PathFrame(true, aim, nearestPoint, tangent, distanceToPath, signedError, upcomingTurn01);
+            FillZoneInfo(ref frame);
+            return frame;
+        }
+
+        // Zona ativa + próxima zona dentro da distância de aproximação. Zonas valem apenas na
+        // linha principal (em um branch o bot segue a rota alternativa sem marcadores).
+        private void FillZoneInfo(ref PathFrame frame)
+        {
+            if (currentBranchIndex >= 0 || zones.Count == 0)
+                return;
+
+            float total = mainPath.TotalLength;
+            BotTrackZone active = null;
+            float activeCenterDist = float.MaxValue;
+            BotTrackZone upcoming = null;
+            float upcomingDistance = float.MaxValue;
+
+            for (int i = 0; i < zones.Count; i++)
+            {
+                ZoneRuntime zone = zones[i];
+
+                // Distância (m) do bot até o INÍCIO da zona, no sentido da corrida.
+                float aheadToStart = mainPath.Looped
+                    ? Mathf.Repeat(zone.StartDistance - nearestDistanceOnPath, total)
+                    : zone.StartDistance - nearestDistanceOnPath;
+
+                // Dentro da zona: o início ficou para trás há menos que o comprimento dela.
+                float behindStart = mainPath.Looped ? total - aheadToStart : -aheadToStart;
+                if (behindStart >= 0f && behindStart <= zone.Length)
+                {
+                    // Zonas sobrepostas: vence a de CENTRO mais próximo (comportamento previsível).
+                    float toCenter = Mathf.Abs(behindStart - zone.Length * 0.5f);
+                    if (toCenter < activeCenterDist)
+                    {
+                        activeCenterDist = toCenter;
+                        active = zone.Source;
+                    }
+                    continue;
+                }
+
+                if (aheadToStart >= 0f
+                    && aheadToStart <= zone.Source.ApproachDistance
+                    && aheadToStart < upcomingDistance)
+                {
+                    upcoming = zone.Source;
+                    upcomingDistance = aheadToStart;
+                }
+            }
+
+            frame.ActiveZone = active;
+            frame.UpcomingZone = upcoming;
+            frame.DistanceToUpcomingZone = upcomingDistance;
         }
 
         public float PlanarDistanceToPath(Vector3 pos)
@@ -347,6 +492,10 @@ namespace PartyRacers.AI
             }
 
             if (branches.Count == 0)
+                return;
+
+            // Atalho suprimido temporariamente (acabou de abandonar um fork congestionado).
+            if (Time.time < branchSuppressUntil)
                 return;
 
             // Procura o branch mais próximo à frente na linha principal.
@@ -430,6 +579,13 @@ namespace PartyRacers.AI
             public BotPath Path;
             public float EntryDistanceOnMain;
             public float ExitDistanceOnMain;
+        }
+
+        private class ZoneRuntime
+        {
+            public BotTrackZone Source;
+            public float StartDistance; // m na linha principal (pode ser negativo; o wrap é resolvido na consulta)
+            public float Length;        // metersBefore + metersAfter
         }
 
         private static Vector3 Planar(Vector3 v)

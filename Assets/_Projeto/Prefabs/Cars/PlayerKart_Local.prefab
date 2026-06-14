@@ -93,7 +93,7 @@ GameObject:
   - component: {fileID: -2359419696250044244}
   m_Layer: 0
   m_Name: PlayerKart_Local
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -283,6 +283,7 @@ MonoBehaviour:
   collisionRecoveryDuration: 0.45
   collisionGripFloor: 0.35
   collisionYawDamping: 6
+  knockbackGravityScale: 0.6
   boostSpeedMultiplier: 1
   boostAccelerationMultiplier: 1
   boostEndTime: 0
@@ -377,6 +378,7 @@ MonoBehaviour:
   totalLaps: 3
   totalCheckpoints: 11
   autoDetectCheckpointCount: 1
+  logCheckpoints: 0
   currentLap: 1
   nextCheckpointIndex: 1
   raceFinished: 0
@@ -404,6 +406,16 @@ MonoBehaviour:
   groundProbeHeight: 12
   groundProbeDistance: 35
   groundClearance: 0.2
+  ghostDurationAfterRespawn: 3
+  autoRespawnOutOfBounds: 1
+  outOfBoundsGroundNames:
+  - Terreno
+  - Terrain
+  - SM_Straight (28)
+  belowRouteThreshold: 4
+  hardBelowRouteDistance: 20
+  outOfBoundsSeconds: 1
+  outOfBoundsCheckInterval: 0.2
 --- !u!114 &5102941980696658742
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -661,6 +673,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7319809369609d446a908ca9072ae806, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartCollision
+  enableLegacyWallResponse: 0
   minImpactSpeed: 2.5
   minWallNormalXZ: 0.45
   maxGroundNormalY: 0.55

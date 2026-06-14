@@ -45,6 +45,21 @@ public class KartPowerUser : MonoBehaviour
     [Tooltip("Quão à frente do socket o disco nasce ao disparar.")]
     [SerializeField] private float ufoLaunchForwardOffset = 1.2f;
 
+    [Header("Ancoragem adaptativa (Rocket/UFO)")]
+    [Tooltip("Ajusta a ALTURA dos sockets do Rocket/UFO pelos bounds reais do carro — em carros " +
+             "altos os assets não clipam mais dentro da carroceria. Carros baixos mantêm a posição configurada.")]
+    [SerializeField] private bool fitSocketsToCarBounds = true;
+    [Tooltip("Se o modelo do carro tiver um filho com este nome, ele vira a âncora do foguete (prioridade máxima).")]
+    [SerializeField] private string rocketAnchorName = "RocketAnchor";
+    [Tooltip("Se o modelo do carro tiver um filho com este nome, ele vira a âncora do disco voador.")]
+    [SerializeField] private string ufoAnchorName = "UfoAnchor";
+    [Tooltip("Âncora genérica usada quando não existe âncora específica do poder.")]
+    [SerializeField] private string genericAnchorName = "PowerAnchor";
+    [Tooltip("Folga (m) entre o topo da carroceria e o foguete (já cobre o bob da animação).")]
+    [SerializeField] private float rocketClearance = 0.35f;
+    [Tooltip("Folga (m) entre o topo da carroceria e a parte de baixo do disco voador.")]
+    [SerializeField] private float ufoClearance = 0.2f;
+
     [Header("Input")]
     [SerializeField] private Key useKey = Key.E;
 
@@ -222,6 +237,7 @@ public class KartPowerUser : MonoBehaviour
             return;
 
         EnsureRocketSocket();
+        FitRocketSocket();
 
         equippedRocketInstance = Instantiate(prefab, rocketEquippedSocket);
         equippedRocketInstance.transform.localPosition = Vector3.zero;
@@ -329,8 +345,143 @@ public class KartPowerUser : MonoBehaviour
         foreach (TrailRenderer trail in equippedUfoInstance.GetComponentsInChildren<TrailRenderer>(true))
             trail.enabled = false;
 
-        if (equippedUfoInstance.GetComponent<UfoEquippedVisual>() == null)
-            equippedUfoInstance.AddComponent<UfoEquippedVisual>();
+        UfoEquippedVisual ufoVisual = equippedUfoInstance.GetComponent<UfoEquippedVisual>();
+        if (ufoVisual == null)
+            ufoVisual = equippedUfoInstance.AddComponent<UfoEquippedVisual>();
+
+        FitUfoSocket(ufoVisual);
+    }
+
+    // ------------------------------------------------------------------ Ancoragem adaptativa
+    // Posiciona os sockets do Rocket/UFO ACIMA da carroceria real do carro. Recalculado a cada
+    // criação do visual equipado (cobre troca de modelo na garagem/customização dos bots).
+    // Prioridade: âncora explícita no modelo (RocketAnchor/UfoAnchor/PowerAnchor) > bounds.
+    private void FitRocketSocket()
+    {
+        Transform anchor = FindDeepChild(transform, rocketAnchorName) ?? FindDeepChild(transform, genericAnchorName);
+        if (anchor != null)
+        {
+            rocketEquippedSocket.position = anchor.position;
+            rocketEquippedSocket.rotation = transform.rotation;
+            return;
+        }
+
+        if (!fitSocketsToCarBounds)
+            return;
+
+        float topY = ComputeBodyTopLocalY();
+        Vector3 local = rocketSocketLocalPosition;
+        local.y = Mathf.Max(local.y, topY + rocketClearance);
+        rocketEquippedSocket.localPosition = local;
+    }
+
+    private void FitUfoSocket(UfoEquippedVisual visual)
+    {
+        EnsureUfoSocket();
+
+        Transform anchor = FindDeepChild(transform, ufoAnchorName) ?? FindDeepChild(transform, genericAnchorName);
+        if (anchor != null)
+        {
+            ufoEquippedSocket.position = anchor.position;
+            ufoEquippedSocket.rotation = transform.rotation;
+            return;
+        }
+
+        if (!fitSocketsToCarBounds)
+            return;
+
+        // O disco orbita 'Height' acima do socket e desce 'BobAmplitude' no fundo do bob:
+        // garante que mesmo o ponto mais baixo da órbita fique acima da carroceria.
+        float visualHeight = visual != null ? visual.Height : 0.95f;
+        float bob = visual != null ? visual.BobAmplitude : 0.07f;
+
+        float topY = ComputeBodyTopLocalY();
+        float requiredY = topY + ufoClearance + bob - visualHeight;
+
+        Vector3 local = ufoSocketLocalPosition;
+        local.y = Mathf.Max(local.y, requiredY);
+        ufoEquippedSocket.localPosition = local;
+    }
+
+    // Topo da carroceria em Y LOCAL do kart, medindo os renderers reais do modelo atual.
+    // Ignora visuais de poderes (sockets/escudo) e emissores (partículas/trilhas).
+    private float ComputeBodyTopLocalY()
+    {
+        float topY = 0.9f; // fallback razoável se o carro não tiver renderers ativos
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(false);
+        bool found = false;
+
+        foreach (Renderer r in renderers)
+        {
+            if (r == null || !r.enabled)
+                continue;
+
+            if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer)
+                continue;
+
+            Transform t = r.transform;
+            if (rocketEquippedSocket != null && t.IsChildOf(rocketEquippedSocket))
+                continue;
+            if (ufoEquippedSocket != null && t.IsChildOf(ufoEquippedSocket))
+                continue;
+            if (IsUnderIgnoredVisual(t))
+                continue;
+
+            // Converte o AABB mundial do renderer para o espaço local do kart (topo conservador).
+            Bounds b = r.bounds;
+            Vector3 min = b.min;
+            Vector3 max = b.max;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 corner = new Vector3(
+                    (i & 1) == 0 ? min.x : max.x,
+                    (i & 2) == 0 ? min.y : max.y,
+                    (i & 4) == 0 ? min.z : max.z);
+
+                float localY = transform.InverseTransformPoint(corner).y;
+                if (!found || localY > topY)
+                {
+                    topY = found ? Mathf.Max(topY, localY) : localY;
+                    found = true;
+                }
+            }
+        }
+
+        return found ? topY : 0.9f;
+    }
+
+    private static bool IsUnderIgnoredVisual(Transform target)
+    {
+        for (Transform cur = target; cur != null; cur = cur.parent)
+        {
+            string n = cur.name;
+            if (n.IndexOf("Shield", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                n.IndexOf("VFX", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Transform FindDeepChild(Transform root, string childName)
+    {
+        if (string.IsNullOrEmpty(childName))
+            return null;
+
+        foreach (Transform child in root)
+        {
+            if (child.name == childName)
+                return child;
+
+            Transform nested = FindDeepChild(child, childName);
+            if (nested != null)
+                return nested;
+        }
+
+        return null;
     }
 
     private void FireUfo(GameObject target)
