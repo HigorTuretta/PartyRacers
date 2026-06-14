@@ -412,10 +412,15 @@ MonoBehaviour:
   - Terreno
   - Terrain
   - ForaPista_TrechoSolto
-  belowRouteThreshold: 4
   hardBelowRouteDistance: 20
   outOfBoundsSeconds: 1
   outOfBoundsCheckInterval: 0.2
+  fallBelowCheckpointDistance: 30
+  offRouteDistance: 30
+  autoRespawnWhenFlipped: 1
+  flippedUpThreshold: 0.25
+  flippedMaxSpeedKmh: 8
+  flippedSeconds: 3
 --- !u!114 &5102941980696658742
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -587,11 +592,17 @@ MonoBehaviour:
   rocketLaunchForwardOffset: 0.6
   ufoProjectilePrefab: {fileID: 5383387055590150580, guid: ebfdad136a3f9274eab521bc7eef2a50, type: 3}
   ufoEquippedPrefab: {fileID: 0}
-  ufoMagicCirclePrefab: {fileID: 3377181292992421420, guid: 48c5715f9603c3842a353516a8baefbb, type: 3}
+  ufoMagicCirclePrefab: {fileID: 3744133877081091469, guid: e164d28d724ad354e952644b24ff2f04, type: 3}
   ufoMissVFXPrefab: {fileID: 7647375919561907788, guid: 035ce8c9cfc34104991ce416daf8aebe, type: 3}
   ufoEquippedSocket: {fileID: 0}
   ufoSocketLocalPosition: {x: 0, y: 0, z: 0}
   ufoLaunchForwardOffset: 1.2
+  fitSocketsToCarBounds: 1
+  rocketAnchorName: RocketAnchor
+  ufoAnchorName: UfoAnchor
+  genericAnchorName: PowerAnchor
+  rocketClearance: 0.35
+  ufoClearance: 0.2
   useKey: 19
 --- !u!114 &4236779978090343101
 MonoBehaviour:
