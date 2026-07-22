@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
 
 public class GolfTrapLauncher : MonoBehaviour
 {
@@ -9,13 +8,15 @@ public class GolfTrapLauncher : MonoBehaviour
     public Transform direcaoTacada;
 
     public float launchForce = 20f;
-    public float spawnInterval = 2f;   // 🔥 nova bola a cada 2s
+
+    [Header("Configuração de Spawn")]
+    public float spawnInterval = 4f;
+    public float startDelay = 0f;
     public float ballLifetime = 5f;
 
     void Start()
     {
-        // Referências ausentes derrubavam a coroutine com exceção a cada spawn.
-        // Tenta resolver pelos filhos antes de desistir, e desliga com aviso claro se faltar algo.
+        // Tenta encontrar as referências automaticamente
         if (suporteBola == null)
             suporteBola = transform.Find("SuporteBola");
 
@@ -34,6 +35,10 @@ public class GolfTrapLauncher : MonoBehaviour
 
     IEnumerator SpawnLoop()
     {
+        // Espera o tempo configurado antes de iniciar
+        if (startDelay > 0f)
+            yield return new WaitForSeconds(startDelay);
+
         while (true)
         {
             SpawnBall();
@@ -63,7 +68,6 @@ public class GolfTrapLauncher : MonoBehaviour
             );
         }
 
-        // destrói depois do tempo de vida
         Destroy(ball, ballLifetime);
     }
 }
