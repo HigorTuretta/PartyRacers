@@ -1,0 +1,58 @@
+{
+  "nome": "Party Racers — PLACA",
+  "versao": "1.0",
+  "cores": {
+    "ink": "#0A0C22",
+    "inkText": "#15161C",
+    "night": "#171A3D",
+    "deepBlue": "#101334",
+    "blue": "#1B2050",
+    "royal": "#2A3480",
+    "amber": "#FFB020",
+    "amberLight": "#FFC24D",
+    "amberPressed": "#E09410",
+    "cream": "#FFF7E8",
+    "creamDim": "#FFE7B8",
+    "green": "#3DDC97",
+    "greenPressed": "#2FBB7E",
+    "red": "#FF4D6D",
+    "redSoft": "#FF8DA0",
+    "sky": "#35A7FF",
+    "violet": "#8C7BFF",
+    "textPrimary": "#FFF7E8",
+    "textSecondary": "#C3CEDD",
+    "textMuted": "#9AA2D8",
+    "textDisabled": "#6B6F9E",
+    "outlineSoft": "#3B4180",
+    "labelInk": "#5C63A8"
+  },
+  "raridade": {
+    "comum": "#9AA2D8",
+    "raro": "#35A7FF",
+    "epico": "#8C7BFF",
+    "lendario": "#FFB020"
+  },
+  "contorno": { "fino": 3, "padrao": 4, "medio": 5, "grosso": 6, "modal": 7 },
+  "sombraDura": { "chip": 4, "botao": 5, "botaoGrande": 7, "painel": 9, "modal": 12, "cor": "#0A0C22", "offsetX": 0 },
+  "raio": { "chip": 11, "card": 15, "botao": 20, "painel": 26, "modal": 36 },
+  "tipografia": {
+    "display": { "familia": "Titan One", "peso": 400, "uso": "títulos de tela, números grandes, rótulos de botão principal" },
+    "ui": { "familia": "Archivo", "pesos": [600, 700, 800], "uso": "rótulos, valores, corpo" },
+    "mono": { "familia": "Space Mono", "peso": 400, "uso": "códigos de sala, timers, legendas técnicas" },
+    "escala1920": { "h1": 46, "h2": 40, "h3": 32, "titulo": 30, "rotulo": 25, "corpo": 22, "meta": 20, "micro": 17 },
+    "minimoLegivel": 17
+  },
+  "movimento": {
+    "botaoPressionar": { "duracao": 0.08, "deslocamentoY": 6 },
+    "toast": { "entrada": 0.18, "vida": 2.5, "saida": 0.25, "maxSimultaneos": 3 },
+    "arcoPerigo": { "pulsoAproximando": 0.8, "pulsoIminente": 0.25 },
+    "trocaTela": { "duracao": 0.22, "curva": "easeOutQuad" }
+  },
+  "hud": {
+    "semMira": true,
+    "semVelocimetro": true,
+    "semMinimapa": true,
+    "alertaCentral": false,
+    "alvoAutomatico": "carro imediatamente à frente ou atrás"
+  }
+}

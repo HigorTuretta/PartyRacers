@@ -1439,15 +1439,23 @@ public class KartController : MonoBehaviour
         if (along.sqrMagnitude < 0.0001f)
             along = Vector3.ProjectOnPlane(transform.forward, blockingNormal);
 
+        // Quanto a batida é de frente: 0 = raspão paralelo à parede, 1 = de cara nela.
+        // Isto é essencial porque OnCollisionStay roda a CADA passo de física: aplicar a
+        // retenção cheia sempre fazia 0,82^50 por segundo, ou seja, encostar a lateral na
+        // parede parava o kart em menos de um segundo, como se fosse uma batida frontal.
+        float frontalidade = Mathf.Clamp01(worstInto / Mathf.Max(0.01f, speed));
+
         if (blockingNormal.y >= rampMinNormalY)
         {
             // Rampa: converte o movimento para subir a superfície, preservando a velocidade.
-            rb.linearVelocity = along.normalized * speed * rampSpeedRetention;
+            float retencao = Mathf.Lerp(1f, rampSpeedRetention, frontalidade);
+            rb.linearVelocity = along.normalized * speed * retencao;
         }
         else
         {
-            // Parede: desliza ao longo dela mantendo a maior parte da velocidade tangencial.
-            rb.linearVelocity = along * wallSlideRetention;
+            // Parede: raspão quase não custa velocidade; só o impacto frontal freia.
+            float retencao = Mathf.Lerp(1f, wallSlideRetention, frontalidade);
+            rb.linearVelocity = along * retencao;
         }
 
         // Sinaliza o impacto para a câmera (forte quanto mais perpendicular for a batida).

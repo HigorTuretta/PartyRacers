@@ -24,9 +24,13 @@ public class UFOSwapProjectile : MonoBehaviour
     [Tooltip("Folga minima (m) acima do chao. Trava rigida: o UFO NUNCA entra no chao mesmo se atrasar.")]
     [SerializeField] private float minGroundClearance = 0.7f;
     [Tooltip("Profundidade da sonda de chao (m). Maior evita 'sumico' ao passar por desniveis/rampas.")]
-    [SerializeField] private float groundProbeDown = 40f;
-    [Tooltip("Apenas superficies com normal Y abaixo disso (paredes verticais) fazem o UFO quicar.")]
-    [SerializeField, Range(0f, 1f)] private float wallMaxNormalY = 0.45f;
+    [SerializeField] private float groundProbeDown = 400f;
+    [Tooltip("De quanto acima do disco a sonda parte. Curto demais e uma rampa que sobe rápido " +
+             "faz o raio nascer dentro do terreno — aí o disco atravessa o chão.")]
+    [SerializeField] private float groundProbeUp = 60f;
+    [Tooltip("Apenas superficies com normal Y abaixo disso (paredes verticais) fazem o UFO quicar. " +
+             "0,45 ≈ 63° tratava rampa como parede; 0,3 ≈ 72° deixa o disco sobrevoar as rampas.")]
+    [SerializeField, Range(0f, 1f)] private float wallMaxNormalY = 0.3f;
 
     [Header("Auto-hit")]
     [Tooltip("Se FALSO (padrao), o UFO NUNCA atinge/troca com o proprio player que disparou.")]
@@ -256,9 +260,10 @@ public class UFOSwapProjectile : MonoBehaviour
     private bool TryGetGroundY(Vector3 position, out float groundY)
     {
         groundY = 0f;
-        Vector3 origin = position + Vector3.up * 4f;
+        Vector3 origin = position + Vector3.up * groundProbeUp;
         int count = Physics.RaycastNonAlloc(
-            origin, Vector3.down, groundProbe, 4f + groundProbeDown, groundMask, QueryTriggerInteraction.Ignore);
+            origin, Vector3.down, groundProbe, groundProbeUp + groundProbeDown, groundMask,
+            QueryTriggerInteraction.Ignore);
 
         float bestDistance = float.MaxValue;
         bool found = false;

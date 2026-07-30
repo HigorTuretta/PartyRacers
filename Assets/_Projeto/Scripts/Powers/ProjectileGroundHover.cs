@@ -1,23 +1,37 @@
 using UnityEngine;
 
 // Utilitário compartilhado pelos projéteis (foguete, disco voador) para manter altura FIXA em
-// relação ao chão durante o voo: sonda o terreno abaixo e ajusta o Y suavemente.
+// relação ao chão durante o voo: sonda o terreno abaixo e ajusta o Y.
 // Ignora karts e triggers — só superfícies estáticas contam como "chão".
 public static class ProjectileGroundHover
 {
-    private static readonly RaycastHit[] Hits = new RaycastHit[8];
+    private static readonly RaycastHit[] Hits = new RaycastHit[16];
 
     /// <summary>
     /// Ajusta 'position.y' para ficar a 'hoverHeight' do chão detectado abaixo.
     /// Retorna true se encontrou chão (caso contrário a posição não é alterada).
     /// </summary>
+    /// <param name="probeUp">
+    /// Começa a sondar bem acima do projétil. Precisa cobrir a subida mais brusca da pista:
+    /// com um valor curto, uma rampa que sobe mais rápido que o projétil deixava o raio partir
+    /// de dentro do terreno e o projétil atravessava o chão.
+    /// </param>
+    /// <param name="probeDown">
+    /// Alcance para baixo. A pista tem dois níveis e saltos: se o raio não chega ao piso de
+    /// baixo, nenhum ajuste era feito e o projétil ficava voando alto demais.
+    /// </param>
+    /// <param name="folgaMinima">
+    /// Distância que o projétil nunca cruza, mesmo que a aproximação suave não dê conta da
+    /// subida. É isto que garante que ele não entre no chão.
+    /// </param>
     public static bool TryAdjustHeight(
         ref Vector3 position,
         float hoverHeight,
         float adjustSpeed,
         LayerMask groundMask,
-        float probeUp = 3f,
-        float probeDown = 12f)
+        float probeUp = 60f,
+        float probeDown = 400f,
+        float folgaMinima = 0.35f)
     {
         Vector3 origin = position + Vector3.up * probeUp;
         int count = Physics.RaycastNonAlloc(
@@ -55,6 +69,13 @@ public static class ProjectileGroundHover
 
         float targetY = groundY + hoverHeight;
         position.y = Mathf.MoveTowards(position.y, targetY, adjustSpeed * Time.deltaTime);
+
+        // Trava dura: a aproximação suave demora, e numa subida forte o projétil chegava a
+        // ficar abaixo do piso antes de alcançar o alvo. Aqui ele nunca fura o chão.
+        float minimo = groundY + Mathf.Min(folgaMinima, hoverHeight);
+        if (position.y < minimo)
+            position.y = minimo;
+
         return true;
     }
 }

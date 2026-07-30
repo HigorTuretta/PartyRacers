@@ -76,6 +76,10 @@ namespace PartyRacers.AI
         [SerializeField] private bool disableBotSmokeEffects = true;
 
         [Header("Determinismo")]
+        [Tooltip("Quantos bots do fim do grid usam o perfil mais fraco. O resto se reveza entre " +
+                 "os perfis fortes — a corrida fica disputada em vez de ter um terço da grade lenta.")]
+        [SerializeField, Range(0, 6)] private int bobosNoGrid = 2;
+
         [Tooltip("Semente base da corrida (cor/perfil/nome derivam dela + índice do bot).")]
         [SerializeField] private int raceSeed = 1000;
 
@@ -321,7 +325,18 @@ namespace PartyRacers.AI
             if (difficultyProfiles == null || difficultyProfiles.Count == 0)
                 return new BotDifficultyProfile();
 
-            return difficultyProfiles[botIndex % difficultyProfiles.Count];
+            // Só os últimos bots do grid ficam propositalmente mais fracos (perfil de índice 0,
+            // o menos agressivo); o resto se reveza entre os perfis fortes. Antes o rodízio era
+            // parejo e um terço da grade corria no perfil mais fraco.
+            if (botIndex >= Mathf.Max(0, maxCompetitors - 1 - bobosNoGrid))
+                return difficultyProfiles[0];
+
+            if (difficultyProfiles.Count == 1)
+                return difficultyProfiles[0];
+
+            // pula o índice 0 para os demais: eles alternam entre os perfis mais fortes
+            int fortes = difficultyProfiles.Count - 1;
+            return difficultyProfiles[1 + (botIndex % fortes)];
         }
 
         private void ApplyCompetitiveProfileFloor(BotDifficultyProfile profile)

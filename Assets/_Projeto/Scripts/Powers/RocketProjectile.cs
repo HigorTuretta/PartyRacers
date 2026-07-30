@@ -19,7 +19,10 @@ public class RocketProjectile : MonoBehaviour
     [SerializeField] private float hoverHeight = 1.15f;
     [SerializeField] private float heightAdjustSpeed = 16f;
     [SerializeField] private LayerMask groundMask = ~0;
-    [SerializeField, Range(0f, 1f)] private float groundNormalMinY = 0.55f;
+    [Tooltip("A partir de que inclinação a superfície conta como CHÃO (e o foguete passa por " +
+             "cima) em vez de OBSTÁCULO (e explode). 0,55 ≈ 57°, o que fazia toda rampa da pista " +
+             "virar parede e o foguete sumir nela. 0,3 ≈ 72°: só parede de verdade explode.")]
+    [SerializeField, Range(0f, 1f)] private float groundNormalMinY = 0.3f;
 
     [Header("Auto-hit")]
     [SerializeField] private bool allowOwnerHitAfterIgnore = true;
@@ -80,6 +83,8 @@ public class RocketProjectile : MonoBehaviour
     }
 
     private readonly RaycastHit[] sweepHits = new RaycastHit[24];
+    private float ultimoChaoY;
+    private bool temChao;
     private readonly Collider[] overlapHits = new Collider[24];
 
     private GameObject owner;
@@ -164,7 +169,18 @@ public class RocketProjectile : MonoBehaviour
         if (maintainGroundHeight)
         {
             Vector3 position = transform.position;
-            ProjectileGroundHover.TryAdjustHeight(ref position, hoverHeight, heightAdjustSpeed, groundMask);
+            if (ProjectileGroundHover.TryAdjustHeight(ref position, hoverHeight, heightAdjustSpeed, groundMask))
+            {
+                temChao = true;
+                ultimoChaoY = position.y - hoverHeight;
+            }
+            else if (temChao)
+            {
+                // Sem chão sob a sonda (vão, buraco, borda de rampa) o ajuste não acontecia e o
+                // foguete continuava descendo até sumir sob o cenário. Segura na última altura
+                // de chão conhecida até o terreno reaparecer.
+                position.y = Mathf.Max(position.y, ultimoChaoY + hoverHeight);
+            }
             transform.position = position;
         }
 

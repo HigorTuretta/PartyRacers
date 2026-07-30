@@ -165,7 +165,12 @@ public class KartVisualCustomizer : MonoBehaviour
 
         if (_currentRig != null)
         {
-            Destroy(_currentRig.gameObject);
+            // fora do playmode Destroy é adiado e nunca roda: o rig antigo ficaria na cena
+            // sobreposto ao novo, e a Garagem mostraria o carro errado no editor.
+            if (Application.isPlaying)
+                Destroy(_currentRig.gameObject);
+            else
+                DestroyImmediate(_currentRig.gameObject);
             _currentRig = null;
         }
 
