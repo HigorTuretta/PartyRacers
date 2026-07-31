@@ -253,6 +253,13 @@ public class KartController : MonoBehaviour
     public Rigidbody Rigidbody => rb;
     public bool CanControl => canControl;
 
+    /// <summary>
+    /// Velocidade (mundo) medida no fim do passo de física ANTERIOR — ou seja, a velocidade
+    /// PRÉ-IMPACTO de uma colisão que acabou de acontecer. Quem responde a batidas usa isto para
+    /// decidir o resultado a partir do estado real do kart, e não do que o solver já esmagou.
+    /// </summary>
+    public Vector3 PreviousVelocity => transform.TransformDirection(previousLocalVelocity);
+
     /// <summary>Velocidade máxima de frente (km/h) configurada no kart. Bots usam isto para escalar o ritmo.</summary>
     public float MaxForwardSpeedKmh => maxForwardSpeedKmh;
 
@@ -1385,9 +1392,10 @@ public class KartController : MonoBehaviour
         if (IsInKnockback)
             return;
 
-        // Obstáculos com ObstacleKnockback cuidam da própria resposta (arremesso). Sem isto o
-        // glide tratava a pá do moinho como parede e o kart ficava "agarrado" deslizando nela.
-        if (collision.collider != null && collision.collider.GetComponentInParent<ObstacleKnockback>() != null)
+        // Obstáculos marcados como IKartImpactObstacle cuidam da própria resposta (arremesso do
+        // moinho, tacada, empurrão pesado da bola). Sem isto o glide tratava a pá do moinho como
+        // parede e o kart ficava "agarrado" deslizando nela.
+        if (collision.collider != null && collision.collider.GetComponentInParent<IKartImpactObstacle>() != null)
             return;
 
         Vector3 velocity = rb.linearVelocity;

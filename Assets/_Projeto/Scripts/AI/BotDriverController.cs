@@ -104,7 +104,54 @@ namespace PartyRacers.AI
         [Tooltip("Velocidade (m/s) com que o alvo lateral desliza para a faixa escolhida (troca suave).")]
         [SerializeField] private float laneShiftSpeed = 6f;
 
+        [Header("Pista bakeada (mapa em vez de adivinhação)")]
+        [Tooltip("Usa o BotTrackProfile medido no início da corrida para decidir velocidade, " +
+                 "traçado lateral, rampas, buracos e drift. Desligar volta ao comportamento antigo " +
+                 "(dedução por sensor), que erra justamente nos trechos difíceis.")]
+        [SerializeField] private bool useTrackProfile = true;
+        [Tooltip("Quantos metros à frente o perfil é consultado para antecipar a freada. O ponto de " +
+                 "freada em si já vem resolvido no bake; isto só cobre o atraso de reação.")]
+        [SerializeField] private float profileSpeedLookAhead = 6f;
+        [Tooltip("Distância (m) antes da entrada da curva em que o bot se COMPROMETE com o drift.")]
+        [SerializeField] private float driftCommitDistance = 14f;
+        [Tooltip("Distância (m) da entrada em que o handbrake é efetivamente acionado. Menor que " +
+                 "driftCommitDistance: comprometer-se é planejar, acionar é executar — derrapar " +
+                 "ainda na reta que antecede a curva era metade do problema.")]
+        [SerializeField] private float driftEngageDistance = 4f;
+        [Tooltip("Esterço mínimo exigido pelo KartController para ABRIR um drift. Aplicado só no " +
+                 "instante da entrada, nunca como piso permanente.")]
+        [SerializeField, Range(0.35f, 0.8f)] private float driftEntrySteerMinimum = 0.42f;
+        [Tooltip("Antecedência (m) com que o bot se alinha e busca embalo para uma rampa/salto medido.")]
+        [SerializeField] private float rampCommitLookAhead = 45f;
+        [Tooltip("Deslocamento lateral máximo (m) que o bot aceita para CONTORNAR um buraco ou um " +
+                 "muro detectado no bake. Maior que o offset normal de linha de corrida: aqui não " +
+                 "é estilo, é desvio de algo que o faria cair.\n\n" +
+                 "Não diminuir sem medir: nesta pista as bordas firmes ao lado dos buracos estão a " +
+                 "±5,25 m do centro. Com um teto de 5 m, TODOS os desvios válidos eram descartados " +
+                 "e o bot seguia reto por cima do buraco. Em pista aberta este valor não tem efeito " +
+                 "— a linha de corrida é que decide.")]
+        [SerializeField] private float safeCorridorMaxOffset = 7.5f;
+        [Tooltip("Velocidade (m/s) do deslocamento lateral ao contornar buraco/muro. Mais rápido que " +
+                 "a troca de faixa normal: aqui o bot tem poucos metros para sair de cima do buraco.")]
+        [SerializeField] private float corridorShiftSpeed = 9f;
+        [Tooltip("Quanto a escolha de passagem se apega à do frame anterior (0 = replaneja do zero " +
+                 "e serpenteia entre soluções equivalentes; 1 = nunca volta para a linha de corrida).")]
+        [SerializeField, Range(0f, 0.95f)] private float corridorHysteresis = 0.7f;
+
+        [Header("Queda (resgate independente de velocidade)")]
+        [Tooltip("Altura (m) abaixo do traçado bakeado que já conta como QUEDA, mesmo que o bot " +
+                 "esteja andando rápido lá embaixo. Os detectores antigos exigiam estar lento e " +
+                 "por isso nunca resgatavam quem caía num buraco e continuava rodando no nível de baixo.")]
+        [SerializeField] private float fallBelowRouteHeight = 7f;
+        [SerializeField] private float fallBelowRouteSeconds = 2.5f;
+
         [Header("Drift Driver")]
+        // A/B medido com 15 bots (drift ligado × desligado) NÃO deu resultado conclusivo: a
+        // variação entre execuções da mesma build é maior que a diferença entre as duas opções
+        // (dois runs de código idêntico marcaram 92,2 e 106,8 km/h no mesmo ponto de amostragem).
+        // Só depois de ~90 s de corrida os números estabilizam, e aí as duas opções empatam em
+        // velocidade média. Mantido LIGADO, que é o padrão histórico do projeto; agora é um
+        // interruptor limpo, porque a serpentina não vem mais junto.
         [SerializeField] private bool useDrift = true;
         [Tooltip("Curva começa a ser preparada para drift acima deste ângulo lido no look-ahead.")]
         [SerializeField] private float driftPrepareAngle = 18f;
@@ -117,6 +164,9 @@ namespace PartyRacers.AI
         [SerializeField, Range(0.25f, 1f)] private float driftSteerMinimum = 0.48f;
         [SerializeField] private float driftEntryHandbrakeHold = 0.12f;
         [SerializeField] private float driftCooldownSeconds = 0.45f;
+        [Tooltip("Se o handbrake ficar apertado este tempo sem o drift abrir, solta um frame e " +
+                 "tenta de novo (o KartController só abre no frame do APERTO).")]
+        [SerializeField] private float driftRepressInterval = 0.2f;
         [SerializeField] private float driftObstacleBlockDistance = 5f;
         [SerializeField] private float driftNarrowSpeedFloorKmh = 78f;
 
@@ -161,6 +211,13 @@ namespace PartyRacers.AI
         [SerializeField] private float edgeProbeAhead = 4.5f;
         [Tooltip("Queda (m) a partir da qual a borda à frente conta como perigo.")]
         [SerializeField] private float edgeDropDepth = 4f;
+        [Tooltip("Quanto a sonda de borda segue a TANGENTE DO TRAÇADO em vez do nariz do kart. " +
+                 "0 = só o nariz (num trecho suspenso toda curva de 90° vira 'penhasco', porque " +
+                 "logo depois da quina existe mesmo o vazio); 1 = só o traçado.")]
+        [SerializeField, Range(0f, 1f)] private float edgeProbeRouteBlend = 0.7f;
+        [Tooltip("Até esta distância (m) do traçado o bot CONFIA na rota para decidir se a queda " +
+                 "à frente é perigo real. Mais longe que isso ele está perdido e a borda vale sempre.")]
+        [SerializeField] private float edgeRouteTrustDistance = 7f;
 
         [Header("Outros karts (desvio suave, nunca tratados como parede)")]
         [SerializeField] private float kartProbeDistance = 12f;
@@ -217,8 +274,14 @@ namespace PartyRacers.AI
         [SerializeField] private float flippedSeconds = 1.6f;
         [Tooltip("Watchdog final: muito lento por este tempo (qualquer motivo) → respawn.")]
         [SerializeField] private float hardStuckSeconds = 8f;
-        [Tooltip("Sem passar checkpoint por este tempo → respawn. Deve ser MAIOR que o setor mais lento.")]
-        [SerializeField] private float checkpointStallSeconds = 0f;
+        [Tooltip("Sem passar checkpoint por este tempo → respawn. Deve ser MAIOR que o setor mais lento " +
+                 "(MiniGolfeRun: 11 checkpoints em 1839 m; o setor mais lento com tráfego fica na casa " +
+                 "dos 40 s). 0 desliga a rede — e aí um bot que oscila no lugar nunca é resgatado, " +
+                 "porque o watchdog de 'parado' drena a cada solavanco.")]
+        [SerializeField] private float checkpointStallSeconds = 60f;
+        [Tooltip("Piso de segurança para 'checkpointStallSeconds' — abaixo disto a rede respawnaria " +
+                 "bot que só está atravessando um setor longo.")]
+        [SerializeField] private float minCheckpointStallSeconds = 45f;
         [Tooltip("Afastado do trecho rastreado por este tempo → refaz a busca global (adota o trecho onde caiu).")]
         [SerializeField] private float wrongSectionResearchSeconds = 4f;
 
@@ -262,7 +325,26 @@ namespace PartyRacers.AI
         private KartInputState lastInput;
         private bool handbrakeHeldLastRead;
 
+        // pista bakeada
+        private BotTrackProfile trackProfile;
+        private BotTrackStation station;
+        private bool hasProfile;
+        private float routeDistance;
+        private float profileTakeoffKmh;
+        private float profileTakeoffDistance;
+        private bool profileRampCommit;
+        private float corridorOffset;
+        private float fallTimer;
+
+        // drift comprometido por CURVA (não por ângulo lido a cada frame)
+        private bool cornerCommitted;
+        private int committedCornerDir;
+        private float committedCornerEntry;
+        private float committedCornerExit;
+        private float committedCornerRadius;
+
         // drift
+        private float driftPressStartTime = float.NegativeInfinity;
         private float driftInputHoldUntil = float.NegativeInfinity;
         private float driftCooldownUntil = float.NegativeInfinity;
         private float driftExitStateUntil = float.NegativeInfinity;
@@ -388,6 +470,12 @@ namespace PartyRacers.AI
         public float LastDriftEntrySpeedKmh => lastDriftEntrySpeedKmh;
         public float LastDriftExitSpeedKmh => lastDriftExitSpeedKmh;
         public int ArtificialCheckpointAdvances => 0;
+        public bool HasTrackProfile => hasProfile;
+        public string ProfileSurface => hasProfile ? station.Surface.ToString() : "-";
+        public float ProfilePlannedSpeedKmh => hasProfile ? station.SafeSpeedKmh : 0f;
+        public float ProfileUsableWidth => hasProfile ? station.UsableWidth : 0f;
+        public bool CornerCommitted => cornerCommitted;
+        public float CommittedCornerRadius => cornerCommitted ? committedCornerRadius : 0f;
         public float CurrentLaneOffset => laneTargetOffset;
         public int LaneChangeCount => laneChangeCount;
         public bool IsYieldingLane => laneYield;
@@ -402,8 +490,11 @@ namespace PartyRacers.AI
             if (matchKartMaxSpeed && kart != null && kart.MaxForwardSpeedKmh > 1f)
                 maxStraightSpeedKmh = kart.MaxForwardSpeedKmh * kartMaxSpeedFraction;
 
-            if (checkpointStallSeconds > 0f && checkpointStallSeconds < 180f)
-                checkpointStallSeconds = 0f;
+            // Um valor baixo demais respawna bot que só está num setor longo. Antes isso era
+            // "saneado" zerando o campo — o que DESLIGAVA a rede inteira em silêncio. Agora o
+            // valor sobe para o piso seguro em vez de sumir.
+            if (checkpointStallSeconds > 0f && checkpointStallSeconds < minCheckpointStallSeconds)
+                checkpointStallSeconds = minCheckpointStallSeconds;
             maxReverseAttemptsBeforeRespawn = Mathf.Max(4, maxReverseAttemptsBeforeRespawn);
             hardStuckSeconds = Mathf.Max(8f, hardStuckSeconds);
 
@@ -474,6 +565,9 @@ namespace PartyRacers.AI
             driftCooldownUntil = float.NegativeInfinity;
             driftExitStateUntil = float.NegativeInfinity;
             requestedDriftDirection = 0;
+            cornerCommitted = false;
+            corridorOffset = 0f;
+            fallTimer = 0f;
             driftReason = "-";
             driftBlockReason = "-";
             trafficAhead = false;
@@ -556,6 +650,28 @@ namespace PartyRacers.AI
 
             frame = path.GetPathFrame(pos, lookAhead);
 
+            // Mapa bakeado da pista na posição atual: largura livre, superfície (rampa/vão),
+            // velocidade planejada e curva corrente. Só existe na linha principal.
+            trackProfile = useTrackProfile ? path.TrackProfile : null;
+            hasProfile = trackProfile != null && trackProfile.IsValid;
+            profileTakeoffKmh = 0f;
+            profileTakeoffDistance = float.MaxValue;
+            profileRampCommit = false;
+            if (hasProfile)
+            {
+                routeDistance = path.CurrentDistanceOnPath;
+                station = trackProfile.StationAt(routeDistance);
+
+                // Rampa MEDIDA (inclinação real do traçado), não rampa autorada. É isto que faz
+                // as rampas de qualquer pista nova funcionarem sem trabalho manual — e o que
+                // impede o sensor de ler a face da subida como parede e desviar na base dela.
+                profileTakeoffKmh = trackProfile.RequiredTakeoffKmh(routeDistance, rampCommitLookAhead, out profileTakeoffDistance);
+                profileRampCommit = profileTakeoffKmh > 1f
+                    || station.Surface == BotSurface.Decolagem
+                    || (station.Surface == BotSurface.Rampa && station.Grade > 0.08f);
+            }
+            UpdateCornerCommitment();
+
             // ar
             if (kart.IsGrounded)
             {
@@ -616,6 +732,7 @@ namespace PartyRacers.AI
             bool activeRampOrJump = IsRampOrJumpZone(zone);
             bool upcomingRampOrJump = IsRampOrJumpZone(upcomingZone);
             bool commitRampLine = activeRampOrJump
+                || profileRampCommit
                 || (upcomingRampOrJump && (!activeObstacleZone || frame.DistanceToUpcomingZone < 5.5f));
 
             // Fora do traçado (mas na pista) → reencaixar. (Off-track real vira respawn nos detectores.)
@@ -632,8 +749,9 @@ namespace PartyRacers.AI
                 return;
             }
 
-            // Rampa/salto à frente → preparar (alinhar + embalo).
-            if (activeRampOrJump || upcomingRampOrJump)
+            // Rampa/salto à frente → preparar (alinhar + embalo). Inclui a rampa MEDIDA no bake,
+            // que é como as pistas novas passam a funcionar sem nenhuma zona autorada.
+            if (activeRampOrJump || upcomingRampOrJump || profileRampCommit)
             {
                 SetState(BotState.ApproachingRamp);
                 return;
@@ -752,8 +870,9 @@ namespace PartyRacers.AI
             bool activeRampOrJump = IsRampOrJumpZone(zone);
             bool upcomingRampOrJump = IsRampOrJumpZone(approachZone);
             bool commitRampLine = activeRampOrJump
+                || profileRampCommit
                 || (upcomingRampOrJump && (!activeObstacleZone || frame.DistanceToUpcomingZone < 5.5f));
-            bool rampState = state == BotState.ApproachingRamp && commitRampLine;
+            bool rampState = (state == BotState.ApproachingRamp || profileRampCommit) && commitRampLine;
             BotTrackZone rampAimZone = activeRampOrJump ? zone : (commitRampLine && upcomingRampOrJump ? approachZone : null);
             BotTrackZone rampSpeedZone = activeRampOrJump ? zone : (upcomingRampOrJump ? approachZone : null);
 
@@ -828,14 +947,52 @@ namespace PartyRacers.AI
 
             // Desliza o alvo lateral suavemente até a faixa (troca de faixa sem esterço nervoso).
             laneSmoothedOffset = Mathf.MoveTowards(laneSmoothedOffset, laneOffset, dt * laneShiftSpeed);
-            float effOffset = laneSmoothedOffset;
-            if (Mathf.Abs(effOffset) > 0.01f)
+            // Em curva fechada o offset lateral encolhe MUITO: todos convergem para a linha limpa
+            // pelo ápice (offset grande na quina = bot raspa a mureta interna/externa).
+            float offsetScale = (1f - sensing.cornerSeverity * 0.7f) * (1f - offPath01);
+            float appliedOffset = laneSmoothedOffset * offsetScale;
+
+            // CORREDOR LIVRE MEDIDO NO BAKE. Se, alguns metros à frente, o centro do traçado passa
+            // sobre um buraco ou encosta num muro, o alvo lateral escorrega para a faixa de chão
+            // contíguo mais próxima da linha desejada. É assim que o bot CONTORNA um buraco no
+            // meio da pista em vez de cair nele — sem zona autorada e sem depender do sensor
+            // enxergar o vazio a tempo.
+            //
+            // Medido nesta pista: os dois "saltos" são buracos de ~8 m no MEIO de uma ponte que
+            // tem 5,2 m de piso firme de cada lado. Contornar é muito mais confiável que voar.
+            //
+            // Só é desligado quando o bake mediu um vão de lado a lado (decolagem de verdade):
+            // aí a única saída é reto e rápido.
+            bool corridorDodging = false;
+            if (hasProfile && profileTakeoffKmh <= 1f)
             {
-                // Em curva fechada o offset lateral encolhe MUITO: todos convergem para a linha limpa
-                // pelo ápice (offset grande na quina = bot raspa a mureta interna/externa).
-                float scale = (1f - sensing.cornerSeverity * 0.7f) * (1f - offPath01);
-                aim += routeRight * (effOffset * scale);
+                // Começa a olhar um pouco à frente do nariz e varre ~1 s de pista: é o horizonte
+                // em que ainda dá para escolher por onde passar sem esterço violento.
+                float ahead = Mathf.Clamp(speedKmh / 3.6f * 0.25f, 3f, 9f);
+                float horizon = Mathf.Clamp(speedKmh / 3.6f * 1f, 12f, 30f);
+
+                // HISTERESE. A busca é refeita a cada frame com a janela deslizando, e num
+                // slalom com várias passagens equivalentes ela alterna entre soluções de custo
+                // parecido — o que voltaria a produzir serpentina, agora por outro motivo.
+                // Ancorar a preferência na decisão ANTERIOR faz o bot se comprometer com uma
+                // passagem; a linha de corrida continua puxando de volta em pista aberta.
+                float anchored = Mathf.Lerp(appliedOffset, corridorOffset, corridorHysteresis);
+                float safeOffset = trackProfile.BestLateralOffset(
+                    routeDistance + ahead, horizon, anchored, safeCorridorMaxOffset,
+                    speedKmh / 3.6f, corridorShiftSpeed);
+                corridorOffset = Mathf.MoveTowards(corridorOffset, safeOffset, dt * corridorShiftSpeed);
+                corridorDodging = Mathf.Abs(corridorOffset - appliedOffset) > 0.6f;
+                appliedOffset = corridorOffset;
             }
+
+            // Desviar de um buraco vale mais que obedecer ao alinhamento pedido por uma zona. As
+            // zonas de Salto desta pista pedem alinhamento 1.0 e offset lateral 0,2 m — o que
+            // empurraria o bot exatamente para cima do buraco que ele está contornando.
+            if (corridorDodging)
+                align *= 0.25f;
+
+            if (Mathf.Abs(appliedOffset) > 0.01f)
+                aim += routeRight * appliedOffset;
 
             // Slalom sinusoidal cego só quando o sistema de faixas NÃO está ativo: com faixas, a
             // escolha de faixa dirigível já sonda e contorna os pegs/obstáculos (sem dois bots no
@@ -1003,6 +1160,41 @@ namespace PartyRacers.AI
         {
             reason = "reta segura";
 
+            // ---------- COM MAPA BAKEADO ----------
+            // O perfil já resolveu, offline, o ponto de freada exato para cada curva (passe para
+            // trás a partir da velocidade de ápice). O bot não precisa mais "desconfiar" da pista
+            // e frear por precaução longe da curva: ele sabe a velocidade certa para ONDE ESTÁ.
+            if (hasProfile)
+            {
+                float planned = trackProfile.SpeedAheadKmh(routeDistance, profileSpeedLookAhead);
+                reason = "perfil da pista";
+
+                if (drift.Beneficial || kart.IsDrifting)
+                {
+                    // Derrapando o kart sustenta mais que o modelo de grip do bake.
+                    planned = Mathf.Max(planned, Mathf.Min(driftTargetSpeedKmh, driftHardCornerTargetSpeedKmh + 18f));
+                    reason = "curva com drift";
+                }
+
+                // Rampa/salto: embalo garantido tem prioridade sobre qualquer teto.
+                float takeoff = trackProfile.RequiredTakeoffKmh(routeDistance, 45f, out float toTakeoff);
+                if (takeoff > 1f)
+                {
+                    planned = Mathf.Max(planned, Mathf.Min(maxStraightSpeedKmh, takeoff));
+                    reason = $"decolagem em {toTakeoff:F0} m";
+                }
+                if (rampZone != null)
+                {
+                    float rampMinZ = rampZone.MinSpeedKmh > 1f ? rampZone.MinSpeedKmh : defaultRampMinSpeedKmh;
+                    if (rampMinZ > planned) { planned = rampMinZ; reason = "mínimo de rampa"; }
+                }
+
+                planned *= profile.throttleScale;
+                if (state == BotState.RejoiningRoute) { planned = Mathf.Min(planned, rejoinSpeedKmh); reason = "reencaixe"; }
+                return Mathf.Clamp(planned, hardMinSpeedKmh, maxStraightSpeedKmh);
+            }
+
+            // ---------- SEM MAPA (atalho / pista sem bake): heurística antiga ----------
             // Velocidade de curva pela CURVATURA real à frente (rápido em curva suave, baixo só em
             // curva fechada). minCornerSpeedKmh é ALTO de propósito (bots competitivos).
             float cautionScale = Mathf.Lerp(0.72f, 1.08f, profile.corneringCaution);
@@ -1100,6 +1292,62 @@ namespace PartyRacers.AI
             public string BlockReason;
         }
 
+        /// <summary>
+        /// Identifica a CURVA em que o bot está entrando e se compromete com ela até a saída.
+        ///
+        /// Este é o coração da correção do zig-zag. Antes, o drift era decidido a cada frame a
+        /// partir de um ângulo escalar amostrado até ~80 m à frente: numa reta que antecede uma
+        /// curva o ângulo já passava do limiar, o bot derrapava cedo, perdia a linha, o esterço
+        /// invertia de sinal e — como a direção do drift vinha do SINAL DO ESTERÇO — o drift
+        /// invertia junto, re-apertando o handbrake. Era um laço de realimentação instável.
+        ///
+        /// Agora a curva é uma entidade do mapa bakeado (entrada, ápice, saída, raio, sentido).
+        /// A decisão é tomada UMA vez, o sentido vem da curvatura da pista (nunca do esterço) e
+        /// vale até a saída da curva.
+        /// </summary>
+        private void UpdateCornerCommitment()
+        {
+            if (!hasProfile)
+            {
+                cornerCommitted = false;
+                return;
+            }
+
+            if (cornerCommitted)
+            {
+                // Passou da saída? (Forward é ciente do loop: depois da saída ele salta para
+                // quase uma volta inteira.)
+                float toExit = trackProfile.Forward(routeDistance, committedCornerExit);
+                if (toExit > trackProfile.TotalLength * 0.5f)
+                    cornerCommitted = false;
+                else
+                    return;
+            }
+
+            if (!trackProfile.TryGetCorner(routeDistance, driftCommitDistance, out BotCorner c))
+                return;
+            if (!c.WantsDrift)
+                return;
+
+            cornerCommitted = true;
+            committedCornerDir = c.Direction;
+            committedCornerEntry = c.EntryDistance;
+            committedCornerExit = c.ExitDistance;
+            committedCornerRadius = c.MinRadius;
+        }
+
+        /// <summary>Comprometido E já na boca da curva (não ainda na reta que a antecede).</summary>
+        private bool CornerEngaged()
+        {
+            if (!cornerCommitted)
+                return false;
+
+            float toExit = trackProfile.Forward(routeDistance, committedCornerExit);
+            float toEntry = trackProfile.Forward(routeDistance, committedCornerEntry);
+            bool inside = toEntry > toExit;           // a entrada já ficou para trás
+            return inside || toEntry <= driftEngageDistance;
+        }
+
         private bool ShouldPrepareDrift(BotTrackZone zone)
         {
             if (!useDrift || kart == null || kart.IsDrifting)
@@ -1108,9 +1356,18 @@ namespace PartyRacers.AI
             if (Time.time < driftCooldownUntil)
                 return false;
 
-            bool zoneRecommends = zone != null && zone.AllowDrift;
-            if (!zoneRecommends && sensing.cornerAngle < driftPrepareAngle)
-                return false;
+            if (hasProfile)
+            {
+                // Com mapa: só prepara drift na curva que o bake marcou como merecedora.
+                if (!CornerEngaged())
+                    return false;
+            }
+            else
+            {
+                bool zoneRecommends = zone != null && zone.AllowDrift;
+                if (!zoneRecommends && sensing.cornerAngle < driftPrepareAngle)
+                    return false;
+            }
 
             if (sensing.edgeAhead || sensing.mustBrake)
                 return false;
@@ -1136,8 +1393,22 @@ namespace PartyRacers.AI
             bool activeZoneAllows = zone != null && zone.AllowDrift;
             bool approachZoneAllows = approachZone != null && approachZone.AllowDrift && approachBlend > 0.35f;
             bool zoneForbids = ZoneForbidsDrift(zone) || (approachZone != null && approachBlend > 0.65f && ZoneForbidsDrift(approachZone));
-            bool curveIsWorthDrift = sensing.cornerAngle >= driftEnterAngle || activeZoneAllows || approachZoneAllows;
-            bool preparing = sensing.cornerAngle >= driftPrepareAngle || activeZoneAllows || approachZoneAllows;
+
+            // COM MAPA: a curva bakeada manda. O bot só derrapa numa curva que o bake julgou
+            // fechada demais para o grip normal — e derrapa a curva INTEIRA, sem reavaliar.
+            // SEM MAPA (atalho/pista sem bake): cai no critério antigo por ângulo.
+            bool curveIsWorthDrift, preparing;
+            if (hasProfile)
+            {
+                bool engaged = CornerEngaged();
+                curveIsWorthDrift = engaged;
+                preparing = engaged;
+            }
+            else
+            {
+                curveIsWorthDrift = sensing.cornerAngle >= driftEnterAngle || activeZoneAllows || approachZoneAllows;
+                preparing = sensing.cornerAngle >= driftPrepareAngle || activeZoneAllows || approachZoneAllows;
+            }
 
             int direction = ResolveDriftDirection(steer);
             decision.Direction = direction;
@@ -1224,6 +1495,11 @@ namespace PartyRacers.AI
 
         private int ResolveDriftDirection(float steer)
         {
+            // Com mapa, o sentido do drift é o sentido da CURVA — travado até a saída. Derivá-lo
+            // do sinal do esterço (como antes) fazia o drift inverter no primeiro overshoot.
+            if (hasProfile && cornerCommitted)
+                return committedCornerDir;
+
             if (Mathf.Abs(steer) > 0.08f)
                 return steer >= 0f ? 1 : -1;
 
@@ -1241,6 +1517,18 @@ namespace PartyRacers.AI
         {
             if (direction == 0)
                 return steer;
+
+            if (hasProfile && cornerCommitted)
+            {
+                // O esterço continua sendo RASTREAMENTO puro do traçado. O piso de magnitude só
+                // existe no instante de abrir o drift (o KartController exige |steer| >= 0.35
+                // junto com o handbrake). Manter esse piso durante todo o drift, como antes,
+                // sobrescrevia a correção de linha: o kart passava do ponto, o erro lateral
+                // invertia, o esterço invertia e nascia a serpentina.
+                if (!kart.IsDrifting)
+                    return Mathf.Clamp(direction * Mathf.Max(Mathf.Abs(steer), driftEntrySteerMinimum), -1f, 1f);
+                return steer;
+            }
 
             float min = driftSteerMinimum;
             float magnitude = Mathf.Max(Mathf.Abs(steer), min);
@@ -1270,6 +1558,20 @@ namespace PartyRacers.AI
             if (speedKmh < driftMinSpeedKmh * 0.75f || sensing.edgeAhead || sensing.mustBrake)
                 wantsInput = false;
 
+            // RE-PULSO. O KartController só ABRE o drift no frame em que o handbrake é PRESSIONADO
+            // (TryStartDrift exige handbrakePressedThisFrame) e ainda por cima exige |steer| >= 0.35
+            // nesse mesmo frame. Se a primeira tentativa cai num frame em que o esterço ainda não
+            // chegou lá, segurar o handbrake não adianta nada: o pedido morre e o bot atravessa a
+            // curva inteira de handbrake apertado, sem drift e sem grip. Aqui ele solta por um
+            // frame para poder apertar de novo.
+            if (wantsInput && !kart.IsDrifting)
+            {
+                if (!handbrakeHeldLastRead)
+                    driftPressStartTime = Time.time;
+                else if (Time.time - driftPressStartTime > driftRepressInterval)
+                    wantsInput = false;
+            }
+
             input.Handbrake = wantsInput;
             input.HandbrakePressed = wantsInput && !handbrakeHeldLastRead;
 
@@ -1295,6 +1597,12 @@ namespace PartyRacers.AI
             public int freeSide;          // +1 direita, -1 esquerda, 0 indefinido
             public bool centerBlocked;
             public bool edgeAhead;
+            /// <summary>
+            /// Havia queda à frente, mas o TRAÇADO continua no mesmo nível: é a borda externa de
+            /// uma curva suspensa ou o buraco de um salto que a rota cruza de propósito. Não é
+            /// perigo — só motivo para voltar para a linha.
+            /// </summary>
+            public bool edgeOffRoute;
             public bool mustBrake;        // bloqueado sem escapatória
             public float brakeAmount;
             public float avoidSteer;      // esterço sugerido para o lado livre
@@ -1385,11 +1693,55 @@ namespace PartyRacers.AI
             s.rightClear = rightNear;
             s.freeSide = rightNear >= leftNear ? 1 : -1;
             // Sensor de borda: o chão some à frente? (buraco/queda)
-            Vector3 edgeProbe = kart.transform.position + fwd * edgeProbeAhead + Vector3.up * 1f;
+            //
+            // A sonda segue a direção para onde o bot VAI, não só para onde o nariz aponta. Num
+            // trecho SUSPENSO (o nível de cima da MiniGolfeRun) o vazio começa logo depois da quina
+            // de cada curva de 90°: sondando só pelo nariz, TODA curva elevada era lida como
+            // penhasco — exatamente onde o bot mais precisa manter a linha.
+            Vector3 edgeDir = fwd;
+            if (frame.IsValid)
+            {
+                Vector3 tangent = Planar(frame.Tangent);
+                if (tangent.sqrMagnitude > 0.001f)
+                    edgeDir = Vector3.Slerp(fwd, tangent.normalized, edgeProbeRouteBlend).normalized;
+            }
+
+            Vector3 edgeProbe = kart.transform.position + edgeDir * edgeProbeAhead + Vector3.up * 1f;
             if (!Physics.Raycast(edgeProbe, Vector3.down, out RaycastHit gh, edgeDropDepth + 2f, sensorMask, QueryTriggerInteraction.Ignore))
                 s.edgeAhead = true;
             else if (gh.point.y < kart.transform.position.y - edgeDropDepth)
                 s.edgeAhead = true;
+
+            // O TRAÇADO continua na mesma altura logo à frente? Então o vazio detectado está FORA do
+            // caminho — é a borda externa da curva suspensa, ou o buraco de um SALTO que a rota
+            // atravessa de propósito. Nos dois casos a reação de penhasco (frear + virar para o
+            // "lado livre", que numa curva é o lado de FORA) é o pior que o bot pode fazer: perde o
+            // ápice, raspa a mureta e trava. Aqui a borda vira só um viés de volta para a linha.
+            if (s.edgeAhead && hasProfile)
+            {
+                // COM MAPA a pergunta "isto é precipício ou é o salto da pista?" deixa de ser um
+                // chute feito a 140 km/h. O bake sabe onde o traçado atravessa um vão de
+                // propósito, e sabe se ainda há chão sob a linha aqui.
+                if (profileTakeoffKmh > 1f && profileTakeoffDistance < edgeProbeAhead + 10f)
+                {
+                    s.edgeAhead = false;      // é a decolagem prevista: acelerar, não frear
+                    s.edgeOffRoute = false;
+                }
+                else if (station.UsableWidth > 1.5f && frame.DistanceToPath < edgeRouteTrustDistance)
+                {
+                    s.edgeAhead = false;      // há chão sob a linha: o vazio está FORA do corredor
+                    s.edgeOffRoute = true;
+                }
+            }
+            else if (s.edgeAhead && frame.IsValid && frame.DistanceToPath < edgeRouteTrustDistance)
+            {
+                Vector3 routeAhead = path.PointAhead(Mathf.Max(edgeProbeAhead, 6f));
+                if (routeAhead.y > kart.transform.position.y - edgeDropDepth)
+                {
+                    s.edgeAhead = false;
+                    s.edgeOffRoute = true;
+                }
+            }
 
             // BLOQUEADO = algo à frente no cone central (não as muretas laterais distantes).
             if (rampContext && !s.edgeAhead && centerDist > 1.2f)
@@ -1414,6 +1766,14 @@ namespace PartyRacers.AI
                 // afasta do lado mais próximo (corrige rumo à mureta sem frear).
                 float bias = Mathf.Max(leftCloseSev, rightCloseSev) * 0.6f;
                 s.avoidSteer = (leftCloseSev > rightCloseSev ? 1f : -1f) * bias;
+            }
+
+            // Vazio ao lado da rota (borda do trecho suspenso, buraco de salto): sem freio e sem
+            // fugir para "o lado livre" — só um puxão de volta para a linha, que está no chão.
+            if (s.edgeOffRoute && !s.centerBlocked && frame.IsValid)
+            {
+                float lateral = kart.transform.InverseTransformPoint(frame.NearestPoint).x;
+                s.avoidSteer += Mathf.Clamp(lateral * 0.12f, -0.35f, 0.35f);
             }
 
             // Freia SÓ se: obstáculo de frente perto SEM escapatória lateral, ou borda imediata.
@@ -1474,6 +1834,15 @@ namespace PartyRacers.AI
 
         private bool IsRampContext()
         {
+            // Rampa medida no bake tem prioridade: numa pista sem zonas autoradas era exatamente
+            // aqui que a IA cegava. Sem contexto de rampa, IsDrivableStep só perdoa degraus de
+            // 0,6 m com sonda de 2,6 m — a face de uma rampa de verdade virava "parede", o bot
+            // entrava em AvoidingObstacle e desviava na base dela. Daí o "agarram na rampa".
+            if (profileRampCommit)
+                return true;
+            if (hasProfile && trackProfile.HasRampAhead(routeDistance, 12f))
+                return true;
+
             if (IsRampOrJumpZone(frame.ActiveZone))
                 return true;
 
@@ -1685,6 +2054,31 @@ namespace PartyRacers.AI
                 if (offTrackTimer >= offTrackSeconds) { Respawn("fora da pista"); offTrackTimer = 0f; return; }
             }
             else offTrackTimer = Mathf.Max(0f, offTrackTimer - dt);
+
+            // CAIU NO BURACO / NO NÍVEL DE BAIXO — independente de velocidade.
+            //
+            // Este é o detector que faltava. Os três existentes exigem que o bot esteja LENTO ou
+            // LONGE: belowRoute pede < 25 km/h, hardStuck < 12 km/h e offTrack > 16 m planar. Um
+            // bot que cai num buraco e continua rodando lá embaixo a 40 km/h, com a rota logo
+            // acima da cabeça (distância planar pequena), não satisfazia nenhum deles — ficava
+            // dando voltas no nível de baixo até o fim da corrida. Era o "caem e não conseguem
+            // voltar mais". Com a altura do traçado bakeada, basta comparar alturas.
+            if (hasProfile && !grace && kart.IsGrounded)
+            {
+                float drop = trackProfile.RouteHeightAt(routeDistance) - kart.transform.position.y;
+                if (drop > fallBelowRouteHeight)
+                {
+                    fallTimer += dt;
+                    if (fallTimer >= fallBelowRouteSeconds)
+                    {
+                        fallTimer = 0f;
+                        Respawn("caiu abaixo do traçado");
+                        return;
+                    }
+                }
+                else fallTimer = Mathf.Max(0f, fallTimer - dt * 2f);
+            }
+            else fallTimer = Mathf.Max(0f, fallTimer - dt);
 
             // Caiu DEBAIXO de um trecho elevado (errou rampa, parou embaixo): rota muito acima + lento.
             float below = path.CurrentNearestPoint.y - kart.transform.position.y;

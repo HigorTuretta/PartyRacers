@@ -85,7 +85,7 @@ PrefabInstance:
       addedObject: {fileID: 7860261344626938676}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6109863643428896077}
+      addedObject: {fileID: 9111184244469315441}
   m_SourcePrefab: {fileID: 100100000, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
 --- !u!1 &4322026653664869586 stripped
 GameObject:
@@ -266,7 +266,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GolfBallSound
   bounceSound: {fileID: 8300000, guid: d90417bd804c68f4da266b4d1e2a0c3f, type: 3}
   minImpactVelocity: 1
---- !u!114 &6109863643428896077
+--- !u!114 &9111184244469315441
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -275,14 +275,23 @@ MonoBehaviour:
   m_GameObject: {fileID: 4322026653664869586}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41bfbef051f0e8940b1e8a18eac7c2e7, type: 3}
+  m_Script: {fileID: 11500000, guid: ab80c998c77b59642808aa82baa534c0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ObstacleKnockback
-  launchSpeed: 0.1
-  upwardSpeed: 0.1
-  obstacleVelocityInfluence: 0.6
-  knockbackDuration: 1.1
-  spinStrength: 7
-  perKartCooldown: 1
-  minRelativeSpeed: 0
+  m_EditorClassIdentifier: Assembly-CSharp::GolfBallKartImpact
+  raioDeReferencia: 1.5
+  fatorDeTamanhoMaximo: 2.5
+  densidade: 10
+  massaMinima: 120
+  massaMaxima: 1500
+  retencaoDaBola: 0.85
+  perdaNoRaioDeReferencia: 0.34
+  perdaMaxima: 0.45
+  retencaoMinima: 0.5
+  empurraoNoRaioDeReferencia: 3
+  empurraoMaximo: 7
+  giroMaximo: 1.2
+  verticalMaxima: 1.6
+  velocidadeMinimaDeImpacto: 2.5
+  velocidadeDeImpactoForte: 18
+  cooldownPorKart: 0.35
   debugMode: 0

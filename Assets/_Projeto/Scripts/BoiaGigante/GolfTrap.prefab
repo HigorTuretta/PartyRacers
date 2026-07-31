@@ -91,10 +91,10 @@ PrefabInstance:
       addedObject: {fileID: -2839252114089925526}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2239468452945455542}
+      addedObject: {fileID: 9140902849633486809}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 9140902849633486809}
+      addedObject: {fileID: 4057363825791649279}
   m_SourcePrefab: {fileID: 100100000, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
 --- !u!1 &4322026653664869586 stripped
 GameObject:
@@ -164,26 +164,6 @@ MonoBehaviour:
   impactEffectPrefab: {fileID: 2708598583397607911, guid: 6398d43fe79ea0140913dc5530c646af, type: 3}
   effectLifetime: 10
   impactCooldown: 0.1
---- !u!114 &2239468452945455542
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4322026653664869586}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41bfbef051f0e8940b1e8a18eac7c2e7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ObstacleKnockback
-  launchSpeed: 0.05
-  upwardSpeed: 0.05
-  obstacleVelocityInfluence: 1
-  knockbackDuration: 0.8
-  spinStrength: 0.1
-  perKartCooldown: 1
-  minRelativeSpeed: 4
-  debugMode: 0
 --- !u!114 &9140902849633486809
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -196,3 +176,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d30f53dfbedf73740b5185e61b931bee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GolfBall
+--- !u!114 &4057363825791649279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322026653664869586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab80c998c77b59642808aa82baa534c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GolfBallKartImpact
+  raioDeReferencia: 1.5
+  fatorDeTamanhoMaximo: 2.5
+  densidade: 10
+  massaMinima: 120
+  massaMaxima: 1500
+  retencaoDaBola: 0.85
+  perdaNoRaioDeReferencia: 0.34
+  perdaMaxima: 0.45
+  retencaoMinima: 0.5
+  empurraoNoRaioDeReferencia: 3
+  empurraoMaximo: 7
+  giroMaximo: 1.2
+  verticalMaxima: 1.6
+  velocidadeMinimaDeImpacto: 2.5
+  velocidadeDeImpactoForte: 18
+  cooldownPorKart: 0.35
+  debugMode: 0

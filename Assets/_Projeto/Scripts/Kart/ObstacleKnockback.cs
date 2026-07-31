@@ -18,7 +18,7 @@ using UnityEngine;
 /// spinStrength na cambalhota; knockbackDuration em quanto tempo o kart fica sem controle.
 /// </summary>
 [DisallowMultipleComponent]
-public class ObstacleKnockback : MonoBehaviour
+public class ObstacleKnockback : MonoBehaviour, IKartImpactObstacle
 {
     [Header("Arremesso")]
     [Tooltip("Velocidade horizontal (m/s) aplicada ao kart. 18 ≈ voo de vários metros.")]

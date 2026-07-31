@@ -59,9 +59,12 @@ public class CannonShooter : MonoBehaviour
 
         if (rb != null)
         {
+            // VelocityChange (e não Impulse): 'launchForce' passa a ser a velocidade de saída em
+            // m/s, independente da massa da bola. Com Impulse, deixar a bola mais pesada
+            // (GolfBallKartImpact calcula a massa pelo raio) fazia o tiro sair devagar.
             rb.AddForce(
                 spawnPoint.forward * launchForce,
-                ForceMode.Impulse
+                ForceMode.VelocityChange
             );
         }
 

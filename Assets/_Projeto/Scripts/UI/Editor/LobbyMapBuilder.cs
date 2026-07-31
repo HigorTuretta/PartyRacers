@@ -247,7 +247,16 @@ namespace PartyRacers.UI.EditorTools
             img.raycastTarget = false;
 
             var b = rt.gameObject.AddComponent<Button>();
-            b.targetGraphic = rt.GetComponent<Image>();
+            var fundo = rt.GetComponent<Image>();
+            b.targetGraphic = fundo;
+
+            // A moldura nasce sem raycast (é decoração em todo o resto da tela). Numa SETA ela é a
+            // única superfície clicável — o ícone também não capta. Sem isto o Button existe, tem
+            // listener, e mesmo assim o clique atravessa: era por isso que a troca de pista no
+            // lobby não fazia nada.
+            if (fundo != null)
+                fundo.raycastTarget = true;
+
             return b;
         }
 

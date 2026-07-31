@@ -21,8 +21,10 @@ public class KartPowerInventory : MonoBehaviour
         if (HasPower)
             return false;
 
+        // Sem Debug.Log aqui: com 16 karts na pista isto disparava dezenas de vezes por segundo,
+        // enterrava qualquer log de diagnóstico no console e o custo de capturar stack trace
+        // aparecia no frame. O evento de HUD abaixo já é o canal oficial de feedback.
         currentPower = powerType;
-        Debug.Log($"Poder recebido: {GetPowerDisplayName()}");
         RaceHudEvents.Raise(gameObject, null, RaceHudEventKind.PowerCollected, powerType);
 
         return true;

@@ -62,9 +62,12 @@ public class GolfTrapLauncher : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
 
+            // VelocityChange (e não Impulse): 'launchForce' passa a ser a velocidade de saída em
+            // m/s, independente da massa da bola. Com Impulse, deixar a bola mais pesada
+            // (GolfBallKartImpact calcula a massa pelo raio) fazia o lançamento sair devagar.
             rb.AddForce(
                 direcaoTacada.forward * launchForce,
-                ForceMode.Impulse
+                ForceMode.VelocityChange
             );
         }
 

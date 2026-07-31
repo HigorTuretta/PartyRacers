@@ -43,6 +43,15 @@ namespace PartyRacers.AI
         [Tooltip("Se o bot se afastar mais que isso do atalho, abandona e volta à linha principal.")]
         [SerializeField] private float branchAbandonDistance = 14f;
 
+        [Header("Perfil bakeado da pista")]
+        [Tooltip("Mede a pista (largura, buracos, rampas, raio das curvas) no início da corrida e " +
+                 "dirige a partir desse mapa, em vez de deduzir tudo por sensor em alta velocidade. " +
+                 "Funciona em qualquer pista nova sem autoria manual.")]
+        [SerializeField] private bool bakeTrackProfile = true;
+        [SerializeField] private BotTrackBaker.Settings bakeSettings = new BotTrackBaker.Settings();
+
+        private BotTrackProfile profile;
+
         private BotPath mainPath;
         private readonly List<BranchRuntime> branches = new List<BranchRuntime>();
         private readonly List<ZoneRuntime> zones = new List<ZoneRuntime>();
@@ -71,6 +80,13 @@ namespace PartyRacers.AI
         public bool IsOnBranch => currentBranchIndex >= 0;
         public int BranchCount => branches.Count;
         public int ZoneCount => zones.Count;
+
+        /// <summary>
+        /// Mapa bakeado da pista. Só vale na linha PRINCIPAL — atalhos não são bakeados, e num
+        /// atalho o bot volta a dirigir pelos sensores (comportamento antigo, conservador).
+        /// </summary>
+        public BotTrackProfile TrackProfile => currentBranchIndex < 0 ? profile : null;
+        public bool HasProfile => currentBranchIndex < 0 && profile != null && profile.IsValid;
 
         /// <summary>Identifica o caminho atual: -1 = linha principal, >= 0 = índice do branch.</summary>
         public int CurrentPathId => currentBranchIndex;
@@ -210,6 +226,11 @@ namespace PartyRacers.AI
                 BuildBranches(line);
                 BuildZones(line);
             }
+
+            // Perfil bakeado da pista (largura, buracos, rampas, curvas, perfil de velocidade).
+            // Compartilhado entre todos os bots — o bake roda uma vez por traçado.
+            if (bakeTrackProfile && line != null)
+                profile = BotTrackProfileCache.GetOrBake(line, mainPath, line.GetZones(), bakeSettings);
 
             ready = true;
             nearestPoint = mainPath.Points[0];

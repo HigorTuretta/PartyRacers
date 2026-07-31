@@ -24,6 +24,11 @@ public static class ProjectileGroundHover
     /// Distância que o projétil nunca cruza, mesmo que a aproximação suave não dê conta da
     /// subida. É isto que garante que ele não entre no chão.
     /// </param>
+    /// <param name="subidaMaxima">
+    /// Quanto o chão pode estar ACIMA do projétil e ainda contar como chão dele. Cobre a rampa
+    /// que sobe entre um frame e outro; acima disso é ponte/viaduto de outro nível da pista, que
+    /// não é chão nenhum para quem voa por baixo.
+    /// </param>
     public static bool TryAdjustHeight(
         ref Vector3 position,
         float hoverHeight,
@@ -31,7 +36,8 @@ public static class ProjectileGroundHover
         LayerMask groundMask,
         float probeUp = 60f,
         float probeDown = 400f,
-        float folgaMinima = 0.35f)
+        float folgaMinima = 0.35f,
+        float subidaMaxima = 4f)
     {
         Vector3 origin = position + Vector3.up * probeUp;
         int count = Physics.RaycastNonAlloc(
@@ -42,9 +48,15 @@ public static class ProjectileGroundHover
             groundMask,
             QueryTriggerInteraction.Ignore);
 
-        float bestDistance = float.MaxValue;
+        // A sonda parte bem acima do projétil, então ela atravessa tudo o que estiver ENTRE a
+        // origem e ele. Pegar "o hit mais próximo da origem" escolhia a superfície mais ALTA —
+        // numa pista de dois níveis, o trecho suspenso. O projétil que passava por baixo era
+        // grudado no teto e sumia. Chão é o que está SOB o projétil: entre os candidatos válidos,
+        // vale o mais alto (a superfície logo abaixo).
+        float best = float.MinValue;
         bool found = false;
         float groundY = 0f;
+        float teto = position.y + subidaMaxima;
 
         for (int i = 0; i < count; i++)
         {
@@ -56,9 +68,13 @@ public static class ProjectileGroundHover
             if (hit.collider.GetComponentInParent<KartController>() != null)
                 continue;
 
-            if (hit.distance < bestDistance)
+            // Acima do projétil (ponte, viaduto, teto) não é chão dele.
+            if (hit.point.y > teto)
+                continue;
+
+            if (hit.point.y > best)
             {
-                bestDistance = hit.distance;
+                best = hit.point.y;
                 groundY = hit.point.y;
                 found = true;
             }

@@ -28,6 +28,10 @@ public class UFOSwapProjectile : MonoBehaviour
     [Tooltip("De quanto acima do disco a sonda parte. Curto demais e uma rampa que sobe rápido " +
              "faz o raio nascer dentro do terreno — aí o disco atravessa o chão.")]
     [SerializeField] private float groundProbeUp = 60f;
+    [Tooltip("Quanto o chão pode estar ACIMA do disco e ainda contar como chão dele (subida de " +
+             "rampa entre um frame e outro). Acima disso é ponte/viaduto/teto de outro nível e é " +
+             "ignorado — senão o disco é puxado para o andar de cima e some.")]
+    [SerializeField] private float maxGroundRiseAhead = 4f;
     [Tooltip("Apenas superficies com normal Y abaixo disso (paredes verticais) fazem o UFO quicar. " +
              "0,45 ≈ 63° tratava rampa como parede; 0,3 ≈ 72° deixa o disco sobrevoar as rampas.")]
     [SerializeField, Range(0f, 1f)] private float wallMaxNormalY = 0.3f;
@@ -265,8 +269,16 @@ public class UFOSwapProjectile : MonoBehaviour
             origin, Vector3.down, groundProbe, groundProbeUp + groundProbeDown, groundMask,
             QueryTriggerInteraction.Ignore);
 
-        float bestDistance = float.MaxValue;
+        // O raio parte MUITO acima do disco (groundProbeUp) para nao nascer dentro de uma rampa.
+        // O preco disso e que ele atravessa tudo o que estiver ENTRE a origem e o disco. Escolher
+        // "o hit mais proximo da origem" pegava a superficie mais ALTA do trecho — numa pista de
+        // dois niveis isso e o TRECHO SUSPENSO, 15 m acima. Como a trava rigida abaixo e
+        // instantanea, o disco era teleportado para cima da ponte no primeiro frame: sumia.
+        // Chao e o que esta SOB o disco (com uma folga para a rampa que sobe): entre os candidatos
+        // validos vale o MAIS ALTO, que e a superficie logo abaixo.
+        float best = float.MinValue;
         bool found = false;
+        float teto = position.y + maxGroundRiseAhead;
 
         for (int i = 0; i < count; i++)
         {
@@ -278,9 +290,13 @@ public class UFOSwapProjectile : MonoBehaviour
             if (hit.collider.GetComponentInParent<KartController>() != null)
                 continue;
 
-            if (hit.distance < bestDistance)
+            // Acima do disco (ponte, viaduto, teto, galho) nao e chao dele.
+            if (hit.point.y > teto)
+                continue;
+
+            if (hit.point.y > best)
             {
-                bestDistance = hit.distance;
+                best = hit.point.y;
                 groundY = hit.point.y;
                 found = true;
             }

@@ -280,6 +280,14 @@ public class KartPowerUser : MonoBehaviour
     }
 
     // ------------------------------------------------------------------ Disco Voador (Swap)
+    /// <summary>Altura do disco acima do socket, lida do prefab (fallback = padrão do visual).</summary>
+    private float UfoVisualHeight()
+    {
+        GameObject prefab = ufoEquippedPrefab != null ? ufoEquippedPrefab : ufoProjectilePrefab;
+        UfoEquippedVisual visual = prefab != null ? prefab.GetComponent<UfoEquippedVisual>() : null;
+        return visual != null ? visual.Height : 0.95f;
+    }
+
     private void EnsureUfoSocket()
     {
         if (ufoEquippedSocket != null)
@@ -488,10 +496,21 @@ public class KartPowerUser : MonoBehaviour
     {
         EnsureUfoSocket();
 
+        // De ONDE o disco sai: do lugar em que ele estava visivelmente flutuando, não do socket.
+        // O socket fica de propósito ABAIXO do teto do carro (o visual equipado orbita 'Height'
+        // acima dele) — nascer nele punha o projétil dentro da carroceria, quase no asfalto.
+        Vector3 launchOrigin = ufoEquippedSocket != null ? ufoEquippedSocket.position : transform.position;
         if (equippedUfoInstance != null)
         {
+            launchOrigin = equippedUfoInstance.transform.position;
             Destroy(equippedUfoInstance);
             equippedUfoInstance = null;
+        }
+        else if (ufoEquippedSocket != null)
+        {
+            // Disparo no mesmo frame da coleta: o visual ainda não existe. Usa a altura que ele
+            // teria (o socket sozinho aponta para dentro do carro).
+            launchOrigin += Vector3.up * UfoVisualHeight();
         }
 
         if (ufoProjectilePrefab == null || ufoEquippedSocket == null)
@@ -501,7 +520,7 @@ public class KartPowerUser : MonoBehaviour
         }
 
         Vector3 forward = transform.forward;
-        Vector3 spawnPosition = ufoEquippedSocket.position + forward * ufoLaunchForwardOffset;
+        Vector3 spawnPosition = launchOrigin + forward * ufoLaunchForwardOffset;
         Quaternion spawnRotation = Quaternion.LookRotation(forward, Vector3.up);
 
         GameObject projectileObject = Instantiate(ufoProjectilePrefab, spawnPosition, spawnRotation);

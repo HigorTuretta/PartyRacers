@@ -32,11 +32,10 @@ public class ItemBox : MonoBehaviour
 
         bool receivedPower = inventory.TryGivePower(randomPower);
 
+        // Passar por uma caixa já tendo poder é o caso NORMAL, não um aviso: logar isso com 16
+        // karts na pista inundava o console e custava frame (captura de stack trace).
         if (!receivedPower)
-        {
-            Debug.Log("Jogador já possui um poder.");
             return;
-        }
 
         StartCoroutine(RespawnRoutine());
     }

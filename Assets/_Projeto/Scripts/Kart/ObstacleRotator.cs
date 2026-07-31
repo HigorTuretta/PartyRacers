@@ -20,6 +20,23 @@ public class ObstacleRotator : MonoBehaviour
         degreesPerSecond = speed;
     }
 
+    private void Awake()
+    {
+        // Os colliders filhos são ARRASTADOS por este transform — nenhum se move por conta
+        // própria. Um Rigidbody cinemático com interpolação neles faz o PhysX reescrever a pose
+        // interpolada por cima da rotação do script a cada frame: as duas escritas brigam e o
+        // obstáculo anda aos soquinhos (foi o que travava as pás do moinho).
+        foreach (Rigidbody corpo in GetComponentsInChildren<Rigidbody>(true))
+        {
+            if (corpo.transform == transform)
+                continue;
+
+            corpo.isKinematic = true;
+            corpo.useGravity = false;
+            corpo.interpolation = RigidbodyInterpolation.None;
+        }
+    }
+
     private void Update()
     {
         if (localAxis.sqrMagnitude < 0.0001f)
