@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Linq;
 using PartyRacers.UI.Frontend;
+using PartyRacers.UI.Motion;
 using PartyRacers.UI.Settings;
 using TMPro;
 using UnityEditor;
@@ -22,6 +23,7 @@ namespace PartyRacers.UI.EditorTools
     public static class LobbyMapBuilder
     {
         const string PREFAB = "Assets/_Projeto/Prefabs/UI/Screens/Screen_Lobby.prefab";
+        const string JOIN_PREFAB = "Assets/_Projeto/Prefabs/UI/Screens/Screen_JoinCode.prefab";
 
         [MenuItem("Party Racers/UI/Montar seleção de mapa no lobby")]
         public static void Montar()
@@ -30,13 +32,15 @@ namespace PartyRacers.UI.EditorTools
             try
             {
                 ReancorarConteudo(raiz.transform);
+                PolirPalcoDoKart(raiz.transform);
                 MontarCartaoDePista(raiz.transform);
+                AplicarMovimentoNosBotoes(raiz.transform);
                 PrefabUtility.SaveAsPrefabAsset(raiz, PREFAB);
             }
             finally { PrefabUtility.UnloadPrefabContents(raiz); }
 
-            AssetDatabase.SaveAssets();
-            Debug.Log("[lobby] conteúdo reancorado e cartão de pista montado");
+            PolirJoinCode();
+            Debug.Log("[lobby] layout, estados, botões e enquadramento polidos");
         }
 
         // ------------------------------------------------------------------ layout
@@ -75,9 +79,8 @@ namespace PartyRacers.UI.EditorTools
         }
 
         /// <summary>
-        /// A cena vinha com 6 vagas preenchidas por "JOGADOR / PRONTO" e a contagem em 6/16 —
-        /// mock que aparecia para quem abrisse a cena e, pior, seria o que o jogador veria se o
-        /// binder falhasse. O estado autorado passa a ser a sala vazia, com só o dono dentro.
+        /// O prefab precisa representar o estado offline real, e não uma sala fictícia já pronta.
+        /// Assim ele também continua honesto caso o binder falhe antes do primeiro frame.
         /// </summary>
         static void EstadoPadraoVazio(Transform conteudo)
         {
@@ -87,18 +90,36 @@ namespace PartyRacers.UI.EditorTools
                 int i = 0;
                 foreach (Transform vaga in vagas)
                 {
-                    bool primeira = i++ == 0;   // a primeira é você
+                    bool primeira = i++ == 0;
                     Ligar(vaga, "State_Player", primeira);
                     Ligar(vaga, "State_Disconnected", false);
                     Ligar(vaga, "State_Empty", !primeira);
+
+                    if (primeira)
+                    {
+                        Escrever(vaga, "State_Player/Nome", "JOGADOR (você)");
+                        Ligar(vaga, "State_Player/State_Ready", false);
+                        Ligar(vaga, "State_Player/State_Waiting", true);
+                        Ligar(vaga, "State_Player/Destaque_IsLocal", true);
+                    }
                 }
             }
 
+            Escrever(conteudo, "Topo/CodigoSala/Codigo", "SEM SALA");
+            var codigo = conteudo.Find("Topo/CodigoSala/Codigo")?.GetComponent<TextMeshProUGUI>();
+            if (codigo != null)
+            {
+                codigo.fontSize = 34f;
+                codigo.characterSpacing = 2f;
+            }
+            Escrever(conteudo, "Topo/CodigoSala/Btn_Copiar/Label", "CRIAR SALA");
             Escrever(conteudo, "Topo/Contagem/Valor", "1");
             Escrever(conteudo, "Topo/Contagem/Maximo", "/16");
-            Escrever(conteudo, "Aviso/Texto", "Todos prontos — a partida pode começar");
+            Escrever(conteudo, "Aviso/Texto", "Crie uma sala online ou entre com o código de um amigo.");
+            Escrever(conteudo, "Acoes/Btn_EntrarPorCodigo/Label", "ENTRAR POR CÓDIGO");
+            Escrever(conteudo, "Acoes/Btn_SairDaSala/Label", "GARAGEM");
+            Escrever(conteudo, "Acoes/State_Pronto/Label", "JOGAR LOCAL");
 
-            // com só o dono na sala e ele pronto, o botão é CORRER, não AGUARDANDO
             Ligar(conteudo, "Acoes/EstadoPartida", false);
             Ligar(conteudo, "Acoes/State_Pronto", true);
         }
@@ -115,11 +136,65 @@ namespace PartyRacers.UI.EditorTools
             if (t != null) t.text = texto;
         }
 
+        static void PolirPalcoDoKart(Transform tela)
+        {
+            var palco = tela.Find("PalcoCarro") as RectTransform;
+            if (palco != null)
+            {
+                palco.anchorMin = palco.anchorMax = palco.pivot = Vector2.one;
+                palco.anchoredPosition = new Vector2(-42f, -112f);
+                palco.sizeDelta = new Vector2(720f, 440f);
+            }
+
+            var selo = tela.Find("PalcoCarro/Selo") as RectTransform;
+            if (selo != null)
+            {
+                // O selo antigo ficava solto no meio da coluna direita. Agora pertence claramente
+                // à área do kart e não concorre com o card da pista.
+                selo.anchorMin = selo.anchorMax = selo.pivot = Vector2.one;
+                selo.anchoredPosition = new Vector2(-20f, -20f);
+                selo.sizeDelta = new Vector2(430f, 48f);
+                Escrever(selo, "Label", "SEU KART · EDITE NA GARAGEM");
+            }
+        }
+
+        static void PolirJoinCode()
+        {
+            var raiz = PrefabUtility.LoadPrefabContents(JOIN_PREFAB);
+            try
+            {
+                AplicarMovimentoNosBotoes(raiz.transform);
+                PrefabUtility.SaveAsPrefabAsset(raiz, JOIN_PREFAB);
+            }
+            finally { PrefabUtility.UnloadPrefabContents(raiz); }
+        }
+
+        static void AplicarMovimentoNosBotoes(Transform raiz)
+        {
+            foreach (Button button in raiz.GetComponentsInChildren<Button>(true))
+            {
+                string caminho = AnimationUtility.CalculateTransformPath(button.transform, raiz);
+                bool destaque = caminho.Contains("State_Pronto") ||
+                                 caminho.Contains("Btn_Copiar") ||
+                                 caminho.Contains("Btn_Entrar");
+
+                var press = button.GetComponent<UIPress>();
+                if (press == null)
+                    press = button.gameObject.AddComponent<UIPress>();
+                press.SetEmphasized(destaque);
+                EditorUtility.SetDirty(press);
+            }
+        }
+
         // ------------------------------------------------------------------ cartão
         static void MontarCartaoDePista(Transform tela)
         {
             var antigo = tela.Find("Painel_Mapa");
-            if (antigo != null) Object.DestroyImmediate(antigo.gameObject);
+            if (antigo != null)
+            {
+                Debug.Log("[lobby] cartão de pista existente preservado");
+                return;
+            }
 
             var painel = Novo("Painel_Mapa", tela);
             painel.anchorMin = painel.anchorMax = new Vector2(1f, 0f);

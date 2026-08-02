@@ -1,13 +1,15 @@
 using System.Collections.Generic;
+using PartyRacers.UI.Motion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace PartyRacers.UI.Frontend
 {
     /// <summary>
-    /// Binder da tela 07. Seis caixas de um caractere, com os estados (vazia, em foco, erro)
-    /// como objetos irmãos já montados no Item_CodeBox.
+    /// Entrada de código com seis caixas e feedback explícito de conexão/erro.
     /// </summary>
     [DisallowMultipleComponent]
     public class JoinCodeUI : MonoBehaviour
@@ -25,7 +27,7 @@ namespace PartyRacers.UI.Frontend
         [Header("Caixas já montadas na cena")]
         [SerializeField] private List<Caixa> caixas = new List<Caixa>();
 
-        [Header("Estados de retorno (irmãos, um por situação)")]
+        [Header("Estados de retorno")]
         [SerializeField] private GameObject estadoCodigoInvalido;
         [SerializeField] private GameObject estadoSalaCheia;
         [SerializeField] private GameObject estadoConectando;
@@ -39,51 +41,104 @@ namespace PartyRacers.UI.Frontend
         [SerializeField] private string telaAoCancelar = "Lobby";
 
         [Header("Eventos")]
-        public UnityEngine.Events.UnityEvent<string> aoConfirmar;
+        public UnityEvent<string> aoConfirmar = new UnityEvent<string>();
 
         private string digitado = string.Empty;
+        private bool conectando;
+        private TextMeshProUGUI textoErro;
+        private string mensagemCodigoInvalido;
+        private Keyboard tecladoInscrito;
 
         public string Codigo => digitado;
+        public bool EstaConectando => conectando;
 
         private void Awake()
         {
-            if (btnEntrar != null) btnEntrar.onClick.AddListener(Confirmar);
-            if (btnCancelar != null) btnCancelar.onClick.AddListener(Cancelar);
+            if (btnEntrar != null)
+                btnEntrar.onClick.AddListener(Confirmar);
+            if (btnCancelar != null)
+                btnCancelar.onClick.AddListener(Cancelar);
+
+            textoErro = estadoCodigoInvalido != null
+                ? estadoCodigoInvalido.GetComponentInChildren<TextMeshProUGUI>(true)
+                : null;
+            mensagemCodigoInvalido = textoErro != null ? textoErro.text : string.Empty;
+
+            foreach (Button button in GetComponentsInChildren<Button>(true))
+            {
+                UIPress press = button.GetComponent<UIPress>();
+                if (press == null)
+                    press = button.gameObject.AddComponent<UIPress>();
+                press.SetEmphasized(button == btnEntrar);
+            }
         }
 
         private void OnEnable()
         {
+            InscreverNoTecladoAtual();
             digitado = string.Empty;
-            LimparEstados();
+            DefinirConectando(false);
             Redesenhar();
+        }
+
+        private void OnDisable()
+        {
+            DesinscreverDoTeclado();
         }
 
         private void Update()
         {
-            foreach (char c in Input.inputString)
-            {
-                if (c == '\b')
-                    Apagar();
-                else if (c == '\n' || c == '\r')
-                    Confirmar();
-                else if (char.IsLetterOrDigit(c))
-                    Digitar(char.ToUpperInvariant(c));
-            }
-        }
-
-        public void Digitar(char c)
-        {
-            if (digitado.Length >= caixas.Count)
+            if (conectando)
                 return;
 
-            digitado += c;
+            if (tecladoInscrito != Keyboard.current)
+                InscreverNoTecladoAtual();
+
+            if (tecladoInscrito == null)
+                return;
+
+            if (tecladoInscrito.backspaceKey.wasPressedThisFrame)
+                Apagar();
+            else if (tecladoInscrito.enterKey.wasPressedThisFrame)
+                Confirmar();
+            else if (tecladoInscrito.escapeKey.wasPressedThisFrame)
+                Cancelar();
+        }
+
+        private void InscreverNoTecladoAtual()
+        {
+            DesinscreverDoTeclado();
+            tecladoInscrito = Keyboard.current;
+            if (tecladoInscrito != null)
+                tecladoInscrito.onTextInput += ReceberTexto;
+        }
+
+        private void DesinscreverDoTeclado()
+        {
+            if (tecladoInscrito != null)
+                tecladoInscrito.onTextInput -= ReceberTexto;
+            tecladoInscrito = null;
+        }
+
+        private void ReceberTexto(char caractere)
+        {
+            if (!conectando && char.IsLetterOrDigit(caractere))
+                Digitar(char.ToUpperInvariant(caractere));
+        }
+
+        public void Digitar(char caractere)
+        {
+            if (conectando || digitado.Length >= caixas.Count)
+                return;
+
+            digitado += caractere;
             LimparEstados();
             Redesenhar();
         }
 
         public void Apagar()
         {
-            if (digitado.Length == 0)
+            if (conectando || digitado.Length == 0)
                 return;
 
             digitado = digitado.Substring(0, digitado.Length - 1);
@@ -93,56 +148,108 @@ namespace PartyRacers.UI.Frontend
 
         public void Confirmar()
         {
+            if (conectando)
+                return;
+
             if (digitado.Length < caixas.Count)
             {
-                MostrarErro(estadoCodigoInvalido);
+                MostrarCodigoInvalido();
                 return;
             }
 
-            MostrarErro(estadoConectando);
+            DefinirConectando(true);
             aoConfirmar?.Invoke(digitado);
         }
 
         public void Cancelar()
         {
+            if (conectando)
+                return;
+
             if (roteador != null)
                 roteador.Ir(telaAoCancelar);
         }
 
+        public void DefinirConectando(bool valor)
+        {
+            conectando = valor;
+            if (btnEntrar != null)
+                btnEntrar.interactable = !valor;
+            if (btnCancelar != null)
+                btnCancelar.interactable = !valor;
+
+            if (valor)
+                MostrarErro(estadoConectando);
+            else
+                LimparEstados();
+        }
+
         /// <summary>Chamado pela camada de rede quando a entrada falha.</summary>
-        public void MostrarCodigoInvalido() => MostrarErroNasCaixas(estadoCodigoInvalido);
-        public void MostrarSalaCheia() => MostrarErro(estadoSalaCheia);
+        public void MostrarCodigoInvalido()
+        {
+            conectando = false;
+            RestaurarBotoes();
+            if (textoErro != null)
+                textoErro.text = mensagemCodigoInvalido;
+            MostrarErroNasCaixas(estadoCodigoInvalido);
+        }
+
+        public void MostrarSalaCheia()
+        {
+            conectando = false;
+            RestaurarBotoes();
+            MostrarErro(estadoSalaCheia);
+        }
+
+        public void MostrarFalhaConexao(string mensagem)
+        {
+            conectando = false;
+            RestaurarBotoes();
+            if (textoErro != null)
+                textoErro.text = string.IsNullOrWhiteSpace(mensagem)
+                    ? "NÃO FOI POSSÍVEL CONECTAR. TENTE NOVAMENTE."
+                    : mensagem.ToUpperInvariant();
+            MostrarErroNasCaixas(estadoCodigoInvalido);
+        }
+
+        private void RestaurarBotoes()
+        {
+            if (btnEntrar != null)
+                btnEntrar.interactable = true;
+            if (btnCancelar != null)
+                btnCancelar.interactable = true;
+        }
 
         private void Redesenhar()
         {
             for (int i = 0; i < caixas.Count; i++)
             {
-                Caixa c = caixas[i];
-                if (c == null)
+                Caixa caixa = caixas[i];
+                if (caixa == null)
                     continue;
 
                 bool preenchida = i < digitado.Length;
-                bool emFoco = i == digitado.Length;
+                bool emFoco = !conectando && i == digitado.Length;
 
-                if (c.caractere != null)
-                    c.caractere.text = preenchida ? digitado[i].ToString() : string.Empty;
+                if (caixa.caractere != null)
+                    caixa.caractere.text = preenchida ? digitado[i].ToString() : string.Empty;
 
-                Ligar(c.estadoFoco, emFoco);
-                Ligar(c.estadoIdle, !emFoco);
-                Ligar(c.estadoErro, false);
+                Ligar(caixa.estadoFoco, emFoco);
+                Ligar(caixa.estadoIdle, !emFoco);
+                Ligar(caixa.estadoErro, false);
             }
         }
 
         private void MostrarErroNasCaixas(GameObject faixa)
         {
             MostrarErro(faixa);
-            foreach (Caixa c in caixas)
+            foreach (Caixa caixa in caixas)
             {
-                if (c == null)
+                if (caixa == null)
                     continue;
-                Ligar(c.estadoErro, true);
-                Ligar(c.estadoIdle, false);
-                Ligar(c.estadoFoco, false);
+                Ligar(caixa.estadoErro, true);
+                Ligar(caixa.estadoIdle, false);
+                Ligar(caixa.estadoFoco, false);
             }
         }
 

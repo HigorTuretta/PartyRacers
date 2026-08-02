@@ -1,14 +1,15 @@
 using System.Collections.Generic;
+using PartyRacers.UI.Motion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace PartyRacers.UI.Frontend
 {
     /// <summary>
-    /// Binder da tela 06 — a primeira tela do jogo (não existe tela inicial).
-    /// As 16 vagas já estão montadas na cena; este script só troca o estado de cada uma
-    /// (jogador, vaga livre, desconectado) e preenche nome/prontidão.
+    /// Binder da tela de lobby. A lista de vagas e toda a arte continuam autoradas no prefab;
+    /// este componente somente projeta jogadores e o estado atual da sessão.
     /// </summary>
     [DisallowMultipleComponent]
     public class LobbyScreenUI : MonoBehaviour
@@ -50,36 +51,131 @@ namespace PartyRacers.UI.Frontend
         [SerializeField] private string telaJoinCode = "JoinCode";
 
         [Header("Eventos")]
-        public UnityEngine.Events.UnityEvent aoSairDaSala;
-        public UnityEngine.Events.UnityEvent aoIniciarPartida;
+        public UnityEvent aoAcionarConvite = new UnityEvent();
+        public UnityEvent aoSairDaSala = new UnityEvent();
+        public UnityEvent aoIniciarPartida = new UnityEvent();
 
         private string codigo = string.Empty;
+        private Button botaoPrincipal;
+        private TextMeshProUGUI textoBotaoCopiar;
+        private TextMeshProUGUI textoBotaoEntrar;
+        private TextMeshProUGUI textoBotaoSair;
+        private TextMeshProUGUI textoAcaoPrincipal;
+        private TextMeshProUGUI textoEstadoAguardando;
 
         private void Awake()
         {
-            if (btnCopiar != null) btnCopiar.onClick.AddListener(Copiar);
-            if (btnEntrarPorCodigo != null)
-                btnEntrarPorCodigo.onClick.AddListener(() => { if (roteador != null) roteador.Ir(telaJoinCode); });
-            if (btnSairDaSala != null) btnSairDaSala.onClick.AddListener(() => aoSairDaSala?.Invoke());
+            botaoPrincipal = estadoPronto != null ? estadoPronto.GetComponentInChildren<Button>(true) : null;
+            textoBotaoCopiar = EncontrarRotulo(btnCopiar);
+            textoBotaoEntrar = EncontrarRotulo(btnEntrarPorCodigo);
+            textoBotaoSair = EncontrarRotulo(btnSairDaSala);
+            textoAcaoPrincipal = estadoPronto != null ? estadoPronto.GetComponentInChildren<TextMeshProUGUI>(true) : null;
+            textoEstadoAguardando = estadoAguardando != null ? estadoAguardando.GetComponentInChildren<TextMeshProUGUI>(true) : null;
 
-            // o botão fica num filho ("Bg") por causa da moldura: procurar só no próprio objeto
-            // deixava CORRER sem nenhum listener — clicar não fazia nada
-            var iniciar = estadoPronto != null ? estadoPronto.GetComponentInChildren<Button>(true) : null;
-            if (iniciar != null) iniciar.onClick.AddListener(() => aoIniciarPartida?.Invoke());
+            if (btnCopiar != null)
+                btnCopiar.onClick.AddListener(AcionarConvite);
+
+            if (btnEntrarPorCodigo != null)
+                btnEntrarPorCodigo.onClick.AddListener(AbrirEntradaPorCodigo);
+
+            if (btnSairDaSala != null)
+                btnSairDaSala.onClick.AddListener(() => aoSairDaSala?.Invoke());
+
+            if (botaoPrincipal != null)
+                botaoPrincipal.onClick.AddListener(() => aoIniciarPartida?.Invoke());
             else if (estadoPronto != null)
-                Debug.LogWarning("[Lobby] 'estadoPronto' não tem Button em lugar nenhum — CORRER fica inerte.", estadoPronto);
+                Debug.LogWarning("[Lobby] State_Pronto não contém Button; a ação principal ficará inerte.", estadoPronto);
+
+            foreach (Button button in GetComponentsInChildren<Button>(true))
+            {
+                bool destaque = button == botaoPrincipal || button == btnCopiar;
+                UIPress press = button.GetComponent<UIPress>();
+                if (press == null)
+                    press = button.gameObject.AddComponent<UIPress>();
+                press.SetEmphasized(destaque);
+            }
         }
 
         public void DefinirCodigo(string valor)
         {
-            codigo = valor;
-            if (textoCodigo != null) textoCodigo.text = valor;
+            codigo = (valor ?? string.Empty).Trim().ToUpperInvariant();
+            if (textoCodigo != null)
+            {
+                textoCodigo.text = string.IsNullOrEmpty(codigo) ? "SEM SALA" : codigo;
+                textoCodigo.fontSize = string.IsNullOrEmpty(codigo) ? 34f : 44f;
+                textoCodigo.characterSpacing = string.IsNullOrEmpty(codigo) ? 2f : 10f;
+            }
         }
 
-        /// <summary>Redesenha a sala inteira. Chamado quando a lista de participantes muda.</summary>
+        public void DefinirAviso(string aviso)
+        {
+            if (textoAviso != null && !string.IsNullOrWhiteSpace(aviso))
+                textoAviso.text = aviso;
+        }
+
+        /// <summary>
+        /// Atualiza botões e mensagens sem misturar estado offline com uma sala online real.
+        /// </summary>
+        public void MostrarEstadoSessao(
+            string codigoSala,
+            bool online,
+            bool ocupado,
+            bool ehHost,
+            bool localPronto,
+            bool todosProntos,
+            string status)
+        {
+            DefinirCodigo(online ? codigoSala : string.Empty);
+
+            if (textoBotaoCopiar != null)
+                textoBotaoCopiar.text = ocupado ? "CONECTANDO..." : online ? "COPIAR CÓDIGO" : "CRIAR SALA";
+
+            if (textoBotaoEntrar != null)
+                textoBotaoEntrar.text = online ? "JÁ CONECTADO" : "ENTRAR POR CÓDIGO";
+
+            if (textoBotaoSair != null)
+                textoBotaoSair.text = online ? "SAIR DA SALA" : "GARAGEM";
+
+            if (btnCopiar != null)
+                btnCopiar.interactable = !ocupado;
+            if (btnEntrarPorCodigo != null)
+                btnEntrarPorCodigo.interactable = !ocupado && !online;
+            if (btnSairDaSala != null)
+                btnSairDaSala.interactable = !ocupado;
+
+            Ligar(estadoAguardando, ocupado);
+            Ligar(estadoPronto, !ocupado);
+
+            if (textoEstadoAguardando != null)
+                textoEstadoAguardando.text = online ? "SINCRONIZANDO" : "CONECTANDO";
+
+            if (botaoPrincipal != null)
+                botaoPrincipal.interactable = !ocupado;
+
+            if (textoAcaoPrincipal != null)
+            {
+                textoAcaoPrincipal.fontSize = 29f;
+                if (!online)
+                    textoAcaoPrincipal.text = "JOGAR LOCAL";
+                else if (ehHost && todosProntos)
+                    textoAcaoPrincipal.text = "INICIAR CORRIDA";
+                else if (localPronto)
+                {
+                    textoAcaoPrincipal.text = "CANCELAR PRONTO";
+                    textoAcaoPrincipal.fontSize = 26f;
+                }
+                else
+                    textoAcaoPrincipal.text = "FICAR PRONTO";
+            }
+
+            DefinirAviso(status);
+        }
+
+        /// <summary>Redesenha as vagas. O estado da sessão é definido separadamente.</summary>
         public void Mostrar(IReadOnlyList<Participante> participantes, int maximo = 16)
         {
-            int ocupadas = 0, pendentes = 0;
+            int ocupadas = 0;
+            int quantidade = participantes?.Count ?? 0;
 
             for (int i = 0; i < vagas.Count; i++)
             {
@@ -87,9 +183,9 @@ namespace PartyRacers.UI.Frontend
                 if (vaga == null)
                     continue;
 
-                bool temDado = i < participantes.Count;
-                Participante p = temDado ? participantes[i] : default;
-                EstadoVaga estado = temDado ? p.estado : EstadoVaga.Livre;
+                bool temDado = i < quantidade;
+                Participante participante = temDado ? participantes[i] : default;
+                EstadoVaga estado = temDado ? participante.estado : EstadoVaga.Livre;
 
                 Ligar(vaga, "State_Player", estado == EstadoVaga.Ocupada);
                 Ligar(vaga, "State_Disconnected", estado == EstadoVaga.Desconectado);
@@ -99,58 +195,66 @@ namespace PartyRacers.UI.Frontend
                     continue;
 
                 ocupadas++;
-                if (estado == EstadoVaga.Ocupada && !p.pronto)
-                    pendentes++;
-
-                string sufixo = p.ehDono && p.ehLocal ? " (dono · você)"
-                              : p.ehLocal ? " (você)"
-                              : p.ehBot ? " (bot)"
-                              : string.Empty;
+                string sufixo = participante.ehDono && participante.ehLocal ? " (dono · você)"
+                    : participante.ehLocal ? " (você)"
+                    : participante.ehDono ? " (dono)"
+                    : participante.ehBot ? " (bot)"
+                    : string.Empty;
 
                 string raiz = estado == EstadoVaga.Desconectado ? "State_Disconnected" : "State_Player";
-                Escrever(vaga, raiz + "/Nome", p.nome + sufixo);
+                Escrever(vaga, raiz + "/Nome", (participante.nome ?? "JOGADOR") + sufixo);
 
                 if (estado != EstadoVaga.Ocupada)
                     continue;
 
-                Ligar(vaga, "State_Player/State_Ready", p.pronto);
-                Ligar(vaga, "State_Player/State_Waiting", !p.pronto);
-                Ligar(vaga, "State_Player/Destaque_IsLocal", p.ehLocal);
+                Ligar(vaga, "State_Player/State_Ready", participante.pronto);
+                Ligar(vaga, "State_Player/State_Waiting", !participante.pronto);
+                Ligar(vaga, "State_Player/Destaque_IsLocal", participante.ehLocal);
             }
 
-            if (textoQuantidade != null) textoQuantidade.text = ocupadas.ToString();
-            if (textoMaximo != null) textoMaximo.text = "/" + maximo;
-
-            if (textoAviso != null)
-            {
-                textoAviso.text = pendentes == 0
-                    ? "Todos prontos — a partida pode começar"
-                    : pendentes == 1
-                        ? "Aguardando todos ficarem prontos — 1 jogador pendente"
-                        : $"Aguardando todos ficarem prontos — {pendentes} jogadores pendentes";
-            }
-
-            Ligar(estadoAguardando, pendentes > 0);
-            Ligar(estadoPronto, pendentes == 0 && ocupadas > 0);
+            if (textoQuantidade != null)
+                textoQuantidade.text = ocupadas.ToString();
+            if (textoMaximo != null)
+                textoMaximo.text = "/" + maximo;
         }
 
-        private void Copiar()
+        private void AcionarConvite()
         {
             if (!string.IsNullOrEmpty(codigo))
                 GUIUtility.systemCopyBuffer = codigo;
+
+            aoAcionarConvite?.Invoke();
+        }
+
+        private void AbrirEntradaPorCodigo()
+        {
+            if (roteador != null)
+                roteador.Ir(telaJoinCode);
+        }
+
+        private static TextMeshProUGUI EncontrarRotulo(Button button)
+        {
+            if (button == null)
+                return null;
+
+            Transform visualRoot = button.name == "Bg" && button.transform.parent != null
+                ? button.transform.parent
+                : button.transform;
+            return visualRoot.GetComponentInChildren<TextMeshProUGUI>(true);
         }
 
         private static void Escrever(GameObject raiz, string caminho, string texto)
         {
-            var t = raiz.transform.Find(caminho)?.GetComponent<TextMeshProUGUI>();
-            if (t != null) t.text = texto;
+            TextMeshProUGUI target = raiz.transform.Find(caminho)?.GetComponent<TextMeshProUGUI>();
+            if (target != null)
+                target.text = texto;
         }
 
         private static void Ligar(GameObject raiz, string caminho, bool ativo)
         {
-            Transform t = raiz.transform.Find(caminho);
-            if (t != null && t.gameObject.activeSelf != ativo)
-                t.gameObject.SetActive(ativo);
+            Transform target = raiz.transform.Find(caminho);
+            if (target != null && target.gameObject.activeSelf != ativo)
+                target.gameObject.SetActive(ativo);
         }
 
         private static void Ligar(GameObject alvo, bool ativo)

@@ -74,6 +74,13 @@ namespace PartyRacers.UI.EditorTools
                 so.FindProperty("escalaPressionado").floatValue = 0.96f;
                 so.FindProperty("afundar").boolValue = !temPressionado && !sobLayout;
                 so.FindProperty("deslocamentoY").floatValue = 6f;
+                string caminho = AnimationUtility.CalculateTransformPath(b.transform, raiz.transform);
+                bool destaque = caminho.Contains("State_Pronto") ||
+                                 caminho.Contains("Btn_Copiar") ||
+                                 caminho.Contains("Btn_Entrar");
+                so.FindProperty("destaque").boolValue = destaque;
+                so.FindProperty("pulsoEmRepouso").floatValue = 0.012f;
+                so.FindProperty("velocidadeDoPulso").floatValue = 2.2f;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 n++;
             }

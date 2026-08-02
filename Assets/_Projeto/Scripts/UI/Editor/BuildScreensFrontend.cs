@@ -21,6 +21,7 @@ namespace PartyRacers.UI.EditorTools
             JoinCode();
             Settings();
             Result();
+            LobbyMapBuilder.Montar();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("[PartyRacers] telas de frontend geradas em " + SCREENS);
@@ -36,14 +37,13 @@ namespace PartyRacers.UI.EditorTools
 
             // palco do carro: só visualização, edita na garagem
             var palco = Node("PalcoCarro", raiz.transform);
-            Place(palco, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(60, -130), new Vector2(760, 500));
+            Place(palco, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-42, -112), new Vector2(720, 440));
             var selo = Node("Selo", palco.transform);
-            // ancorado na base da coluna direita, abaixo do carro: no meio da tela o selo o cortava
-            Place(selo, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-60, 210), new Vector2(600, 52));
+            Place(selo, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-20, -20), new Vector2(430, 48));
             var sBg = Card("Bg", selo.transform, "Ink"); Stretch(sBg.gameObject);
             var sIc = Icone("Icon", selo.transform, "Icon_Lock", TextDisabled, 20);
             Place(sIc.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(18, 0), new Vector2(20, 20));
-            var sTx = Rotulo("Label", selo.transform, "SOMENTE VISUALIZAÇÃO · EDITE NA GARAGEM", 18, TextMuted,
+            var sTx = Rotulo("Label", selo.transform, "SEU KART · EDITE NA GARAGEM", 18, TextMuted,
                              TextAlignmentOptions.Center, 3f);
             Stretch(sTx.gameObject, 44, 4, 14, 4);
 
@@ -64,8 +64,8 @@ namespace PartyRacers.UI.EditorTools
             Size(cod.gameObject, 800, 100);
             var codLbl = Legenda("Rotulo", cod.transform, "CÓDIGO DA SALA", 18, Lavanda, TextAlignmentOptions.Left, 14f);
             Place(codLbl.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(24, 0), new Vector2(200, 26));
-            var codVal = Display("Codigo", cod.transform, "K7QP2M", 44, Amber, TextAlignmentOptions.Left);
-            codVal.characterSpacing = 10f;
+            var codVal = Display("Codigo", cod.transform, "SEM SALA", 34, Amber, TextAlignmentOptions.Left);
+            codVal.characterSpacing = 2f;
             Place(codVal.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(238, 0), new Vector2(276, 52));
             var btnCopiar = Node("Btn_Copiar", cod.transform);
             // 268 de largura: ícone (16+22) + rótulo de 14 caracteres a 19pt sem entreletra
@@ -75,12 +75,12 @@ namespace PartyRacers.UI.EditorTools
             Stretch(bcImg.gameObject); Botao(bcImg, null);
             var bcIc = Icone("Icon", btnCopiar.transform, "Icon_Copy", Cream, 22);
             Place(bcIc.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(16, 0), new Vector2(22, 22));
-            var bcTx = Rotulo("Label", btnCopiar.transform, "COPIAR CONVITE", 19, Cream, TextAlignmentOptions.Center);
+            var bcTx = Rotulo("Label", btnCopiar.transform, "CRIAR SALA", 19, Cream, TextAlignmentOptions.Center);
             Stretch(bcTx.gameObject, 48, 4, 12, 4);
 
             var cont = Card("Contagem", topo.transform, "Ink", 7f);
             Size(cont.gameObject, 248, 100);
-            var cVal = Display("Valor", cont.transform, "6", 38, Cream, TextAlignmentOptions.Right);
+            var cVal = Display("Valor", cont.transform, "1", 38, Cream, TextAlignmentOptions.Right);
             Place(cVal.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(28, 12), new Vector2(46, 44));
             var cMax = Display("Maximo", cont.transform, "/16", 38, Slate, TextAlignmentOptions.Left);
             Place(cMax.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(76, 12), new Vector2(100, 44));
@@ -95,7 +95,7 @@ namespace PartyRacers.UI.EditorTools
             {
                 var v = Item("Item_LobbySlot", grade.transform);
                 v.name = "Slot_" + (i + 1).ToString("00");
-                if (i >= 6) { v.transform.Find("State_Player").gameObject.SetActive(false); v.transform.Find("State_Empty").gameObject.SetActive(true); }
+                if (i >= 1) { v.transform.Find("State_Player").gameObject.SetActive(false); v.transform.Find("State_Empty").gameObject.SetActive(true); }
             }
 
             // ---- aviso + ações ----
@@ -106,7 +106,7 @@ namespace PartyRacers.UI.EditorTools
             avBg.color = new Color(Sky.r * .3f, Sky.g * .35f, Sky.b * .5f, 1f);
             var avIc = Icone("Icon", aviso.transform, "Icon_Signal", Sky, 24);
             Place(avIc.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(22, 0), new Vector2(24, 24));
-            var avTx = Rotulo("Texto", aviso.transform, "Aguardando todos ficarem prontos — 1 jogador pendente", 22, AzulClaro);
+            var avTx = Rotulo("Texto", aviso.transform, "Crie uma sala online ou entre com o código de um amigo.", 22, AzulClaro);
             Stretch(avTx.gameObject, 58, 6, 22, 6);
             avTx.font = FonteUiBold;
 
@@ -114,7 +114,7 @@ namespace PartyRacers.UI.EditorTools
             Size(acoes, 1060, 88);
             HLayout(acoes, 14, new RectOffset(), TextAnchor.MiddleLeft, false, true);
             BotaoLargo(acoes.transform, "Btn_EntrarPorCodigo", "ENTRAR POR CÓDIGO", "Deep", 380, 88, 23, Cream, false, Sky);
-            BotaoLargo(acoes.transform, "Btn_SairDaSala", "SAIR DA SALA", "Deep", 300, 88, 23, TextMuted, false);
+            BotaoLargo(acoes.transform, "Btn_SairDaSala", "GARAGEM", "Deep", 300, 88, 23, TextMuted, false);
             var estado = Node("EstadoPartida", acoes.transform);
             Size(estado, 352, 88);
             var eBg = Card("Bg", estado.transform, "Ink"); Stretch(eBg.gameObject);
@@ -125,9 +125,10 @@ namespace PartyRacers.UI.EditorTools
             var pImg = Img("Bg", pronto.transform, Sprite("Frames", "UI_Button_R22_Green"), Color.white);
             Stretch(pImg.gameObject);
             Botao(pImg, Sprite("Frames", "UI_Button_R22_Pressed_Green"));
-            var pTx = Display("Label", pronto.transform, "CORRER", 32, Ink);
+            var pTx = Display("Label", pronto.transform, "JOGAR LOCAL", 29, Ink);
             Stretch(pTx.gameObject, 12, 14, 12, 4);
-            pronto.SetActive(false);
+            estado.SetActive(false);
+            pronto.SetActive(true);
 
             SalvarTela(raiz, "Screen_Lobby");
         }

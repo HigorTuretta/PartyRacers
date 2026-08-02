@@ -28,6 +28,7 @@ namespace PartyRacers.Networking
         public static NetworkBootstrap Instance { get; private set; }
 
         public enum SessionMode { Offline, Host, Client }
+        public enum JoinFailureReason { None, InvalidCode, LobbyFull, ServicesUnavailable, Unknown }
 
         [SerializeField] private bool autoInitialize = true;
 
@@ -46,6 +47,19 @@ namespace PartyRacers.Networking
         public string CurrentJoinCode { get; private set; } = string.Empty;
         public bool IsOnline => Mode != SessionMode.Offline;
         public bool HasJoinCode => !string.IsNullOrWhiteSpace(CurrentJoinCode);
+        public bool IsBusy => operationInFlight;
+        public JoinFailureReason LastJoinFailure { get; private set; } = JoinFailureReason.None;
+        public bool ServicesReady
+        {
+            get
+            {
+#if PARTYRACERS_ONLINE
+                return servicesReady;
+#else
+                return false;
+#endif
+            }
+        }
         public bool IsRaceSceneReadyForCountdown
         {
             get
@@ -60,6 +74,8 @@ namespace PartyRacers.Networking
 
         public event Action<string> StatusChanged;
 
+        private bool operationInFlight;
+
 #if PARTYRACERS_ONLINE
         private const string RelayJoinCodeKey = "relayJoinCode";
         private const string DisplayNameKey = "displayName";
@@ -69,6 +85,7 @@ namespace PartyRacers.Networking
         private const string ElementDataKey = "elementData";
 
         private bool servicesReady;
+        private Task servicesInitializationTask;
         private bool lobbyPollInFlight;
         private bool lobbyHeartbeatInFlight;
         private Lobby currentLobby;
@@ -120,6 +137,12 @@ namespace PartyRacers.Networking
         public void HostGame()
         {
 #if PARTYRACERS_ONLINE
+            if (operationInFlight)
+            {
+                SetStatus("Já existe uma conexão em andamento.");
+                return;
+            }
+
             _ = HostGameAsync();
 #else
             Mode = SessionMode.Host;
@@ -130,6 +153,12 @@ namespace PartyRacers.Networking
         public void JoinGame(string joinCode)
         {
 #if PARTYRACERS_ONLINE
+            if (operationInFlight)
+            {
+                SetStatus("Já existe uma conexão em andamento.");
+                return;
+            }
+
             _ = JoinGameAsync(joinCode);
 #else
             SetStatus("Entrar online requer PARTYRACERS_ONLINE.");
@@ -141,6 +170,10 @@ namespace PartyRacers.Networking
 #if PARTYRACERS_ONLINE
             if (IsOnline)
             {
+                if (operationInFlight)
+                    return;
+
+                operationInFlight = true;
                 _ = SetLocalReadyAsync(ready);
                 return;
             }
@@ -166,7 +199,11 @@ namespace PartyRacers.Networking
         public void LeaveGame()
         {
 #if PARTYRACERS_ONLINE
-            _ = LeaveGameAsync();
+            if (operationInFlight)
+                return;
+
+            operationInFlight = true;
+            _ = LeaveGameRequestedAsync();
 #else
             Mode = SessionMode.Offline;
             SetStatus("Local (offline)");
@@ -180,11 +217,22 @@ namespace PartyRacers.Networking
         }
 
 #if PARTYRACERS_ONLINE
-        private async Task InitializeServicesAsync()
+        private Task InitializeServicesAsync()
+        {
+            if (servicesReady)
+                return Task.CompletedTask;
+
+            if (servicesInitializationTask == null || servicesInitializationTask.IsCompleted)
+                servicesInitializationTask = InitializeServicesCoreAsync();
+
+            return servicesInitializationTask;
+        }
+
+        private async Task InitializeServicesCoreAsync()
         {
             try
             {
-                SetStatus("Inicializando Unity Services...");
+                SetStatus("Preparando os serviços online...");
 
                 if (UnityServices.State != ServicesInitializationState.Initialized)
                     await UnityServices.InitializeAsync();
@@ -194,12 +242,12 @@ namespace PartyRacers.Networking
 
                 servicesReady = true;
                 RacePlayerRegistry.Instance?.SetLocalPlayerIdentity(AuthenticationService.Instance.PlayerId, GetLocalDisplayName(), Mode == SessionMode.Host);
-                SetStatus($"Conectado aos Unity Services (id: {AuthenticationService.Instance.PlayerId}).");
+                SetStatus("Online pronto — crie uma sala ou entre com um código.");
             }
             catch (Exception e)
             {
                 servicesReady = false;
-                SetStatus($"Falha ao inicializar Unity Services: {e.Message}");
+                SetStatus($"Falha ao preparar o modo online: {e.Message}");
                 Debug.LogException(e);
             }
         }
@@ -208,30 +256,33 @@ namespace PartyRacers.Networking
         {
             if (Mode == SessionMode.Host && currentLobby != null)
             {
-                SetStatus($"Host online. Codigo: {CurrentJoinCode}");
+                SetStatus($"Sala online ativa. Código: {CurrentJoinCode}");
                 return;
             }
 
-            if (Mode != SessionMode.Offline)
-                await LeaveGameAsync();
+            operationInFlight = true;
+            LastJoinFailure = JoinFailureReason.None;
 
             try
             {
+                if (Mode != SessionMode.Offline)
+                    await LeaveGameAsync();
+
                 await EnsureServicesReadyAsync();
                 EnsureNetworkManagerConfigured();
 
-                SetStatus("Criando alocacao Relay...");
+                SetStatus("Criando conexão segura pelo Relay...");
                 Allocation allocation = await RelayService.Instance.CreateAllocationAsync(RaceConstants.MaxPlayers - 1);
                 string relayJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
                 ConfigureRelay(allocation);
 
-                SetStatus("Criando Lobby...");
+                SetStatus("Criando a sala online...");
                 currentLobby = await LobbyService.Instance.CreateLobbyAsync(
                     lobbyName,
                     RaceConstants.MaxPlayers,
                     new CreateLobbyOptions
                     {
-                        IsPrivate = false,
+                        IsPrivate = true,
                         Player = BuildLobbyPlayer(isHost: true),
                         Data = new Dictionary<string, DataObject>
                         {
@@ -247,34 +298,43 @@ namespace PartyRacers.Networking
                 Mode = SessionMode.Host;
                 SyncRegistryFromLobby(currentLobby);
                 StartLobbyLoops(hostOwnsLobby: true);
-                SetStatus($"Host online. Codigo: {CurrentJoinCode}");
+                SetStatus($"Sala online criada. Código: {CurrentJoinCode}");
             }
             catch (Exception e)
             {
                 await CleanupFailedHostAsync();
-                SetStatus($"Falha ao criar partida online: {e.Message}");
+                SetStatus($"Falha ao criar a sala online: {e.Message}");
                 Debug.LogException(e);
+            }
+            finally
+            {
+                operationInFlight = false;
+                StatusChanged?.Invoke(Status);
             }
         }
 
         private async Task JoinGameAsync(string joinCode)
         {
             joinCode = (joinCode ?? string.Empty).Trim().ToUpperInvariant();
-            if (string.IsNullOrWhiteSpace(joinCode))
+            if (joinCode.Length != 6)
             {
-                SetStatus("Informe um codigo de lobby para entrar.");
+                LastJoinFailure = JoinFailureReason.InvalidCode;
+                SetStatus("Informe um código de sala válido.");
                 return;
             }
 
-            if (Mode != SessionMode.Offline)
-                await LeaveGameAsync();
+            operationInFlight = true;
+            LastJoinFailure = JoinFailureReason.None;
 
             try
             {
+                if (Mode != SessionMode.Offline)
+                    await LeaveGameAsync();
+
                 await EnsureServicesReadyAsync();
                 EnsureNetworkManagerConfigured();
 
-                SetStatus($"Entrando no lobby {joinCode}...");
+                SetStatus($"Procurando a sala {joinCode}...");
                 currentLobby = await LobbyService.Instance.JoinLobbyByCodeAsync(
                     joinCode,
                     new JoinLobbyByCodeOptions
@@ -283,9 +343,9 @@ namespace PartyRacers.Networking
                     });
 
                 if (!TryGetLobbyData(currentLobby, RelayJoinCodeKey, out string relayJoinCode))
-                    throw new InvalidOperationException("Lobby encontrado, mas sem codigo Relay.");
+                    throw new InvalidOperationException("A sala foi encontrada, mas a conexão Relay está ausente.");
 
-                SetStatus("Conectando ao Relay...");
+                SetStatus("Conectando ao dono da sala pelo Relay...");
                 JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(relayJoinCode);
                 ConfigureRelay(joinAllocation);
 
@@ -296,23 +356,76 @@ namespace PartyRacers.Networking
                 CurrentJoinCode = currentLobby.LobbyCode;
                 SyncRegistryFromLobby(currentLobby);
                 StartLobbyLoops(hostOwnsLobby: false);
-                SetStatus($"Cliente online no lobby {CurrentJoinCode}. Aguardando host iniciar.");
+                SetStatus($"Você entrou na sala {CurrentJoinCode}.");
+            }
+            catch (LobbyServiceException e)
+            {
+                LastJoinFailure = MapJoinFailure(e);
+                await CleanupFailedJoinAsync();
+                SetStatus(GetJoinFailureMessage(LastJoinFailure));
+                Debug.LogWarning($"Falha esperada ao entrar no lobby ({e.Reason}): {e.Message}");
             }
             catch (Exception e)
             {
+                LastJoinFailure = JoinFailureReason.Unknown;
                 await CleanupFailedJoinAsync();
-                SetStatus($"Falha ao entrar no lobby: {e.Message}");
+                SetStatus("Falha ao entrar na sala. Confira sua conexão e tente novamente.");
                 Debug.LogException(e);
+            }
+            finally
+            {
+                operationInFlight = false;
+                StatusChanged?.Invoke(Status);
+            }
+        }
+
+        private static JoinFailureReason MapJoinFailure(LobbyServiceException exception)
+        {
+            switch (exception.Reason)
+            {
+                case LobbyExceptionReason.InvalidJoinCode:
+                case LobbyExceptionReason.LobbyNotFound:
+                case LobbyExceptionReason.EntityNotFound:
+                    return JoinFailureReason.InvalidCode;
+
+                case LobbyExceptionReason.LobbyFull:
+                case LobbyExceptionReason.LobbyLocked:
+                    return JoinFailureReason.LobbyFull;
+
+                case LobbyExceptionReason.NetworkError:
+                case LobbyExceptionReason.ServiceUnavailable:
+                case LobbyExceptionReason.RateLimited:
+                case LobbyExceptionReason.RequestTimeOut:
+                case LobbyExceptionReason.GatewayTimeout:
+                    return JoinFailureReason.ServicesUnavailable;
+
+                default:
+                    return JoinFailureReason.Unknown;
+            }
+        }
+
+        private static string GetJoinFailureMessage(JoinFailureReason failure)
+        {
+            switch (failure)
+            {
+                case JoinFailureReason.InvalidCode:
+                    return "Código inválido ou sala encerrada.";
+                case JoinFailureReason.LobbyFull:
+                    return "A sala está cheia ou não aceita novas entradas.";
+                case JoinFailureReason.ServicesUnavailable:
+                    return "Serviço online indisponível. Tente novamente em instantes.";
+                default:
+                    return "Não foi possível entrar na sala. Confira o código.";
             }
         }
 
         private async Task SetLocalReadyAsync(bool ready)
         {
-            if (currentLobby == null || !servicesReady)
-                return;
-
             try
             {
+                if (currentLobby == null || !servicesReady)
+                    return;
+
                 RacePlayerRegistry.Instance?.SetReady(AuthenticationService.Instance.PlayerId, ready);
                 currentLobby = await LobbyService.Instance.UpdatePlayerAsync(
                     currentLobby.Id,
@@ -326,8 +439,14 @@ namespace PartyRacers.Networking
             }
             catch (Exception e)
             {
-                SetStatus($"Falha ao atualizar pronto: {e.Message}");
+                RacePlayerRegistry.Instance?.SetReady(AuthenticationService.Instance.PlayerId, !ready);
+                SetStatus($"Falha ao atualizar seu estado de pronto: {e.Message}");
                 Debug.LogException(e);
+            }
+            finally
+            {
+                operationInFlight = false;
+                StatusChanged?.Invoke(Status);
             }
         }
 
@@ -338,7 +457,7 @@ namespace PartyRacers.Networking
 
             if (Mode != SessionMode.Host)
             {
-                SetStatus("Aguardando o host iniciar a corrida.");
+                SetStatus("Aguardando o dono da sala iniciar a corrida.");
                 return;
             }
 
@@ -362,6 +481,19 @@ namespace PartyRacers.Networking
             SetStatus(status == SceneEventProgressStatus.Started
                 ? $"Carregando {sceneName} para todos os jogadores..."
                 : $"Falha ao carregar cena online: {status}");
+        }
+
+        private async Task LeaveGameRequestedAsync()
+        {
+            try
+            {
+                await LeaveGameAsync();
+            }
+            finally
+            {
+                operationInFlight = false;
+                StatusChanged?.Invoke(Status);
+            }
         }
 
         private async Task LeaveGameAsync()
@@ -395,6 +527,7 @@ namespace PartyRacers.Networking
             }
 
             RacePlayerRegistry.Instance?.ResetToLocalPlayer();
+            LastJoinFailure = JoinFailureReason.None;
             SetStatus("Local (offline)");
             await Task.Yield();
         }
@@ -449,7 +582,8 @@ namespace PartyRacers.Networking
             if (prefabsList != null && !config.Prefabs.NetworkPrefabsLists.Contains(prefabsList))
                 config.Prefabs.NetworkPrefabsLists.Add(prefabsList);
 
-            if (prefabsList == null || !prefabsList.Contains(playerPrefab))
+            bool alreadyInConfiguredList = prefabsList != null && prefabsList.Contains(playerPrefab);
+            if (!alreadyInConfiguredList && !config.Prefabs.Contains(playerPrefab))
                 config.Prefabs.Add(new NetworkPrefab { Prefab = playerPrefab });
         }
 

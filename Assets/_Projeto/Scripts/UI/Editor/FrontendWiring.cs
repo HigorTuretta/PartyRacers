@@ -169,6 +169,9 @@ namespace PartyRacers.UI.EditorTools
             var so = new SerializedObject(fluxo);
             so.FindProperty("giro").floatValue = 202f;              // 3/4 de frente
             so.FindProperty("inclinacao").floatValue = 10f;
+            so.FindProperty("afastamentoNoLobby").floatValue = 1.95f;
+            so.FindProperty("viesNoLobby").floatValue = 1.45f;
+            so.FindProperty("viesVerticalNoLobby").floatValue = 0.28f;
             so.FindProperty("afastamentoNaGaragem").floatValue = 1.12f;
             so.FindProperty("viesNaGaragem").floatValue = 0.22f;    // desvia do painel da esquerda
             so.ApplyModifiedPropertiesWithoutUndo();

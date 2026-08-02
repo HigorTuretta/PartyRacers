@@ -15,7 +15,8 @@ namespace PartyRacers.UI.Motion
     [DisallowMultipleComponent]
     [RequireComponent(typeof(RectTransform))]
     public class UIPress : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler,
-                           IPointerDownHandler, IPointerUpHandler
+                           IPointerDownHandler, IPointerUpHandler, ISelectHandler,
+                           IDeselectHandler, ISubmitHandler
     {
         [Header("Tempos (tokens.json → movimento.botaoPressionar)")]
         [SerializeField] private float duracao = 0.08f;
@@ -29,10 +30,16 @@ namespace PartyRacers.UI.Motion
         [SerializeField] private bool afundar = true;
         [SerializeField] private float deslocamentoY = 6f;
 
+        [Header("Destaque")]
+        [SerializeField] private bool destaque;
+        [SerializeField, Range(0f, 0.04f)] private float pulsoEmRepouso = 0.012f;
+        [SerializeField, Range(0.5f, 5f)] private float velocidadeDoPulso = 2.2f;
+
         private RectTransform rect;
         private Vector2 posicaoOriginal;
         private Vector3 escalaOriginal;
-        private bool temHover, temPressao;
+        private bool temHover, temPressao, temSelecao;
+        private float pressionadoAte;
         private bool repousoLido;
         private float progresso;
         private Vector3 escalaAlvo;
@@ -54,7 +61,8 @@ namespace PartyRacers.UI.Motion
             if (rect == null) return;
             rect.localScale = escalaOriginal;
             if (afundar && repousoLido) rect.anchoredPosition = posicaoOriginal;
-            temHover = temPressao = false;
+            temHover = temPressao = temSelecao = false;
+            pressionadoAte = 0f;
         }
 
         private void Update()
@@ -70,10 +78,19 @@ namespace PartyRacers.UI.Motion
                 repousoLido = true;
             }
 
-            Vector3 escalaDesejada = escalaOriginal *
-                (temPressao ? escalaPressionado : temHover ? escalaHover : 1f);
+            bool interagivel = Interagivel();
+            bool pressionando = interagivel && (temPressao || Time.unscaledTime < pressionadoAte);
+            bool realcado = interagivel && (temHover || temSelecao);
+            float multiplicador = pressionando ? escalaPressionado : realcado ? escalaHover : 1f;
+            if (interagivel && destaque && !pressionando && !realcado)
+            {
+                float onda = Mathf.Sin(Time.unscaledTime * velocidadeDoPulso * Mathf.PI * 2f) * 0.5f + 0.5f;
+                multiplicador += onda * pulsoEmRepouso;
+            }
+
+            Vector3 escalaDesejada = escalaOriginal * multiplicador;
             Vector2 posicaoDesejada = posicaoOriginal +
-                (temPressao && afundar ? new Vector2(0f, -deslocamentoY) : Vector2.zero);
+                (pressionando && afundar ? new Vector2(0f, -deslocamentoY) : Vector2.zero);
 
             if (escalaDesejada != escalaAlvo || (afundar && posicaoDesejada != posicaoAlvo))
             {
@@ -96,6 +113,16 @@ namespace PartyRacers.UI.Motion
         public void OnPointerExit(PointerEventData _) { temHover = false; temPressao = false; }
         public void OnPointerDown(PointerEventData _) { if (Interagivel()) temPressao = true; }
         public void OnPointerUp(PointerEventData _) => temPressao = false;
+        public void OnSelect(BaseEventData _) => temSelecao = true;
+        public void OnDeselect(BaseEventData _) { temSelecao = false; temPressao = false; }
+
+        public void OnSubmit(BaseEventData _)
+        {
+            if (Interagivel())
+                pressionadoAte = Time.unscaledTime + 0.12f;
+        }
+
+        public void SetEmphasized(bool value) => destaque = value;
 
         private bool Interagivel()
         {

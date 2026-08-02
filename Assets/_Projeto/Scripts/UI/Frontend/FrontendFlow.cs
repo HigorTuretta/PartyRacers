@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
+using PartyRacers.Networking;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace PartyRacers.UI.Frontend
 {
     /// <summary>
-    /// Amarra as telas do frontend umas nas outras e no gameplay. É o único ponto que sabe
-    /// "o que acontece quando o jogador clica CORRER" — as telas continuam burras, só
-    /// disparam eventos. Não monta nada: tudo aqui é assinar evento e escrever em campo
-    /// que já existe na cena.
+    /// Orquestra as telas do frontend, a pré-visualização do kart e a sessão Lobby + Relay.
+    /// As telas continuam responsáveis somente por apresentar dados e disparar eventos.
     /// </summary>
     [DisallowMultipleComponent]
     public class FrontendFlow : MonoBehaviour
@@ -32,18 +31,20 @@ namespace PartyRacers.UI.Frontend
         [SerializeField] private float inclinacao = 8f;
         [SerializeField] private float giro = 18f;
         [Tooltip("Distância: quanto maior, menor o carro na tela.")]
-        [SerializeField] private float afastamentoNoLobby = 1.7f;
+        [SerializeField] private float afastamentoNoLobby = 1.95f;
         [SerializeField] private float afastamentoNaGaragem = 1.45f;
         [Tooltip("Empurra o carro para a direita da tela. 0 = centralizado.")]
-        [Range(0f, 2f)] [SerializeField] private float viesNoLobby = 1.35f;
-        [Range(0f, 2f)] [SerializeField] private float viesNaGaragem = 0f;
+        [Range(0f, 2f)] [SerializeField] private float viesNoLobby = 1.45f;
+        [Range(0f, 2f)] [SerializeField] private float viesNaGaragem;
+        [Tooltip("Move o carro para cima no lobby para não disputar espaço com o card de pista.")]
+        [Range(0f, 1f)] [SerializeField] private float viesVerticalNoLobby = 0.28f;
 
         [Header("Partida")]
         [Tooltip("Pista padrão quando não há seletor de mapa na cena. Precisa estar no Build Settings.")]
         [SerializeField] private string cenaDaCorrida = "MiniGolfeRun";
         [Tooltip("Seletor de mapa do lobby. Quando presente, é ele quem decide a pista.")]
         [SerializeField] private TrackSelectUI seletorDePista;
-        [Tooltip("Tela de carregamento do frontend. Sem ela a troca de cena trava a imagem.")]
+        [Tooltip("Tela de carregamento do frontend. Sem ela a troca local usa SceneManager.")]
         [SerializeField] private LoadingScreenUI telaDeCarregamento;
         [SerializeField] private int vagasDaSala = 16;
 
@@ -51,17 +52,19 @@ namespace PartyRacers.UI.Frontend
         [SerializeField] private int moedasIniciais = 12480;
         [SerializeField] private int fichasIniciais = 340;
 
-        const string ChaveNome = "jogador.nome";
-        const string ChaveCodigo = "sala.codigo";
-        const string ChaveMoedas = "carteira.moedas";
-        const string ChaveFichas = "carteira.fichas";
-        const string Alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // sem I/O/0/1: confundem no convite
+        private const string ChaveNome = "jogador.nome";
+        private const string ChaveMoedas = "carteira.moedas";
+        private const string ChaveFichas = "carteira.fichas";
 
         private float proximoTick;
         private string telaDoPalco;
+        private RacePlayerRegistry registry;
+        private NetworkBootstrap bootstrap;
 
         private void Awake()
         {
+            GarantirSistemasDeRede();
+
             if (garagem != null)
             {
                 garagem.aoCorrer.AddListener(Correr);
@@ -71,12 +74,18 @@ namespace PartyRacers.UI.Frontend
 
             if (lobby != null)
             {
-                lobby.aoIniciarPartida.AddListener(Correr);
+                lobby.aoAcionarConvite.AddListener(CriarOuCopiarConvite);
+                lobby.aoIniciarPartida.AddListener(AcionarPrincipalDoLobby);
                 lobby.aoSairDaSala.AddListener(SairDaSala);
             }
 
             if (joinCode != null)
                 joinCode.aoConfirmar.AddListener(EntrarPorCodigo);
+
+            if (registry != null)
+                registry.Changed += AtualizarLobby;
+            if (bootstrap != null)
+                bootstrap.StatusChanged += AoMudarStatusDaRede;
         }
 
         private void Start()
@@ -84,7 +93,6 @@ namespace PartyRacers.UI.Frontend
             if (carro != null)
                 carro.EnsureBuilt();
 
-            AplicarCodigo(PlayerPrefs.GetString(ChaveCodigo, GerarCodigo()));
             AtualizarLobby();
 
             if (loja != null)
@@ -95,11 +103,35 @@ namespace PartyRacers.UI.Frontend
             }
         }
 
+        private void OnDestroy()
+        {
+            if (garagem != null)
+            {
+                garagem.aoCorrer.RemoveListener(Correr);
+                garagem.aoJogarLocalmente.RemoveListener(Correr);
+                garagem.aoTrocarCarro.RemoveListener(TrocarCarro);
+            }
+
+            if (lobby != null)
+            {
+                lobby.aoAcionarConvite.RemoveListener(CriarOuCopiarConvite);
+                lobby.aoIniciarPartida.RemoveListener(AcionarPrincipalDoLobby);
+                lobby.aoSairDaSala.RemoveListener(SairDaSala);
+            }
+
+            if (joinCode != null)
+                joinCode.aoConfirmar.RemoveListener(EntrarPorCodigo);
+
+            if (registry != null)
+                registry.Changed -= AtualizarLobby;
+            if (bootstrap != null)
+                bootstrap.StatusChanged -= AoMudarStatusDaRede;
+        }
+
         private void Update()
         {
             AcompanharTela();
 
-            // o timer da loja é o único dado que muda sozinho no frontend
             if (loja == null || Time.unscaledTime < proximoTick)
                 return;
 
@@ -107,11 +139,30 @@ namespace PartyRacers.UI.Frontend
             AtualizarRotacao();
         }
 
+        private void GarantirSistemasDeRede()
+        {
+            registry = RacePlayerRegistry.Instance;
+            bootstrap = NetworkBootstrap.Instance;
+
+            GameObject systems = null;
+            if (registry == null || bootstrap == null)
+            {
+                systems = new GameObject("NetworkSystems");
+                if (registry == null)
+                    registry = systems.AddComponent<RacePlayerRegistry>();
+                if (bootstrap == null)
+                    bootstrap = systems.AddComponent<NetworkBootstrap>();
+            }
+
+            if (registry == null)
+                return;
+
+            registry.EnsureLocalPlayer();
+            string nome = PlayerPrefs.GetString(ChaveNome, "JOGADOR").Trim();
+            registry.SetLocalPlayerIdentity(null, string.IsNullOrEmpty(nome) ? "JOGADOR" : nome, true);
+        }
+
         // ---------- palco do carro ----------
-        /// <summary>
-        /// O carro só aparece no Lobby (à direita, só visualização) e na Garagem (centralizado).
-        /// Nas outras telas o palco é desligado — elas têm fundo opaco e nada apareceria mesmo.
-        /// </summary>
         private void AcompanharTela()
         {
             if (roteador == null || roteador.TelaAtual == telaDoPalco)
@@ -127,70 +178,70 @@ namespace PartyRacers.UI.Frontend
                 Enquadrar();
         }
 
-        /// <summary>
-        /// Aponta a câmera para o carro atual. É 3D, não layout de UI: a regra do handoff sobre
-        /// não posicionar por código vale para os elementos de interface.
-        /// </summary>
         public void Enquadrar()
         {
             if (cameraDoPalco == null || carro == null || carro.CurrentRig == null)
                 return;
 
-            var renderers = carro.CurrentRig.GetComponentsInChildren<Renderer>();
+            Renderer[] renderers = carro.CurrentRig.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0)
                 return;
 
             Bounds caixa = renderers[0].bounds;
-            foreach (Renderer r in renderers)
-                caixa.Encapsulate(r.bounds);
+            foreach (Renderer renderer in renderers)
+                caixa.Encapsulate(renderer.bounds);
 
             bool noLobby = telaDoPalco == "Lobby";
             float afastamento = noLobby ? afastamentoNoLobby : afastamentoNaGaragem;
-            float vies = noLobby ? viesNoLobby : viesNaGaragem;
+            float viesHorizontal = noLobby ? viesNoLobby : viesNaGaragem;
 
-            // o palco encolhe o carro durante a animação de troca; enquadrar pela caixa medida
-            // nesse instante deixaria a câmera perto demais e o carro estouraria a tela ao
-            // voltar ao tamanho normal. Descontar a escala dá sempre o enquadramento final.
             float escalaDoPalco = palco != null ? Mathf.Abs(palco.transform.localScale.x) : 1f;
-            if (escalaDoPalco < 0.01f) escalaDoPalco = 1f;
+            if (escalaDoPalco < 0.01f)
+                escalaDoPalco = 1f;
 
             float raio = caixa.extents.magnitude / escalaDoPalco;
             float fov = cameraDoPalco.fieldOfView * Mathf.Deg2Rad;
             float distancia = raio / Mathf.Tan(fov * 0.5f) * afastamento;
 
-            Quaternion rot = Quaternion.Euler(inclinacao, giro, 0f);
-            cameraDoPalco.transform.position = caixa.center - rot * Vector3.forward * distancia;
-            cameraDoPalco.transform.rotation = rot;
+            Quaternion rotacao = Quaternion.Euler(inclinacao, giro, 0f);
+            cameraDoPalco.transform.position = caixa.center - rotacao * Vector3.forward * distancia;
+            cameraDoPalco.transform.rotation = rotacao;
 
-            // mirar à esquerda do carro joga o carro para a direita da tela
-            cameraDoPalco.transform.LookAt(caixa.center - cameraDoPalco.transform.right * (raio * vies));
+            Vector3 alvo = caixa.center - cameraDoPalco.transform.right * (raio * viesHorizontal);
+            if (noLobby)
+                alvo -= cameraDoPalco.transform.up * (raio * viesVerticalNoLobby);
+            cameraDoPalco.transform.LookAt(alvo);
         }
 
         // ---------- partida ----------
         public void Correr()
         {
-            // a pista escolhida manda; 'cenaDaCorrida' é só o padrão de quando não há seletor
-            string cena = seletorDePista != null && seletorDePista.Atual != null
-                ? seletorDePista.Atual.cena
-                : cenaDaCorrida;
-
-            if (string.IsNullOrEmpty(cena))
-            {
-                Debug.LogWarning("[FrontendFlow] nenhuma pista selecionada e 'cenaDaCorrida' vazio.");
+            string cena = ObterCenaSelecionada();
+            if (!ValidarCena(cena))
                 return;
-            }
-
-            if (Application.CanStreamedLevelBeLoaded(cena) == false)
-            {
-                Debug.LogError($"[FrontendFlow] a cena '{cena}' não está no Build Settings — a corrida não carrega.");
-                return;
-            }
 
             if (carro != null)
-                KartGarageSelection.Save();   // a pista lê a seleção salva ao montar o kart
+                KartGarageSelection.Save();
+            registry?.SetLocalPlayerVisual(KartGarageSelection.Capture());
 
-            // carregar de forma síncrona congelava a imagem até a pista abrir; a tela de
-            // carregamento faz em segundo plano e mantém o movimento e as dicas na tela
+            if (bootstrap != null && bootstrap.IsOnline)
+            {
+                if (bootstrap.Mode != NetworkBootstrap.SessionMode.Host)
+                {
+                    lobby?.DefinirAviso("Aguardando o dono da sala iniciar a corrida.");
+                    return;
+                }
+
+                if (registry == null || !registry.AllReady())
+                {
+                    lobby?.DefinirAviso("Todos os jogadores precisam ficar prontos antes da largada.");
+                    return;
+                }
+
+                bootstrap.StartRaceScene(cena);
+                return;
+            }
+
             string nomeDaPista = seletorDePista != null && seletorDePista.Atual != null
                 ? seletorDePista.Atual.nome
                 : cena;
@@ -200,85 +251,212 @@ namespace PartyRacers.UI.Frontend
                 loading.CarregarCena(cena, "CARREGANDO " + nomeDaPista.ToUpperInvariant());
             else
             {
-                Debug.LogWarning("[FrontendFlow] Screen_Loading nao encontrada; usando troca de cena direta.");
+                Debug.LogWarning("[FrontendFlow] Screen_Loading não encontrada; usando troca de cena direta.");
                 SceneManager.LoadScene(cena);
             }
         }
 
+        private string ObterCenaSelecionada()
+        {
+            return seletorDePista != null && seletorDePista.Atual != null
+                ? seletorDePista.Atual.cena
+                : cenaDaCorrida;
+        }
+
+        private static bool ValidarCena(string cena)
+        {
+            if (string.IsNullOrWhiteSpace(cena))
+            {
+                Debug.LogWarning("[FrontendFlow] Nenhuma pista foi selecionada.");
+                return false;
+            }
+
+            if (!Application.CanStreamedLevelBeLoaded(cena))
+            {
+                Debug.LogError($"[FrontendFlow] A cena '{cena}' não está no Build Settings.");
+                return false;
+            }
+
+            return true;
+        }
+
         // ---------- garagem ----------
-        /// <summary>
-        /// Quem aplica a troca é a GarageScreenUI, que fala direto com o rig do carro. Aqui só
-        /// resta reenquadrar: o carro novo tem outra caixa. Chega já na escala final, porque a
-        /// tela só avisa depois da animação do palco terminar.
-        /// </summary>
         private void TrocarCarro(int indice) => Enquadrar();
 
         // ---------- sala ----------
-        private void AplicarCodigo(string codigo)
+        private void CriarOuCopiarConvite()
         {
-            PlayerPrefs.SetString(ChaveCodigo, codigo);
-            PlayerPrefs.Save();
-            if (lobby != null)
-                lobby.DefinirCodigo(codigo);
-        }
-
-        /// <summary>
-        /// Enquanto não existe sessão de rede, a sala tem só o jogador local. Quando o NGO
-        /// entrar, é esta lista que passa a vir do RacePlayerRegistry.
-        /// </summary>
-        private void AtualizarLobby()
-        {
-            if (lobby == null)
+            if (bootstrap == null || bootstrap.IsBusy)
                 return;
 
-            var participantes = new List<LobbyScreenUI.Participante>
+            if (bootstrap.IsOnline && bootstrap.HasJoinCode)
             {
-                new LobbyScreenUI.Participante
-                {
-                    // a própria tela acrescenta o "(dono · você)" — o nome aqui é só o nome
-                    nome = PlayerPrefs.GetString(ChaveNome, "JOGADOR"),
-                    pronto = true,
-                    estado = LobbyScreenUI.EstadoVaga.Ocupada,
-                    ehLocal = true,
-                    ehDono = true,
-                },
-            };
+                GUIUtility.systemCopyBuffer = bootstrap.CurrentJoinCode;
+                lobby?.DefinirAviso($"Código {bootstrap.CurrentJoinCode} copiado — envie para seus amigos.");
+                return;
+            }
 
-            lobby.Mostrar(participantes, vagasDaSala);
+            bootstrap.HostGame();
+            AtualizarLobby();
+        }
+
+        private void AcionarPrincipalDoLobby()
+        {
+            if (bootstrap == null || bootstrap.IsBusy)
+                return;
+
+            if (!bootstrap.IsOnline)
+            {
+                Correr();
+                return;
+            }
+
+            RacePlayerInfo local = registry?.LocalPlayer;
+            if (bootstrap.Mode == NetworkBootstrap.SessionMode.Host && registry != null && registry.AllReady())
+            {
+                Correr();
+                return;
+            }
+
+            if (local != null)
+                bootstrap.SetLocalReady(!local.IsReady);
         }
 
         private void SairDaSala()
         {
-            AplicarCodigo(GerarCodigo());
-            AtualizarLobby();
+            if (bootstrap != null && bootstrap.IsOnline)
+                bootstrap.LeaveGame();
+
             if (roteador != null)
                 roteador.Ir("Garagem");
+
+            AtualizarLobby();
         }
 
         private void EntrarPorCodigo(string codigo)
         {
-            if (string.IsNullOrEmpty(codigo) || codigo.Length < 6)
+            codigo = (codigo ?? string.Empty).Trim().ToUpperInvariant();
+            if (codigo.Length != 6)
             {
                 joinCode?.MostrarCodigoInvalido();
                 return;
             }
 
-            AplicarCodigo(codigo);
-            AtualizarLobby();
-            if (roteador != null)
-                roteador.Ir("Lobby");
+            if (bootstrap == null)
+            {
+                joinCode?.MostrarFalhaConexao("Serviço online indisponível.");
+                return;
+            }
+
+            joinCode?.DefinirConectando(true);
+            bootstrap.JoinGame(codigo);
         }
 
-        private static string GerarCodigo()
+        private void AoMudarStatusDaRede(string status)
         {
-            var chars = new char[6];
-            for (int i = 0; i < chars.Length; i++)
-                chars[i] = Alfabeto[UnityEngine.Random.Range(0, Alfabeto.Length)];
-            return new string(chars);
+            bool joinVisivel = joinCode != null && joinCode.gameObject.activeInHierarchy;
+
+            if (bootstrap != null && bootstrap.IsOnline)
+            {
+                joinCode?.DefinirConectando(false);
+                if (joinVisivel && roteador != null)
+                    roteador.Ir("Lobby");
+            }
+            else if (bootstrap != null && !bootstrap.IsBusy && joinVisivel &&
+                     bootstrap.LastJoinFailure != NetworkBootstrap.JoinFailureReason.None)
+            {
+                switch (bootstrap.LastJoinFailure)
+                {
+                    case NetworkBootstrap.JoinFailureReason.LobbyFull:
+                        joinCode.MostrarSalaCheia();
+                        break;
+                    case NetworkBootstrap.JoinFailureReason.InvalidCode:
+                        joinCode.MostrarCodigoInvalido();
+                        break;
+                    case NetworkBootstrap.JoinFailureReason.ServicesUnavailable:
+                        joinCode.MostrarFalhaConexao("Serviço online indisponível. Tente novamente.");
+                        break;
+                    default:
+                        joinCode.MostrarFalhaConexao("Não foi possível entrar. Confira o código.");
+                        break;
+                }
+            }
+
+            AtualizarLobby();
+        }
+
+        private void AtualizarLobby()
+        {
+            if (lobby == null)
+                return;
+
+            bool online = bootstrap != null && bootstrap.IsOnline;
+            var participantes = new List<LobbyScreenUI.Participante>();
+            if (registry != null)
+            {
+                foreach (RacePlayerInfo player in registry.Players)
+                {
+                    if (player == null)
+                        continue;
+
+                    participantes.Add(new LobbyScreenUI.Participante
+                    {
+                        nome = string.IsNullOrWhiteSpace(player.DisplayName) ? "JOGADOR" : player.DisplayName,
+                        pronto = player.IsReady,
+                        estado = LobbyScreenUI.EstadoVaga.Ocupada,
+                        ehLocal = player.IsLocal,
+                        ehDono = online && player.IsHost,
+                        ehBot = player.IsBot,
+                    });
+                }
+            }
+
+            lobby.Mostrar(participantes, Mathf.Min(vagasDaSala, RaceConstants.MaxPlayers));
+
+            bool ocupado = bootstrap != null && bootstrap.IsBusy;
+            bool ehHost = online && bootstrap.Mode == NetworkBootstrap.SessionMode.Host;
+            bool localPronto = registry?.LocalPlayer != null && registry.LocalPlayer.IsReady;
+            bool todosProntos = online && registry != null && registry.AllReady();
+            string codigo = online ? bootstrap.CurrentJoinCode : string.Empty;
+
+            lobby.MostrarEstadoSessao(
+                codigo,
+                online,
+                ocupado,
+                ehHost,
+                localPronto,
+                todosProntos,
+                ObterMensagemDoLobby(online, ocupado, ehHost, localPronto, todosProntos));
+        }
+
+        private string ObterMensagemDoLobby(bool online, bool ocupado, bool ehHost, bool localPronto, bool todosProntos)
+        {
+            if (ocupado && bootstrap != null)
+                return bootstrap.Status;
+
+            if (!online)
+            {
+                if (bootstrap != null && bootstrap.Status.StartsWith("Falha", StringComparison.OrdinalIgnoreCase))
+                    return "Online indisponível agora — o modo local continua disponível.";
+                return "Crie uma sala online ou entre com o código de um amigo.";
+            }
+
+            if (!localPronto)
+                return ehHost
+                    ? "Sala online criada — compartilhe o código e fique pronto."
+                    : "Você entrou na sala — fique pronto para confirmar sua vaga.";
+
+            if (todosProntos)
+                return ehHost
+                    ? "Todos prontos — você pode iniciar a corrida."
+                    : "Todos prontos — aguardando o dono iniciar a corrida.";
+
+            return ehHost
+                ? "Você está pronto — aguardando os outros jogadores."
+                : "Pronto — aguardando os outros jogadores e o dono da sala.";
         }
 
         // ---------- loja ----------
-        /// <summary>A rotação diária vira à meia-noite UTC — o mesmo instante para todo mundo.</summary>
         private void AtualizarRotacao()
         {
             TimeSpan falta = DateTime.UtcNow.Date.AddDays(1) - DateTime.UtcNow;
