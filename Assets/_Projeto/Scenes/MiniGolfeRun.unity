@@ -20747,6 +20747,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemBox
   respawnTime: 4
+  availablePowers: 01000000020000000300000004000000
   available: 1
   breakVfxPrefab: {fileID: 0}
   breakVfxLifetime: 1.4
@@ -30420,6 +30421,7 @@ MonoBehaviour:
   maxCompetitors: 16
   fillOnStart: 1
   botKartPrefab: {fileID: 2611403489893210895, guid: 6a90cd2ae9d96b744b102bbbae581b43, type: 3}
+  networkBotKartPrefab: {fileID: 2611403489893210895, guid: 452e8ede385182a4dbeacf1e57a82fe3, type: 3}
   raceManager: {fileID: 881398962}
   botNames:
   - TURBO
@@ -38760,6 +38762,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemBox
   respawnTime: 4
+  availablePowers: 01000000020000000300000004000000
   available: 1
   breakVfxPrefab: {fileID: 0}
   breakVfxLifetime: 1.4
@@ -60748,6 +60751,8 @@ MonoBehaviour:
   waitForOnlinePlayersBeforeCountdown: 1
   onlinePlayerWaitPollInterval: 0.1
   onlineWaitingText: AGUARDANDO
+  botFillTimeout: 5
+  raceDirectorPrefab: {fileID: 0}
   raceStarted: 0
 --- !u!4 &881398963
 Transform:
@@ -113567,6 +113572,7 @@ MonoBehaviour:
   btnJogarNovamente: {fileID: 1929461848}
   cenaDoFrontend: Frontend
   telaDeCarregamento: {fileID: 616116607}
+  rotuloRevanche: JOGAR NOVAMENTE
 --- !u!114 &1617132597
 MonoBehaviour:
   m_ObjectHideFlags: 0

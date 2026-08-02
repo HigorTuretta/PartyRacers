@@ -125,8 +125,8 @@ namespace PartyRacers.UI.EditorTools
             Set(so, "nomeDoCarro", garagem.Find("SeletorCarro/NomeCarro")?.GetComponent<TextMeshProUGUI>());
             Set(so, "btnCarroAnterior", garagem.Find("SeletorCarro/Btn_Anterior")?.GetComponent<Button>());
             Set(so, "btnCarroProximo", garagem.Find("SeletorCarro/Btn_Proximo")?.GetComponent<Button>());
-            Set(so, "btnCorrer", garagem.Find("Partida/Btn_Correr")?.GetComponent<Button>());
-            Set(so, "btnJogarLocalmente", garagem.Find("Partida/Btn_JogarLocalmente")?.GetComponent<Button>());
+            Set(so, "btnSalvarEVoltar", garagem.Find("Partida/Btn_Correr")?.GetComponent<Button>());
+            Set(so, "btnSalvarEstilo", garagem.Find("Partida/Btn_JogarLocalmente")?.GetComponent<Button>());
             so.ApplyModifiedPropertiesWithoutUndo();
 
             AjustarEnquadramento();

@@ -39,6 +39,13 @@ public class KartRaceTracker : MonoBehaviour
     /// <summary>Disparado UMA vez quando este kart cruza a linha de chegada da última volta.</summary>
     public event System.Action<KartRaceTracker> RaceJustFinished;
 
+    // Classificação oficial atribuída pelo servidor (RaceNetworkDirector). Fora de rede continua
+    // em 0 e ninguém a consulta — o ranking local segue valendo.
+    private int networkRank;
+
+    /// <summary>Posição final decidida pelo servidor. 0 quando a corrida não é online.</summary>
+    public int NetworkRank => networkRank;
+
     public int TotalLaps => totalLaps;
     public int TotalCheckpoints => totalCheckpoints;
     public int CurrentLap => currentLap;
@@ -86,6 +93,36 @@ public class KartRaceTracker : MonoBehaviour
     {
         if (timing && !raceFinished)
             currentLapTime = Time.time - lapStartTime;
+    }
+
+    /// <summary>
+    /// Fecha a corrida deste kart com o resultado que o SERVIDOR decidiu.
+    ///
+    /// O fim de corrida era puramente local: cada máquina só sabia que alguém terminou se a sua
+    /// própria simulação daquele kart cruzasse a linha. Para o cliente isso não acontecia de forma
+    /// confiável, e a tela de resultado ficava presa no host. Agora o servidor — que enxerga todos
+    /// os karts — anuncia o encerramento e cada cliente aplica aqui.
+    ///
+    /// Idempotente: se a simulação local já tinha terminado, só grava a posição oficial.
+    /// </summary>
+    public void ApplyNetworkFinish(int rank, float authoritativeTotalTime)
+    {
+        networkRank = rank;
+
+        if (raceFinished)
+            return;
+
+        RecordLapTime();
+
+        raceFinished = true;
+        timing = false;
+        currentLap = totalLaps;
+        finishRealtime = Time.time;
+
+        if (authoritativeTotalTime > 0f)
+            totalRaceTime = authoritativeTotalTime;
+
+        RaceJustFinished?.Invoke(this);
     }
 
     public void ConfigureCheckpointCount(int checkpointCount)

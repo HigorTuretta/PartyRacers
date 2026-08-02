@@ -276,12 +276,13 @@ namespace PartyRacers.UI.EditorTools
             Stretch(laTx.gameObject, 44, 4, 14, 4);
             laTx.font = FonteUiBold;
 
-            // ações de partida (base-centro)
+            // ações da garagem (base-centro). A garagem NÃO larga corrida: quem inicia a partida é
+            // o lobby, que sabe se a sessão é online e quem é o dono da sala.
             var partida = Node("Partida", raiz.transform);
             Place(partida, new Vector2(.5f, 0), new Vector2(.5f, 0), new Vector2(.5f, 0), new Vector2(0, 56), new Vector2(800, 112));
             HLayout(partida, 20, new RectOffset(), TextAnchor.MiddleCenter);
-            BotaoLargo(partida.transform, "Btn_JogarLocalmente", "JOGAR LOCALMENTE", "Deep", 380, 104, 25, TextMuted, false);
-            BotaoLargo(partida.transform, "Btn_Correr", "CORRER", "Green", 400, 112, 44, Ink, true);
+            BotaoLargo(partida.transform, "Btn_JogarLocalmente", "SALVAR ESTILO", "Deep", 380, 104, 25, TextMuted, false);
+            BotaoLargo(partida.transform, "Btn_Correr", "SALVAR E VOLTAR", "Green", 400, 112, 44, Ink, true);
 
             SalvarTela(raiz, "Screen_Garage_PC");
         }

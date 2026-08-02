@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using PartyRacers.Networking;
 using PartyRacers.UI.Frontend;
 using PartyRacers.UI.HUD;
 
@@ -37,6 +38,8 @@ namespace PartyRacers.UI.Race
         [Tooltip("Cena do frontend carregada por VOLTAR À GARAGEM. Precisa estar no Build Settings.")]
         [SerializeField] private string cenaDoFrontend = "Frontend";
         [SerializeField] private LoadingScreenUI telaDeCarregamento;
+        [Tooltip("Rótulo padrão do botão de revanche (restaurado quando o jogador pode reiniciar).")]
+        [SerializeField] private string rotuloRevanche = "JOGAR NOVAMENTE";
 
         private KartRaceTracker rastreadorLocal;
         private bool aberta;
@@ -65,7 +68,11 @@ namespace PartyRacers.UI.Race
                 hudDaCorrida.SetActive(true);
         }
 
-        /// <summary>Sai da pista para o frontend. Não mexe em Time.timeScale — nunca houve pausa.</summary>
+        /// <summary>
+        /// Sai da pista para o frontend. Online é obrigatório ENCERRAR a sessão antes: com o
+        /// gerenciamento de cenas do Netcode ativo, um cliente que chama LoadScene direto é
+        /// ignorado — era por isso que só o dono da sala conseguia voltar ao lobby.
+        /// </summary>
         public void VoltarAoFrontend()
         {
             if (string.IsNullOrEmpty(cenaDoFrontend))
@@ -74,6 +81,10 @@ namespace PartyRacers.UI.Race
                 return;
             }
 
+            NetworkBootstrap rede = NetworkBootstrap.Instance;
+            if (rede != null && rede.IsOnline)
+                rede.LeaveGame();
+
             LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
             if (loading != null)
                 loading.CarregarCena(cenaDoFrontend, "VOLTANDO AO LOBBY");
@@ -81,15 +92,59 @@ namespace PartyRacers.UI.Race
                 UnityEngine.SceneManagement.SceneManager.LoadScene(cenaDoFrontend);
         }
 
-        /// <summary>Recarrega a pista atual para outra partida.</summary>
+        /// <summary>
+        /// Recarrega a pista atual para outra partida. Numa sala online quem recarrega é o dono —
+        /// o Netcode leva todo mundo junto. Um cliente pedindo revanche sozinho só se desincronizaria.
+        /// </summary>
         public void Recomecar()
         {
             UnityEngine.SceneManagement.Scene atual = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+
+            NetworkBootstrap rede = NetworkBootstrap.Instance;
+            if (rede != null && rede.IsOnline)
+            {
+                if (rede.Mode != NetworkBootstrap.SessionMode.Host)
+                {
+                    DefinirAvisoDeRevanche("AGUARDANDO O DONO DA SALA");
+                    return;
+                }
+
+                rede.RestartRaceScene(atual.name);
+                return;
+            }
+
             LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
             if (loading != null && !string.IsNullOrEmpty(atual.name))
                 loading.CarregarCena(atual.name, "PREPARANDO REVANCHE");
             else
                 UnityEngine.SceneManagement.SceneManager.LoadScene(atual.buildIndex >= 0 ? atual.buildIndex : 0);
+        }
+
+        /// <summary>
+        /// Ajusta o botão de revanche ao papel do jogador: quem não é dono da sala não pode
+        /// recarregar a pista, e um botão que não faz nada é pior do que um botão explicando por quê.
+        /// </summary>
+        private void AtualizarBotaoDeRevanche()
+        {
+            if (btnJogarNovamente == null)
+                return;
+
+            NetworkBootstrap rede = NetworkBootstrap.Instance;
+            bool online = rede != null && rede.IsOnline;
+            bool podeReiniciar = !online || rede.Mode == NetworkBootstrap.SessionMode.Host;
+
+            btnJogarNovamente.interactable = podeReiniciar;
+            DefinirAvisoDeRevanche(podeReiniciar ? rotuloRevanche : "AGUARDANDO O DONO DA SALA");
+        }
+
+        private void DefinirAvisoDeRevanche(string texto)
+        {
+            if (btnJogarNovamente == null || string.IsNullOrWhiteSpace(texto))
+                return;
+
+            TMPro.TextMeshProUGUI label = btnJogarNovamente.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+            if (label != null)
+                label.text = texto;
         }
 
         private void OnDisable() => Desassinar();
@@ -161,6 +216,7 @@ namespace PartyRacers.UI.Race
             if (hudDaCorrida != null)
                 hudDaCorrida.SetActive(false);
 
+            AtualizarBotaoDeRevanche();
             AtualizarAlvoEspectador();
             AplicarCameraEspectador();
 

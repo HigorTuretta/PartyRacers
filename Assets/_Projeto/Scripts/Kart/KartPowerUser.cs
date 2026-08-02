@@ -82,6 +82,7 @@ public class KartPowerUser : MonoBehaviour
     private GameObject equippedRocketInstance;
     private GameObject equippedUfoInstance;
     private GameObject equippedElectricTrapInstance;
+    private KartNetworkSync networkSync;
 
     public bool IsShieldActive => Time.time < shieldEndTime;
 
@@ -95,6 +96,8 @@ public class KartPowerUser : MonoBehaviour
 
         if (identity == null)
             identity = GetComponent<KartNetworkIdentity>();
+
+        networkSync = GetComponent<KartNetworkSync>();
 
         if (localRig == null)
             localRig = GetComponent<KartLocalRig>();
@@ -146,32 +149,56 @@ public class KartPowerUser : MonoBehaviour
         if (inventory == null || !inventory.HasPower)
             return false;
 
+        // Só quem comanda este kart pode gastar o poder: o dono, no caso de um jogador, e o
+        // servidor, no caso de um bot. Sem isto cada máquina consumia o próprio inventário e os
+        // jogadores viam poderes sumindo em momentos diferentes.
+        if (networkSync != null && networkSync.IsSpawned && !networkSync.CanCommandThisKart)
+            return false;
+
         KartPowerType power = inventory.CurrentPower;
         GameObject target = ResolvePowerTarget(power);
 
         inventory.ConsumeCurrentPower();
+
+        // Avisa as outras máquinas para reproduzirem o MESMO efeito, com o mesmo alvo.
+        if (networkSync != null && networkSync.IsSpawned)
+            networkSync.ReportPowerUsed(power, target);
+
+        PlayPower(power, target);
+        return power != KartPowerType.None;
+    }
+
+    /// <summary>
+    /// Reproduz um uso de poder que já foi decidido em outra máquina. Não mexe no inventário — o
+    /// estado do item é replicado pelo <see cref="KartNetworkSync"/>. Serve para que todo mundo
+    /// veja o mesmo escudo, o mesmo foguete e a mesma armadilha.
+    /// </summary>
+    public void PlayNetworkPower(KartPowerType power, GameObject target)
+    {
+        PlayPower(power, target);
+    }
+
+    private void PlayPower(KartPowerType power, GameObject target)
+    {
         RaceHudEvents.Raise(gameObject, target, RaceHudEventKind.PowerUsed, power);
 
         switch (power)
         {
             case KartPowerType.Shield:
                 ActivateShield();
-                return true;
+                break;
 
             case KartPowerType.Rocket:
                 FireRocket();
-                return true;
+                break;
 
             case KartPowerType.SwapPosition:
                 FireUfo(target);
-                return true;
+                break;
 
             case KartPowerType.ElectricTrap:
                 DropElectricTrap();
-                return true;
-
-            default:
-                return false;
+                break;
         }
     }
 

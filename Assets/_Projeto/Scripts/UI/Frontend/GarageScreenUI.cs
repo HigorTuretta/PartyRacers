@@ -6,6 +6,7 @@ using ithappy;
 using PartyRacers.UI.Motion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace PartyRacers.UI.Frontend
@@ -44,15 +45,32 @@ namespace PartyRacers.UI.Frontend
         [SerializeField] private Color pontoAtivo = new Color(1f, 0.690f, 0.125f);
         [SerializeField] private Color pontoInativo = new Color(0.294f, 0.329f, 0.659f);
 
-        [Header("Ações de partida")]
-        [SerializeField] private Button btnCorrer;
-        [SerializeField] private Button btnJogarLocalmente;
+        [Header("Ações da garagem")]
+        [Tooltip("Botão principal: confirma a estilização e devolve o jogador ao lobby.")]
+        [FormerlySerializedAs("btnCorrer")]
+        [SerializeField] private Button btnSalvarEVoltar;
+        [Tooltip("Botão secundário: confirma a estilização sem sair da garagem.")]
+        [FormerlySerializedAs("btnJogarLocalmente")]
+        [SerializeField] private Button btnSalvarEstilo;
+
+        [Header("Rótulos dos botões")]
+        [Tooltip("A garagem não larga corrida — quem inicia a partida é o lobby. Os rótulos são " +
+                 "aplicados em Awake para que a cena não fique dizendo 'CORRER'.")]
+        [SerializeField] private string rotuloSalvarEVoltar = "SALVAR E VOLTAR";
+        [SerializeField] private string rotuloSalvarEstilo = "SALVAR ESTILO";
+        [Tooltip("Texto mostrado por alguns segundos no botão secundário ao confirmar.")]
+        [SerializeField] private string rotuloSalvo = "ESTILO SALVO";
+        [SerializeField, Min(0.2f)] private float segundosDoAvisoSalvo = 1.4f;
 
         [Header("Eventos")]
         public UnityEngine.Events.UnityEvent<string, int> aoTrocarCosmetico;
         public UnityEngine.Events.UnityEvent<int> aoTrocarCarro;
-        public UnityEngine.Events.UnityEvent aoCorrer;
-        public UnityEngine.Events.UnityEvent aoJogarLocalmente;
+
+        [FormerlySerializedAs("aoCorrer")]
+        public UnityEngine.Events.UnityEvent aoSalvarEVoltar;
+
+        [FormerlySerializedAs("aoJogarLocalmente")]
+        public UnityEngine.Events.UnityEvent aoSalvarEstilo;
 
         /// <summary>Uma linha da lista, resolvida a partir do nome do objeto na cena.</summary>
         private class Linha
@@ -67,6 +85,7 @@ namespace PartyRacers.UI.Frontend
         private readonly List<Linha> linhas = new List<Linha>();
         private string selecionada;
         private Coroutine pulsoDoNome;
+        private Coroutine avisoSalvo;
 
         private void Awake()
         {
@@ -83,8 +102,11 @@ namespace PartyRacers.UI.Frontend
 
             if (btnCarroAnterior != null) btnCarroAnterior.onClick.AddListener(() => TrocarCarro(-1));
             if (btnCarroProximo != null) btnCarroProximo.onClick.AddListener(() => TrocarCarro(+1));
-            if (btnCorrer != null) btnCorrer.onClick.AddListener(() => aoCorrer?.Invoke());
-            if (btnJogarLocalmente != null) btnJogarLocalmente.onClick.AddListener(() => aoJogarLocalmente?.Invoke());
+            if (btnSalvarEVoltar != null) btnSalvarEVoltar.onClick.AddListener(() => aoSalvarEVoltar?.Invoke());
+            if (btnSalvarEstilo != null) btnSalvarEstilo.onClick.AddListener(() => aoSalvarEstilo?.Invoke());
+
+            AplicarRotulo(btnSalvarEVoltar, rotuloSalvarEVoltar);
+            AplicarRotulo(btnSalvarEstilo, rotuloSalvarEstilo);
 
             if (carro != null) carro.CarRebuilt += Redesenhar;
         }
@@ -92,6 +114,35 @@ namespace PartyRacers.UI.Frontend
         private void OnDestroy()
         {
             if (carro != null) carro.CarRebuilt -= Redesenhar;
+        }
+
+        /// <summary>Feedback visual de que a estilização foi gravada (chamado pelo FrontendFlow).</summary>
+        public void ConfirmarSalvamento()
+        {
+            if (btnSalvarEstilo == null || !isActiveAndEnabled)
+                return;
+
+            if (avisoSalvo != null)
+                StopCoroutine(avisoSalvo);
+            avisoSalvo = StartCoroutine(PiscarAvisoSalvo());
+        }
+
+        private IEnumerator PiscarAvisoSalvo()
+        {
+            AplicarRotulo(btnSalvarEstilo, rotuloSalvo);
+            yield return new WaitForSecondsRealtime(segundosDoAvisoSalvo);
+            AplicarRotulo(btnSalvarEstilo, rotuloSalvarEstilo);
+            avisoSalvo = null;
+        }
+
+        private static void AplicarRotulo(Button botao, string texto)
+        {
+            if (botao == null || string.IsNullOrWhiteSpace(texto))
+                return;
+
+            TextMeshProUGUI label = botao.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null)
+                label.text = texto;
         }
 
         private void OnEnable() => Redesenhar();

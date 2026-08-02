@@ -127,6 +127,13 @@ namespace PartyRacers.UI.Race
                 return;
             }
 
+            // Encerra a sessão antes de trocar de cena: com o gerenciamento de cenas do Netcode
+            // ligado, um cliente que chama LoadScene sozinho é simplesmente ignorado e o botão
+            // SAIR não fazia nada para quem não era o dono da sala.
+            PartyRacers.Networking.NetworkBootstrap rede = PartyRacers.Networking.NetworkBootstrap.Instance;
+            if (rede != null && rede.IsOnline)
+                rede.LeaveGame();
+
             LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
             if (loading != null)
                 loading.CarregarCena(cenaDoFrontend, "VOLTANDO AO LOBBY");

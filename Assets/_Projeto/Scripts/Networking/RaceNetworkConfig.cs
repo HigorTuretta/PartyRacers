@@ -11,6 +11,10 @@ namespace PartyRacers.Networking
     {
         [SerializeField] private GameObject playerKartPrefab;
 
+        [Tooltip("Árbitro da corrida online (ItemBox e chegada autoritativos). O servidor cria uma " +
+                 "instância por corrida; precisa estar na lista de network prefabs.")]
+        [SerializeField] private GameObject raceDirectorPrefab;
+
 #if PARTYRACERS_ONLINE
         [SerializeField] private NetworkPrefabsList networkPrefabs;
 
@@ -18,5 +22,6 @@ namespace PartyRacers.Networking
 #endif
 
         public GameObject PlayerKartPrefab => playerKartPrefab;
+        public GameObject RaceDirectorPrefab => raceDirectorPrefab;
     }
 }

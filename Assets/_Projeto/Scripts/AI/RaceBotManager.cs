@@ -28,8 +28,11 @@ namespace PartyRacers.AI
         [SerializeField] private bool fillOnStart = true;
 
         [Header("Prefab e referências")]
-        [Tooltip("Prefab de kart usado pelos bots (mesmo veículo dos players). Ex.: PlayerKart_Local.")]
+        [Tooltip("Prefab de kart usado pelos bots offline (mesmo veículo dos players). Ex.: PlayerKart_Local.")]
         [SerializeField] private GameObject botKartPrefab;
+        [Tooltip("Prefab de kart dos bots ONLINE. Precisa ter NetworkObject e estar na lista de " +
+                 "network prefabs, senão os clientes não recebem os bots. Vazio = lê do RaceNetworkConfig.")]
+        [SerializeField] private GameObject networkBotKartPrefab;
         [Tooltip("Opcional. Se vazio, busca o RaceManager na cena.")]
         [SerializeField] private RaceManager raceManager;
 
@@ -98,6 +101,15 @@ namespace PartyRacers.AI
         public int MaxCompetitors => maxCompetitors;
         public IReadOnlyList<KartController> SpawnedBots => spawnedBots;
 
+        /// <summary>Já terminou de criar os bots (ou concluiu que não deve criar nenhum aqui).</summary>
+        public bool Filled => filled;
+
+        /// <summary>
+        /// Esta máquina é quem vai criar os bots. O RaceManager consulta antes de segurar a
+        /// contagem: num cliente não há o que esperar, os bots chegam replicados do servidor.
+        /// </summary>
+        public bool WillFillBots => fillOnStart && ShouldSpawnHere();
+
         private void Start()
         {
             if (fillOnStart)
@@ -139,6 +151,15 @@ namespace PartyRacers.AI
             // Espera um frame para o RaceManager coletar os karts reais (RaceManager.Start).
             yield return null;
 
+            if (raceManager == null)
+                raceManager = FindAnyObjectByType<RaceManager>(FindObjectsInactive.Exclude);
+
+            // Online, os karts dos outros jogadores chegam alguns frames depois da cena. Contar
+            // antes disso fazia o servidor achar que estava sozinho e criar 15 bots para uma sala
+            // de 2 pessoas — o grid estourava o limite e as vagas nunca batiam.
+            while (raceManager != null && !raceManager.GridReady)
+                yield return null;
+
             FillBots();
         }
 
@@ -156,13 +177,16 @@ namespace PartyRacers.AI
 
             if (raceManager == null)
             {
+                filled = true;
                 Debug.LogWarning("[RaceBotManager] RaceManager não encontrado — bots não criados.");
                 return;
             }
 
-            if (botKartPrefab == null)
+            GameObject prefab = ResolveBotPrefab();
+            if (prefab == null)
             {
-                Debug.LogWarning("[RaceBotManager] 'botKartPrefab' não atribuído — bots não criados.");
+                filled = true;
+                Debug.LogWarning("[RaceBotManager] Nenhum prefab de bot utilizável — bots não criados.");
                 return;
             }
 
@@ -170,7 +194,7 @@ namespace PartyRacers.AI
             int botsNeeded = Mathf.Clamp(maxCompetitors - realCount, 0, RaceConstants.MaxPlayers);
 
             for (int i = 0; i < botsNeeded; i++)
-                SpawnBot(realCount + i, i);
+                SpawnBot(prefab, realCount + i, i);
 
             filled = true;
             nextTelemetryLogTime = Time.time + telemetryLogInterval;
@@ -187,6 +211,37 @@ namespace PartyRacers.AI
             return 0;
         }
 
+        /// <summary>
+        /// Escolhe o prefab dos bots. Online é obrigatório um prefab com NetworkObject: o
+        /// PlayerKart_Local não tem, então o <c>Spawn</c> era silenciosamente ignorado e os bots
+        /// existiam apenas na máquina do host — os clientes corriam numa pista vazia.
+        /// </summary>
+        private GameObject ResolveBotPrefab()
+        {
+#if PARTYRACERS_ONLINE
+            bool online = NetworkBootstrap.Instance != null && NetworkBootstrap.Instance.IsOnline;
+            if (online)
+            {
+                if (networkBotKartPrefab == null)
+                {
+                    RaceNetworkConfig config = Resources.Load<RaceNetworkConfig>("RaceNetworkConfig");
+                    networkBotKartPrefab = config != null ? config.PlayerKartPrefab : null;
+                }
+
+                if (networkBotKartPrefab == null || networkBotKartPrefab.GetComponent<NetworkObject>() == null)
+                {
+                    Debug.LogError("[RaceBotManager] Sem prefab de bot com NetworkObject: os clientes " +
+                                   "não veriam os bots. Configure 'networkBotKartPrefab'.");
+                    return null;
+                }
+
+                return networkBotKartPrefab;
+            }
+#endif
+
+            return botKartPrefab;
+        }
+
         private bool ShouldSpawnHere()
         {
 #if PARTYRACERS_ONLINE
@@ -201,7 +256,7 @@ namespace PartyRacers.AI
             return true;
         }
 
-        private void SpawnBot(int spawnIndex, int botIndex)
+        private void SpawnBot(GameObject prefab, int spawnIndex, int botIndex)
         {
             int seed = raceSeed + botIndex * 7919;
 
@@ -210,7 +265,7 @@ namespace PartyRacers.AI
             // Instancia sob um holder INATIVO para configurar antes do Awake (evita ligar câmera do bot).
             GameObject holder = new GameObject("BotSpawnHolder");
             holder.SetActive(false);
-            GameObject go = Instantiate(botKartPrefab, pose.position, pose.rotation, holder.transform);
+            GameObject go = Instantiate(prefab, pose.position, pose.rotation, holder.transform);
             go.name = $"Bot_{botIndex + 1}_{ResolveName(botIndex)}";
 
             // Marca como NÃO-local antes de ativar → rig local (câmera/HUD) fica desligado.
@@ -261,7 +316,7 @@ namespace PartyRacers.AI
             customizer.Apply(seed, botIndex, raceSeed);
 
 #if PARTYRACERS_ONLINE
-            TrySpawnNetworked(go);
+            TrySpawnNetworked(go, ResolveName(botIndex), customizer.AppliedSelection);
 #endif
 
             // Registra como competidor real (ranking/voltas/largada compartilhados).
@@ -500,18 +555,23 @@ namespace PartyRacers.AI
         }
 
 #if PARTYRACERS_ONLINE
-        private void TrySpawnNetworked(GameObject go)
+        private void TrySpawnNetworked(GameObject go, string botName, KartVisualSelection selection)
         {
             NetworkManager nm = NetworkManager.Singleton;
             if (nm == null || !nm.IsServer)
                 return;
 
             NetworkObject netObj = go.GetComponent<NetworkObject>();
-            if (netObj != null && !netObj.IsSpawned)
-            {
-                // Server-owned: o servidor mantém autoridade e dirige o bot; replica para os clientes.
-                netObj.Spawn(true);
-            }
+            if (netObj == null || netObj.IsSpawned)
+                return;
+
+            // Server-owned: o servidor mantém autoridade e dirige o bot; replica para os clientes.
+            netObj.Spawn(true);
+
+            // Depois do Spawn: publica papel, nome e visual. Sem isso o cliente recebia o kart mas
+            // o exibia como um jogador remoto anônimo, com o carro padrão.
+            KartNetworkSync sync = go.GetComponent<KartNetworkSync>();
+            sync?.ConfigureAsBot(botName, selection);
         }
 #endif
     }

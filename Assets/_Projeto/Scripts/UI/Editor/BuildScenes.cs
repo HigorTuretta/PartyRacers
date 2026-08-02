@@ -294,8 +294,8 @@ namespace PartyRacers.UI.EditorTools
                 Definir(ui, "nomeDoCarro", Achar<TextMeshProUGUI>(garagem, "SeletorCarro/NomeCarro"));
                 Definir(ui, "btnCarroAnterior", Achar<Button>(garagem, "SeletorCarro/Btn_Anterior"));
                 Definir(ui, "btnCarroProximo", Achar<Button>(garagem, "SeletorCarro/Btn_Proximo"));
-                Definir(ui, "btnCorrer", Achar<Button>(garagem, "Partida/Btn_Correr"));
-                Definir(ui, "btnJogarLocalmente", Achar<Button>(garagem, "Partida/Btn_JogarLocalmente"));
+                Definir(ui, "btnSalvarEVoltar", Achar<Button>(garagem, "Partida/Btn_Correr"));
+                Definir(ui, "btnSalvarEstilo", Achar<Button>(garagem, "Partida/Btn_JogarLocalmente"));
 
                 // a lista lê as variantes reais do rig do carro; nada de contador fixo aqui
                 Definir(ui, "carro", carro);

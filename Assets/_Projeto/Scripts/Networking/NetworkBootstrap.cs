@@ -32,6 +32,12 @@ namespace PartyRacers.Networking
 
         [SerializeField] private bool autoInitialize = true;
 
+        [Header("Retorno")]
+        [Tooltip("Cena de menu para onde o jogador volta quando a sessão online termina.")]
+        [SerializeField] private string frontendSceneName = "Frontend";
+        [Tooltip("Cenas que já SÃO menu — estando nelas, a queda de sessão não recarrega nada.")]
+        [SerializeField] private string[] menuSceneNames = { "Frontend", "Boot", "Garage" };
+
 #if PARTYRACERS_ONLINE
         [Header("Online")]
         [SerializeField] private RaceNetworkConfig networkConfig;
@@ -74,7 +80,14 @@ namespace PartyRacers.Networking
 
         public event Action<string> StatusChanged;
 
+        /// <summary>
+        /// A sessão online acabou sem ter sido pedido por este jogador (o dono fechou a sala, a
+        /// conexão caiu). Quem estiver numa pista precisa voltar ao menu.
+        /// </summary>
+        public event Action SessionEnded;
+
         private bool operationInFlight;
+        private bool leaveRequestedLocally;
 
 #if PARTYRACERS_ONLINE
         private const string RelayJoinCodeKey = "relayJoinCode";
@@ -92,6 +105,7 @@ namespace PartyRacers.Networking
         private Coroutine lobbyPollRoutine;
         private Coroutine lobbyHeartbeatRoutine;
         private NetworkManager networkManager;
+        private bool networkManagerCallbacksSubscribed;
         private bool networkSceneEventsSubscribed;
         private bool networkRaceSceneLoadInProgress;
         private string networkRaceSceneLoadName = string.Empty;
@@ -119,6 +133,7 @@ namespace PartyRacers.Networking
         {
 #if PARTYRACERS_ONLINE
             StopLobbyLoops();
+            UnsubscribeNetworkManagerCallbacks();
 #endif
 
             if (Instance == this)
@@ -187,7 +202,7 @@ namespace PartyRacers.Networking
 #if PARTYRACERS_ONLINE
             if (IsOnline)
             {
-                StartNetworkRaceScene(sceneName);
+                StartNetworkRaceScene(sceneName, requireEveryoneReady: true);
                 return;
             }
 #endif
@@ -196,12 +211,49 @@ namespace PartyRacers.Networking
                 SceneManager.LoadScene(sceneName);
         }
 
+        /// <summary>
+        /// Recarrega a pista para todos os jogadores da sala (botão JOGAR NOVAMENTE). Diferente de
+        /// <see cref="StartRaceScene"/>, não exige que todos marquem "pronto" de novo: quem acabou
+        /// de correr junto já está na sala. Só o dono da sala pode disparar.
+        /// </summary>
+        public void RestartRaceScene(string sceneName)
+        {
+#if PARTYRACERS_ONLINE
+            if (IsOnline)
+            {
+                StartNetworkRaceScene(sceneName, requireEveryoneReady: false);
+                return;
+            }
+#endif
+
+            if (!string.IsNullOrWhiteSpace(sceneName))
+                SceneManager.LoadScene(sceneName);
+        }
+
+        /// <summary>
+        /// Republica a customização do jogador no lobby. Chamado quando ele confirma a estilização
+        /// na garagem, para que os outros vejam o carro certo antes da largada.
+        /// </summary>
+        public void PublishLocalVisual()
+        {
+#if PARTYRACERS_ONLINE
+            if (!IsOnline || operationInFlight)
+                return;
+
+            operationInFlight = true;
+            _ = SetLocalReadyAsync(RacePlayerRegistry.Instance?.LocalPlayer?.IsReady ?? false);
+#endif
+        }
+
         public void LeaveGame()
         {
 #if PARTYRACERS_ONLINE
             if (operationInFlight)
                 return;
 
+            // Marca que a saída partiu daqui: o callback de desconexão do Netcode não deve tratar
+            // isto como queda de sessão e recarregar o frontend por cima de quem já está saindo.
+            leaveRequestedLocally = true;
             operationInFlight = true;
             _ = LeaveGameRequestedAsync();
 #else
@@ -209,6 +261,24 @@ namespace PartyRacers.Networking
             SetStatus("Local (offline)");
 #endif
         }
+
+        /// <summary>True quando a cena ativa já é um menu (não faz sentido "voltar" para lugar nenhum).</summary>
+        public bool IsInMenuScene()
+        {
+            string atual = SceneManager.GetActiveScene().name;
+            if (menuSceneNames == null)
+                return false;
+
+            foreach (string nome in menuSceneNames)
+            {
+                if (string.Equals(nome, atual, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public string FrontendSceneName => frontendSceneName;
 
         private void SetStatus(string status)
         {
@@ -450,7 +520,7 @@ namespace PartyRacers.Networking
             }
         }
 
-        private void StartNetworkRaceScene(string sceneName)
+        private void StartNetworkRaceScene(string sceneName, bool requireEveryoneReady)
         {
             if (string.IsNullOrWhiteSpace(sceneName))
                 return;
@@ -467,7 +537,8 @@ namespace PartyRacers.Networking
                 return;
             }
 
-            if (RacePlayerRegistry.Instance == null || !RacePlayerRegistry.Instance.AllReady())
+            if (requireEveryoneReady &&
+                (RacePlayerRegistry.Instance == null || !RacePlayerRegistry.Instance.AllReady()))
             {
                 SetStatus("Todos os jogadores precisam estar prontos para iniciar.");
                 return;
@@ -541,6 +612,72 @@ namespace PartyRacers.Networking
                 throw new InvalidOperationException("Unity Services nao inicializados.");
         }
 
+        // ------------------------------------------------------------------ Queda de sessão
+        private void SubscribeNetworkManagerCallbacks()
+        {
+            if (networkManager == null || networkManagerCallbacksSubscribed)
+                return;
+
+            networkManager.OnClientStopped += OnNetworkClientStopped;
+            networkManager.OnServerStopped += OnNetworkServerStopped;
+            networkManagerCallbacksSubscribed = true;
+        }
+
+        private void UnsubscribeNetworkManagerCallbacks()
+        {
+            if (!networkManagerCallbacksSubscribed)
+                return;
+
+            if (networkManager != null)
+            {
+                networkManager.OnClientStopped -= OnNetworkClientStopped;
+                networkManager.OnServerStopped -= OnNetworkServerStopped;
+            }
+
+            networkManagerCallbacksSubscribed = false;
+        }
+
+        private void OnNetworkClientStopped(bool wasHost)
+        {
+            if (wasHost)
+                return;
+
+            HandleSessionDropped();
+        }
+
+        private void OnNetworkServerStopped(bool wasHost) => HandleSessionDropped();
+
+        /// <summary>
+        /// O transporte caiu sem que este jogador tenha pedido para sair — tipicamente o dono da
+        /// sala encerrou. Antes disso o cliente ficava preso na pista, com a corrida congelada e
+        /// nenhum botão funcionando, porque o NGO já não deixava trocar de cena.
+        /// </summary>
+        private void HandleSessionDropped()
+        {
+            if (leaveRequestedLocally)
+            {
+                leaveRequestedLocally = false;
+                return;
+            }
+
+            if (Mode == SessionMode.Offline)
+                return;
+
+            StopLobbyLoops();
+            currentLobby = null;
+            CurrentJoinCode = string.Empty;
+            Mode = SessionMode.Offline;
+            ResetNetworkRaceSceneLoadState();
+            UnsubscribeNetworkSceneEvents();
+            RacePlayerRegistry.Instance?.ResetToLocalPlayer();
+
+            SetStatus("A sala foi encerrada pelo dono.");
+            SessionEnded?.Invoke();
+
+            if (!IsInMenuScene() && !string.IsNullOrWhiteSpace(frontendSceneName))
+                SceneManager.LoadScene(frontendSceneName);
+        }
+
         private void EnsureNetworkManagerConfigured()
         {
             networkManager = NetworkManager.Singleton;
@@ -552,6 +689,8 @@ namespace PartyRacers.Networking
                 networkManager = go.AddComponent<NetworkManager>();
                 go.AddComponent<UnityTransport>();
             }
+
+            SubscribeNetworkManagerCallbacks();
 
             if (networkManager.NetworkConfig == null)
                 networkManager.NetworkConfig = new NetworkConfig();

@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using PartyRacers.Networking;
 using UnityEngine;
 
 public class ItemBox : MonoBehaviour
@@ -10,6 +12,12 @@ public class ItemBox : MonoBehaviour
         KartPowerType.Shield,
         KartPowerType.ElectricTrap
     };
+
+    // Todas as caixas vivas da cena. O árbitro de rede usa esta lista para dar a cada caixa o
+    // MESMO índice em todas as máquinas — é assim que o servidor consegue dizer "a caixa 27 foi
+    // consumida" sem que as caixas precisem de um NetworkObject cada uma.
+    private static readonly List<ItemBox> registry = new List<ItemBox>();
+    public static IReadOnlyList<ItemBox> All => registry;
 
     [Header("Configuração")]
     [SerializeField] private float respawnTime = 4f;
@@ -34,6 +42,10 @@ public class ItemBox : MonoBehaviour
 
     private Collider itemCollider;
     private Renderer[] renderers;
+    private Coroutine respawnRoutine;
+
+    /// <summary>Índice estável atribuído pelo <see cref="RaceNetworkDirector"/>. -1 fora de rede.</summary>
+    public int NetworkIndex { get; private set; } = -1;
 
     private void Awake()
     {
@@ -41,8 +53,49 @@ public class ItemBox : MonoBehaviour
         renderers = GetComponentsInChildren<Renderer>(true);
     }
 
+    private void OnEnable() => registry.Add(this);
+
+    private void OnDisable()
+    {
+        registry.Remove(this);
+        NetworkIndex = -1;
+    }
+
+    public void AssignNetworkIndex(int index) => NetworkIndex = index;
+
+    /// <summary>Chave de ordenação determinística: idêntica no host e em cada cliente.</summary>
+    public string SortKey
+    {
+        get
+        {
+            Vector3 p = transform.position;
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0:F2}|{1:F2}|{2:F2}|{3}",
+                p.x, p.y, p.z, HierarchyPath());
+        }
+    }
+
+    private string HierarchyPath()
+    {
+        Transform t = transform;
+        string path = t.name;
+        while (t.parent != null)
+        {
+            t = t.parent;
+            path = t.name + "/" + path;
+        }
+
+        return path;
+    }
+
     private void OnTriggerEnter(Collider other)
     {
+        // Online, só o servidor decide o sorteio e o consumo da caixa. Antes cada máquina sorteava
+        // o seu próprio poder no mesmo contato, e por isso os jogadores viam itens diferentes.
+        if (!RaceAuthority.HasSimulationAuthority)
+            return;
+
         if (!available)
             return;
 
@@ -60,8 +113,26 @@ public class ItemBox : MonoBehaviour
         if (!receivedPower)
             return;
 
+        Consume();
+        RaceNetworkDirector.NotifyBoxConsumed(this);
+    }
+
+    /// <summary>Consumo replicado: o cliente reproduz o que o servidor já decidiu.</summary>
+    public void ConsumeFromNetwork()
+    {
+        if (!available)
+            return;
+
+        Consume();
+    }
+
+    private void Consume()
+    {
         PlayBreakVfx();
-        StartCoroutine(RespawnRoutine());
+
+        if (respawnRoutine != null)
+            StopCoroutine(respawnRoutine);
+        respawnRoutine = StartCoroutine(RespawnRoutine());
     }
 
     private void PlayBreakVfx()
@@ -127,6 +198,7 @@ public class ItemBox : MonoBehaviour
             itemCollider.enabled = true;
 
         available = true;
+        respawnRoutine = null;
     }
 
     private void SetVisualEnabled(bool enabled)

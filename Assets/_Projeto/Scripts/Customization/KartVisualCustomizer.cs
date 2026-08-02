@@ -84,6 +84,18 @@ public class KartVisualCustomizer : MonoBehaviour
         BuildCar(applySavedElements: false, explicitElements: KartGarageSelection.DecodeElements(elementData));
     }
 
+    /// <summary>
+    /// Reaplica a customização salva na garagem (PlayerPrefs) sem gravar nada de volta.
+    /// Necessário para carros de pré-visualização com <c>loadSelectionOnStart</c> desligado: sem
+    /// isto eles nasciam com o carro padrão, e a primeira troca feita a partir desse estado salvava
+    /// o padrão por cima da escolha real do jogador — o "reset" ao voltar da corrida.
+    /// </summary>
+    public void ApplySavedSelection()
+    {
+        KartGarageSelection.EnsureLoaded();
+        ApplySelection(KartGarageSelection.Capture());
+    }
+
     private void Start()
     {
         EnsureBuilt();

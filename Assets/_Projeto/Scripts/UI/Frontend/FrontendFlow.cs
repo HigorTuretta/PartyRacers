@@ -67,8 +67,10 @@ namespace PartyRacers.UI.Frontend
 
             if (garagem != null)
             {
-                garagem.aoCorrer.AddListener(Correr);
-                garagem.aoJogarLocalmente.AddListener(Correr);
+                // A garagem não larga corrida: ela só edita e confirma a estilização. Quem inicia a
+                // partida é o lobby (que sabe se a sessão é online e quem é o dono da sala).
+                garagem.aoSalvarEVoltar.AddListener(SalvarEVoltarAoLobby);
+                garagem.aoSalvarEstilo.AddListener(SalvarEstilo);
                 garagem.aoTrocarCarro.AddListener(TrocarCarro);
             }
 
@@ -90,8 +92,12 @@ namespace PartyRacers.UI.Frontend
 
         private void Start()
         {
+            // O carro do palco tem loadSelectionOnStart DESLIGADO (o frontend controla o preview).
+            // Por isso ele precisa receber a seleção salva explicitamente: com EnsureBuilt sozinho
+            // ele nascia no carro padrão, e a primeira troca na garagem gravava esse padrão por
+            // cima da escolha real — era isso que "resetava" a customização ao voltar da corrida.
             if (carro != null)
-                carro.EnsureBuilt();
+                carro.ApplySavedSelection();
 
             AtualizarLobby();
 
@@ -107,8 +113,8 @@ namespace PartyRacers.UI.Frontend
         {
             if (garagem != null)
             {
-                garagem.aoCorrer.RemoveListener(Correr);
-                garagem.aoJogarLocalmente.RemoveListener(Correr);
+                garagem.aoSalvarEVoltar.RemoveListener(SalvarEVoltarAoLobby);
+                garagem.aoSalvarEstilo.RemoveListener(SalvarEstilo);
                 garagem.aoTrocarCarro.RemoveListener(TrocarCarro);
             }
 
@@ -282,6 +288,34 @@ namespace PartyRacers.UI.Frontend
 
         // ---------- garagem ----------
         private void TrocarCarro(int indice) => Enquadrar();
+
+        /// <summary>
+        /// Confirma a estilização atual: grava em PlayerPrefs, atualiza o registro do jogador e —
+        /// quando a sessão é online — publica o visual no lobby para os outros verem o carro certo.
+        /// </summary>
+        public void SalvarEstilo()
+        {
+            KartGarageSelection.Save();
+
+            KartVisualSelection selecao = KartGarageSelection.Capture();
+            registry?.SetLocalPlayerVisual(selecao);
+
+            if (bootstrap != null && bootstrap.IsOnline)
+                bootstrap.PublishLocalVisual();
+
+            garagem?.ConfirmarSalvamento();
+        }
+
+        /// <summary>Salva e devolve o jogador ao lobby — a garagem nunca larga corrida.</summary>
+        public void SalvarEVoltarAoLobby()
+        {
+            SalvarEstilo();
+
+            if (roteador != null)
+                roteador.Ir("Lobby");
+
+            AtualizarLobby();
+        }
 
         // ---------- sala ----------
         private void CriarOuCopiarConvite()

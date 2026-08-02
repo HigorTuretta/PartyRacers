@@ -49,6 +49,13 @@ namespace PartyRacers.AI
         private Color paintColor;
         private bool hasColor;
 
+        /// <summary>
+        /// O visual que este bot recebeu (carro, cor e peças). A camada de rede publica isto nas
+        /// NetworkVariables do kart para que os clientes vejam exatamente o mesmo bot que o host —
+        /// as peças são sorteadas com um System.Random local e não seriam reproduzíveis por lá.
+        /// </summary>
+        public KartVisualSelection AppliedSelection { get; private set; }
+
         /// <summary>Configuração vinda do RaceBotManager (Inspector centralizado).</summary>
         public void Configure(bool randomizeModel, bool avoidPlayerModel, bool randomizeParts, List<int> allowedModels)
         {
@@ -89,8 +96,14 @@ namespace PartyRacers.AI
 
             customizer.ApplySelection(carIndex, colorIndex, null);
 
-            if (randomizeElements)
-                RandomizeElements(rng);
+            Dictionary<ithappy.CarElementName, int> escolhidas = randomizeElements
+                ? RandomizeElements(rng)
+                : new Dictionary<ithappy.CarElementName, int>();
+
+            AppliedSelection = new KartVisualSelection(
+                carIndex,
+                colorIndex,
+                KartGarageSelection.EncodeElements(escolhidas));
         }
 
         private int ResolveCarIndex(System.Random rng, int deckIndex, int shuffleSeed)
@@ -155,11 +168,13 @@ namespace PartyRacers.AI
 
         // Troca as peças direto no rig instanciado (CarCustomizer.SwitchCarElement), sem passar
         // pelo KartVisualCustomizer.SetElement — que salvaria em PlayerPrefs do player.
-        private void RandomizeElements(System.Random rng)
+        private Dictionary<ithappy.CarElementName, int> RandomizeElements(System.Random rng)
         {
+            var escolhidas = new Dictionary<ithappy.CarElementName, int>();
+
             ithappy.CarCustomizer rig = customizer.CurrentRig;
             if (rig == null || rig.Elements == null)
-                return;
+                return escolhidas;
 
             foreach (var element in rig.Elements)
             {
@@ -167,11 +182,16 @@ namespace PartyRacers.AI
                     continue;
 
                 int variants = rig.GetVariantCount(element.ElementName);
-                if (variants > 1)
-                    rig.SwitchCarElement(element.ElementName, rng.Next(variants));
+                if (variants <= 1)
+                    continue;
+
+                int escolhido = rng.Next(variants);
+                rig.SwitchCarElement(element.ElementName, escolhido);
+                escolhidas[element.ElementName] = escolhido;
             }
 
             RepaintExtras();
+            return escolhidas;
         }
 
         private Color ResolvePaletteColor(int colorIndex)

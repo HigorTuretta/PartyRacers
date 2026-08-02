@@ -31,6 +31,20 @@ namespace PartyRacers.Networking
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
 
+        // Bots são karts do SERVIDOR: sem esta flag replicada o cliente não teria como distinguir
+        // um bot de um jogador remoto, e trataria o kart como se alguém o estivesse dirigindo.
+        private readonly NetworkVariable<bool> isBotKart = new NetworkVariable<bool>(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+
+        // Item em posse. Quem sorteia é sempre o servidor (ver ItemBox); os clientes só leem.
+        // Antes cada máquina sorteava o seu, e os jogadores viam poderes diferentes no mesmo kart.
+        private readonly NetworkVariable<KartPowerType> currentPower = new NetworkVariable<KartPowerType>(
+            KartPowerType.None,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+
         private readonly NetworkVariable<DriftEffectState> driftEffectState = new NetworkVariable<DriftEffectState>(
             default,
             NetworkVariableReadPermission.Everyone,
@@ -38,19 +52,25 @@ namespace PartyRacers.Networking
 
         private const float DriftEffectStateSyncInterval = 0.05f;
         private const float DriftEffectStateEpsilon = 0.015f;
+        private const float PowerResyncInterval = 0.5f;
 
         private KartController kart;
         private KartNetworkIdentity identity;
         private KartLocalRig localRig;
         private KartVisualCustomizer visualCustomizer;
+        private KartPowerInventory powerInventory;
+        private KartPowerUser powerUser;
+        private KartRespawn kartRespawn;
         private RaceManager raceManager;
         private Rigidbody body;
         private bool originalKinematic;
         private RigidbodyInterpolation originalInterpolation;
         private CollisionDetectionMode originalCollisionDetection;
         private bool visualEventsSubscribed;
+        private bool inventoryEventSubscribed;
         private bool hasSubmittedDriftEffectState;
         private float nextDriftEffectStateSyncTime;
+        private float nextPowerResyncTime;
         private DriftEffectState lastSubmittedDriftEffectState;
 
         public KartInputState Read() => KartInputState.Neutral;
@@ -64,12 +84,24 @@ namespace PartyRacers.Networking
         public float EffectLaunchSlip01 => UseSyncedEffectState ? driftEffectState.Value.LaunchSlip01 : kart != null ? kart.LaunchSlip01 : 0f;
         public float EffectBrakeSlip01 => UseSyncedEffectState ? driftEffectState.Value.BrakeSlip01 : kart != null ? kart.BrakeSlip01 : 0f;
 
+        /// <summary>True quando este kart é um bot conduzido pelo servidor.</summary>
+        public bool IsBot => (IsSpawned && isBotKart.Value) || (identity != null && identity.IsBot);
+
+        /// <summary>
+        /// Esta máquina comanda este kart: o dono, no caso de um jogador; o servidor, no caso de um
+        /// bot. Só quem comanda pode gastar poderes e dirigir com física própria.
+        /// </summary>
+        public bool CanCommandThisKart => IsBot ? IsServer : IsOwner;
+
         private void Awake()
         {
             kart = GetComponent<KartController>();
             identity = GetComponent<KartNetworkIdentity>();
             localRig = GetComponent<KartLocalRig>();
             visualCustomizer = GetComponent<KartVisualCustomizer>();
+            powerInventory = GetComponent<KartPowerInventory>();
+            powerUser = GetComponent<KartPowerUser>();
+            kartRespawn = GetComponent<KartRespawn>();
             body = kart != null ? kart.Rigidbody : GetComponent<Rigidbody>();
 
             if (visualCustomizer != null)
@@ -86,16 +118,18 @@ namespace PartyRacers.Networking
         public override void OnNetworkSpawn()
         {
             SubscribeNetworkVisualEvents();
+            SubscribeInventoryEvents();
             ApplyNetworkRole();
 
-            bool isBot = IsBotKart();
-            if (IsOwner && !isBot)
+            if (IsOwner && !IsBot)
             {
                 SubmitLocalPlayerData();
                 SubmitDriftEffectState(force: true);
             }
-            else if (!isBot)
+            else if (!(IsServer && IsBot))
             {
+                // O bot no servidor já foi vestido pelo BotKartCustomizer. Todo o resto (jogadores
+                // remotos e, nos clientes, também os bots) recebe o visual pelas NetworkVariables.
                 ApplyNetworkVisual();
             }
 
@@ -106,11 +140,13 @@ namespace PartyRacers.Networking
         private void Update()
         {
             SubmitDriftEffectState(force: false);
+            ResyncPowerFromNetwork();
         }
 
         public override void OnNetworkDespawn()
         {
             UnsubscribeNetworkVisualEvents();
+            UnsubscribeInventoryEvents();
             raceManager?.UnregisterKart(kart);
             raceManager = null;
             RestoreLocalControl();
@@ -122,6 +158,163 @@ namespace PartyRacers.Networking
                 RestoreLocalControl();
         }
 
+        // ------------------------------------------------------------------ Configuração de bot
+
+        /// <summary>
+        /// Publica um kart de bot para os clientes: papel, nome e visual. Chamado pelo
+        /// RaceBotManager no servidor logo depois do Spawn. Sem isto os clientes recebiam o kart
+        /// mas o tratavam como um jogador remoto sem nome e com o carro padrão.
+        /// </summary>
+        public void ConfigureAsBot(string botName, KartVisualSelection selection)
+        {
+            if (!IsServer || !IsSpawned)
+                return;
+
+            isBotKart.Value = true;
+            displayName.Value = ToFixed64(botName);
+            carIndex.Value = Mathf.Max(0, selection.CarIndex);
+            colorIndex.Value = Mathf.Max(0, selection.ColorIndex);
+            elementData.Value = ToFixed512(selection.ElementData);
+
+            identity?.SetKind(PlayerKind.Bot);
+            identity?.SetDisplayName(botName);
+            ApplyNetworkRole();
+        }
+
+        // ------------------------------------------------------------------ Poderes
+
+        /// <summary>
+        /// Anuncia que este kart acabou de gastar um poder, para que TODAS as máquinas reproduzam o
+        /// mesmo efeito com o mesmo alvo. Quem chama já executou o efeito localmente.
+        /// </summary>
+        public void ReportPowerUsed(KartPowerType power, GameObject target)
+        {
+            if (!IsSpawned || power == KartPowerType.None)
+                return;
+
+            ulong targetId = ResolveNetworkObjectId(target);
+
+            if (IsServer)
+            {
+                currentPower.Value = KartPowerType.None;
+                PlayPowerClientRpc(power, targetId, NetworkManager.ServerClientId);
+                return;
+            }
+
+            UsePowerServerRpc(power, targetId);
+        }
+
+        [ServerRpc]
+        private void UsePowerServerRpc(KartPowerType power, ulong targetId, ServerRpcParams rpcParams = default)
+        {
+            // O servidor é a fonte de verdade do inventário: se ele não tinha o poder, o pedido cai.
+            if (currentPower.Value != power)
+                return;
+
+            currentPower.Value = KartPowerType.None;
+            powerInventory?.ApplyNetworkPower(KartPowerType.None);
+
+            ulong initiator = rpcParams.Receive.SenderClientId;
+            PlayPowerClientRpc(power, targetId, initiator);
+
+            // O servidor também executa o efeito: é a máquina que hospeda a simulação e, no modo
+            // host, é onde o dono da sala precisa ver o foguete do adversário saindo.
+            GameObject target = ResolveTargetObject(targetId);
+            powerUser?.PlayNetworkPower(power, target);
+        }
+
+        [ClientRpc]
+        private void PlayPowerClientRpc(KartPowerType power, ulong targetId, ulong initiatorClientId)
+        {
+            if (IsServer)
+                return;
+
+            // Quem disparou já reproduziu o efeito na hora do clique — repetir causaria dois
+            // foguetes saindo do mesmo carro.
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.LocalClientId == initiatorClientId)
+                return;
+
+            GameObject target = ResolveTargetObject(targetId);
+            powerUser?.PlayNetworkPower(power, target);
+        }
+
+        private void SubscribeInventoryEvents()
+        {
+            if (inventoryEventSubscribed || powerInventory == null)
+                return;
+
+            if (IsServer)
+                powerInventory.PowerChangedLocally += OnPowerChangedLocally;
+
+            currentPower.OnValueChanged += OnNetworkPowerChanged;
+            inventoryEventSubscribed = true;
+        }
+
+        private void UnsubscribeInventoryEvents()
+        {
+            if (!inventoryEventSubscribed)
+                return;
+
+            if (powerInventory != null)
+                powerInventory.PowerChangedLocally -= OnPowerChangedLocally;
+
+            currentPower.OnValueChanged -= OnNetworkPowerChanged;
+            inventoryEventSubscribed = false;
+        }
+
+        private void OnPowerChangedLocally(KartPowerType power)
+        {
+            if (IsServer && IsSpawned)
+                currentPower.Value = power;
+        }
+
+        private void OnNetworkPowerChanged(KartPowerType previousValue, KartPowerType newValue)
+        {
+            if (IsServer)
+                return;
+
+            powerInventory?.ApplyNetworkPower(newValue);
+        }
+
+        /// <summary>
+        /// Rede de segurança do inventário: o dono consome o item na hora do clique para o comando
+        /// não parecer travado, mas se o servidor recusar o uso a NetworkVariable não muda e o
+        /// evento de alteração nunca chega. Esta varredura devolve o item nesse caso.
+        /// </summary>
+        private void ResyncPowerFromNetwork()
+        {
+            if (!IsSpawned || IsServer || powerInventory == null)
+                return;
+
+            if (Time.unscaledTime < nextPowerResyncTime)
+                return;
+
+            nextPowerResyncTime = Time.unscaledTime + PowerResyncInterval;
+
+            if (powerInventory.CurrentPower != currentPower.Value)
+                powerInventory.ApplyNetworkPower(currentPower.Value);
+        }
+
+        private static ulong ResolveNetworkObjectId(GameObject target)
+        {
+            if (target == null)
+                return 0UL;
+
+            NetworkObject netObj = target.GetComponentInParent<NetworkObject>();
+            return netObj != null && netObj.IsSpawned ? netObj.NetworkObjectId : 0UL;
+        }
+
+        private static GameObject ResolveTargetObject(ulong networkObjectId)
+        {
+            if (networkObjectId == 0UL)
+                return null;
+
+            NetworkObject netObj = RaceAuthority.FindSpawned(networkObjectId);
+            return netObj != null ? netObj.gameObject : null;
+        }
+
+        // ------------------------------------------------------------------ Visual e papéis
+
         private void SubscribeNetworkVisualEvents()
         {
             if (visualEventsSubscribed)
@@ -131,6 +324,7 @@ namespace PartyRacers.Networking
             colorIndex.OnValueChanged += OnColorIndexChanged;
             elementData.OnValueChanged += OnElementDataChanged;
             displayName.OnValueChanged += OnDisplayNameChanged;
+            isBotKart.OnValueChanged += OnIsBotChanged;
             visualEventsSubscribed = true;
         }
 
@@ -143,38 +337,59 @@ namespace PartyRacers.Networking
             colorIndex.OnValueChanged -= OnColorIndexChanged;
             elementData.OnValueChanged -= OnElementDataChanged;
             displayName.OnValueChanged -= OnDisplayNameChanged;
+            isBotKart.OnValueChanged -= OnIsBotChanged;
             visualEventsSubscribed = false;
         }
 
-        private void OnCarIndexChanged(int previousValue, int newValue) => ApplyNetworkVisual();
-        private void OnColorIndexChanged(int previousValue, int newValue) => ApplyNetworkVisual();
-        private void OnElementDataChanged(FixedString512Bytes previousValue, FixedString512Bytes newValue) => ApplyNetworkVisual();
-        private void OnDisplayNameChanged(FixedString64Bytes previousValue, FixedString64Bytes newValue) => ApplyNetworkVisual();
+        private void OnCarIndexChanged(int previousValue, int newValue) => ApplyNetworkVisualIfRemote();
+        private void OnColorIndexChanged(int previousValue, int newValue) => ApplyNetworkVisualIfRemote();
+        private void OnElementDataChanged(FixedString512Bytes previousValue, FixedString512Bytes newValue) => ApplyNetworkVisualIfRemote();
+        private void OnDisplayNameChanged(FixedString64Bytes previousValue, FixedString64Bytes newValue) => ApplyNetworkVisualIfRemote();
+
+        private void OnIsBotChanged(bool previousValue, bool newValue)
+        {
+            ApplyNetworkRole();
+            ApplyNetworkVisualIfRemote();
+        }
+
+        // O dono monta o próprio carro a partir da garagem; reaplicar o que veio da rede em cima
+        // disso só destruiria e reconstruiria o mesmo rig por nada.
+        private void ApplyNetworkVisualIfRemote()
+        {
+            if (CanCommandThisKart && !IsBot)
+                return;
+
+            if (IsServer && IsBot)
+                return;
+
+            ApplyNetworkVisual();
+        }
 
         private void ApplyNetworkRole()
         {
-            bool isBot = IsBotKart();
+            bool bot = IsBot;
+            bool authoritative = bot ? IsServer : IsOwner;
+
             if (localRig != null)
-                localRig.IsLocalPlayer = IsOwner && !isBot;
+                localRig.IsLocalPlayer = IsOwner && !bot;
+
+            SetNonAuthoritativeComponentsEnabled(authoritative);
 
             if (kart == null)
                 return;
 
-            if (isBot)
+            if (authoritative)
             {
+                // Bots são dirigidos pelo BotDriverController — não podemos limpar a fonte de input.
+                identity?.SetKind(bot ? PlayerKind.Bot : PlayerKind.Local);
+                if (!bot)
+                    kart.SetInputSource(null);
+
                 RestoreBody();
                 return;
             }
 
-            if (IsOwner)
-            {
-                identity?.SetKind(PlayerKind.Local);
-                kart.SetInputSource(null);
-                RestoreBody();
-                return;
-            }
-
-            identity?.SetKind(PlayerKind.Remote);
+            identity?.SetKind(bot ? PlayerKind.Bot : PlayerKind.Remote);
             kart.SetInputSource(this);
 
             if (body == null)
@@ -184,6 +399,17 @@ namespace PartyRacers.Networking
             body.angularVelocity = Vector3.zero;
             body.isKinematic = true;
             body.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
+        /// <summary>
+        /// Karts que esta máquina não comanda recebem a posição pelo NetworkTransform. Deixar o
+        /// respawn automático ligado neles fazia a cópia local teleportar o carro por conta própria
+        /// e brigar com a posição que chegava da rede.
+        /// </summary>
+        private void SetNonAuthoritativeComponentsEnabled(bool authoritative)
+        {
+            if (kartRespawn != null)
+                kartRespawn.enabled = authoritative;
         }
 
         private void SubmitLocalPlayerData()
@@ -239,10 +465,14 @@ namespace PartyRacers.Networking
             if (string.IsNullOrWhiteSpace(resolvedName))
                 resolvedName = $"Player {OwnerClientId}";
 
+            PlayerKind kind = IsBot
+                ? PlayerKind.Bot
+                : IsOwner ? PlayerKind.Local : PlayerKind.Remote;
+
             ApplyVisual(
                 new KartVisualSelection(carIndex.Value, colorIndex.Value, elementData.Value.ToString()),
                 resolvedName,
-                IsOwner ? PlayerKind.Local : PlayerKind.Remote);
+                kind);
         }
 
         private void ApplyVisual(KartVisualSelection selection, string resolvedDisplayName, PlayerKind kind)
@@ -320,19 +550,15 @@ namespace PartyRacers.Networking
 
         private void RestoreLocalControl()
         {
-            bool isBot = IsBotKart();
+            bool bot = identity != null && identity.IsBot;
             if (localRig != null)
-                localRig.IsLocalPlayer = !isBot;
+                localRig.IsLocalPlayer = !bot;
 
-            if (kart != null && !isBot)
+            if (kart != null && !bot)
                 kart.SetInputSource(null);
 
+            SetNonAuthoritativeComponentsEnabled(true);
             RestoreBody();
-        }
-
-        private bool IsBotKart()
-        {
-            return identity != null && identity.IsBot;
         }
 
         private void RestoreBody()

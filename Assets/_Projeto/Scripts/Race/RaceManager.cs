@@ -44,6 +44,10 @@ public class RaceManager : MonoBehaviour
     [SerializeField] private bool waitForOnlinePlayersBeforeCountdown = true;
     [SerializeField] private float onlinePlayerWaitPollInterval = 0.1f;
     [SerializeField] private string onlineWaitingText = "AGUARDANDO";
+    [Tooltip("Tempo máximo esperando os bots entrarem no grid antes de largar assim mesmo.")]
+    [SerializeField, Min(0.5f)] private float botFillTimeout = 5f;
+    [Tooltip("Prefab do árbitro de rede. Se vazio, é lido do RaceNetworkConfig em Resources.")]
+    [SerializeField] private GameObject raceDirectorPrefab;
 #endif
 
     [Header("Estado")]
@@ -53,6 +57,13 @@ public class RaceManager : MonoBehaviour
 
     public bool RaceStarted => raceStarted;
     public IReadOnlyList<KartController> Karts => karts;
+
+    /// <summary>
+    /// True quando todos os jogadores esperados já estão na pista. É o sinal para o RaceBotManager
+    /// completar as vagas: antes disso a contagem de players reais ainda está incompleta e os bots
+    /// eram criados a mais (o grid online ficava com mais de 16 competidores).
+    /// </summary>
+    public bool GridReady { get; private set; }
 
     // ---------------------------------------------------------------------
     // Eventos de contagem regressiva (desacoplados do display).
@@ -255,8 +266,14 @@ public class RaceManager : MonoBehaviour
     private int ResolveSpawnIndex(KartController kart, int fallbackIndex)
     {
 #if PARTYRACERS_ONLINE
+        // Só jogadores ganham a vaga pelo id do dono (assim cada cliente se coloca na mesma casa
+        // do grid em todas as máquinas). Bots são TODOS do servidor: usar o id do dono neles
+        // empilharia os quinze na primeira vaga.
+        KartNetworkSync sync = kart.GetComponent<KartNetworkSync>();
+        bool isBot = sync != null && sync.IsBot;
+
         NetworkObject networkObject = kart.GetComponent<NetworkObject>();
-        if (networkObject != null && networkObject.IsSpawned)
+        if (!isBot && networkObject != null && networkObject.IsSpawned)
             return Mathf.Clamp((int)networkObject.OwnerClientId, 0, RaceConstants.MaxPlayers - 1);
 #endif
 
@@ -344,9 +361,21 @@ public class RaceManager : MonoBehaviour
 
 #if PARTYRACERS_ONLINE
         yield return WaitForOnlinePlayersBeforeCountdown();
+        EnsureNetworkDirector();
+#endif
+
+        // A partir daqui a grade de jogadores está fechada: o RaceBotManager pode contar quantas
+        // vagas sobraram e preenchê-las sem estourar o limite de competidores.
+        GridReady = true;
+
+#if PARTYRACERS_ONLINE
+        yield return WaitForBotsToFill();
+#endif
+
+        // Bots e jogadores que entraram durante a espera já se registraram sozinhos (RegisterKart);
+        // aqui só garantimos que ninguém ficou solto antes do "VAI".
         SetAllControl(true);
         SetAllStartGridLocked(true);
-#endif
 
         // Etapas da contagem — disparadas como evento; o CountdownUI (na cena) renderiza para todos.
         yield return RunCountdownStep(CountdownPhase.Three);
@@ -372,6 +401,57 @@ public class RaceManager : MonoBehaviour
     }
 
 #if PARTYRACERS_ONLINE
+    /// <summary>
+    /// Cria o árbitro da corrida (ItemBox e fim de corrida autoritativos). Só o servidor cria; o
+    /// Netcode replica a instância para todos os clientes.
+    /// </summary>
+    private void EnsureNetworkDirector()
+    {
+        if (!RaceAuthority.IsServer || RaceNetworkDirector.Instance != null)
+            return;
+
+        GameObject prefab = ResolveDirectorPrefab();
+        if (prefab == null)
+        {
+            Debug.LogWarning("[RaceManager] Prefab do RaceNetworkDirector nao encontrado — a corrida " +
+                             "online vai rodar sem arbitro (itens e chegada podem divergir).");
+            return;
+        }
+
+        GameObject instance = Instantiate(prefab);
+        NetworkObject netObj = instance.GetComponent<NetworkObject>();
+        if (netObj == null)
+        {
+            Debug.LogWarning("[RaceManager] Prefab do RaceNetworkDirector sem NetworkObject.");
+            Destroy(instance);
+            return;
+        }
+
+        netObj.Spawn(destroyWithScene: true);
+    }
+
+    private GameObject ResolveDirectorPrefab()
+    {
+        if (raceDirectorPrefab != null)
+            return raceDirectorPrefab;
+
+        RaceNetworkConfig config = Resources.Load<RaceNetworkConfig>("RaceNetworkConfig");
+        raceDirectorPrefab = config != null ? config.RaceDirectorPrefab : null;
+        return raceDirectorPrefab;
+    }
+
+    /// <summary>Segura a contagem até os bots entrarem, para todo mundo largar com o grid cheio.</summary>
+    private IEnumerator WaitForBotsToFill()
+    {
+        PartyRacers.AI.RaceBotManager botManager = FindAnyObjectByType<PartyRacers.AI.RaceBotManager>(FindObjectsInactive.Exclude);
+        if (botManager == null || !botManager.WillFillBots)
+            yield break;
+
+        float limite = Time.time + Mathf.Max(0.5f, botFillTimeout);
+        while (!botManager.Filled && Time.time < limite)
+            yield return null;
+    }
+
     private IEnumerator WaitForOnlinePlayersBeforeCountdown()
     {
         if (!ShouldWaitForOnlinePlayers())
