@@ -76,14 +76,22 @@ namespace PartyRacers.UI.Race
                     Enfileirar("Acertou " + NomeDe(e.Target), iconeAcerto, corAcerto);
                     break;
                 case RaceHudEventKind.GotHit:
-                    Enfileirar(e.PowerType == KartPowerType.Shield ? "Escudo bloqueou" : "Você foi atingido",
+                    Enfileirar(e.PowerType == KartPowerType.Shield
+                                   ? "Escudo bloqueou"
+                                   : e.PowerType == KartPowerType.ElectricTrap
+                                       ? "Choque elétrico!"
+                                       : "Você foi atingido",
                                iconeEscudo, corDefesa);
                     break;
                 case RaceHudEventKind.PowerCollected:
                     Enfileirar("Poder coletado", iconePoder, corNeutra);
                     break;
                 case RaceHudEventKind.PowerUsed:
-                    Enfileirar(e.PowerType == KartPowerType.SwapPosition ? "Trocou de lugar" : "Poder usado",
+                    Enfileirar(e.PowerType == KartPowerType.SwapPosition
+                                   ? "Trocou de lugar"
+                                   : e.PowerType == KartPowerType.ElectricTrap
+                                       ? "Armadilha lançada"
+                                       : "Poder usado",
                                iconeTroca, corNeutra);
                     break;
                 case RaceHudEventKind.Nitro:

@@ -5,7 +5,8 @@ public enum KartPowerType
     None,
     SwapPosition,
     Rocket,
-    Shield
+    Shield,
+    ElectricTrap
 }
 
 public class KartPowerInventory : MonoBehaviour
@@ -51,6 +52,7 @@ public class KartPowerInventory : MonoBehaviour
             KartPowerType.SwapPosition => "Swap Position",
             KartPowerType.Rocket => "Rocket",
             KartPowerType.Shield => "Shield",
+            KartPowerType.ElectricTrap => "Armadilha Elétrica",
             _ => "Desconhecido"
         };
     }

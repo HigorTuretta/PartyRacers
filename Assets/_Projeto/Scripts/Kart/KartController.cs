@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using PartyRacers.Networking;
@@ -6,6 +7,8 @@ using PartyRacers.Networking;
 public class KartController : MonoBehaviour
 {
     private const float KmhToMps = 1f / 3.6f;
+    private Dictionary<UnityEngine.Object, float> speedLimitModifiers;
+    private float speedLimitMultiplier = 1f;
 
     [Header("Referências")]
     [SerializeField] private Rigidbody rb;
@@ -275,6 +278,9 @@ public class KartController : MonoBehaviour
 
     /// <summary>Velocidade máxima de frente (km/h) configurada no kart. Bots usam isto para escalar o ritmo.</summary>
     public float MaxForwardSpeedKmh => maxForwardSpeedKmh;
+    /// <summary>Limite atual após boost e modificadores temporários, em km/h.</summary>
+    public float CurrentMaxForwardSpeedKmh => GetCurrentMaxForwardSpeedMps() * 3.6f;
+    public float SpeedLimitMultiplier => speedLimitMultiplier;
 
     public float ForwardSpeed => Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedKmh => Mathf.Abs(ForwardSpeed) * 3.6f;
@@ -540,6 +546,42 @@ public class KartController : MonoBehaviour
         boostAccelerationMultiplier = Mathf.Max(boostAccelerationMultiplier, accelerationMultiplier);
 
         rb.AddForce(transform.forward * instantPush, ForceMode.VelocityChange);
+    }
+
+    /// <summary>
+    /// Registra um limite temporário por fonte. Fontes diferentes usam o limite mais forte;
+    /// reaplicar a mesma fonte substitui seu valor, impedindo acúmulo exponencial de debuffs.
+    /// </summary>
+    public void SetSpeedLimitMultiplier(UnityEngine.Object source, float multiplier)
+    {
+        if (source == null)
+            return;
+
+        if (speedLimitModifiers == null)
+            speedLimitModifiers = new Dictionary<UnityEngine.Object, float>();
+
+        speedLimitModifiers[source] = Mathf.Clamp(multiplier, 0.05f, 1f);
+        RecalculateSpeedLimitMultiplier();
+    }
+
+    public void RemoveSpeedLimitMultiplier(UnityEngine.Object source)
+    {
+        if (source == null || speedLimitModifiers == null || !speedLimitModifiers.Remove(source))
+            return;
+
+        RecalculateSpeedLimitMultiplier();
+    }
+
+    private void RecalculateSpeedLimitMultiplier()
+    {
+        float strongestLimit = 1f;
+        if (speedLimitModifiers != null)
+        {
+            foreach (float modifier in speedLimitModifiers.Values)
+                strongestLimit = Mathf.Min(strongestLimit, modifier);
+        }
+
+        speedLimitMultiplier = strongestLimit;
     }
 
     // ------------------------------------------------------------------ Knockback arcade
@@ -1653,8 +1695,14 @@ public class KartController : MonoBehaviour
         collisionSparks.TryEmit(contactPoint, contactNormal.normalized, impact01);
     }
 
+    private void OnDisable()
+    {
+        speedLimitModifiers?.Clear();
+        speedLimitMultiplier = 1f;
+    }
+
     private float GetCurrentMaxForwardSpeedMps()
     {
-        return maxForwardSpeedKmh * KmhToMps * boostSpeedMultiplier;
+        return maxForwardSpeedKmh * KmhToMps * boostSpeedMultiplier * speedLimitMultiplier;
     }
 }

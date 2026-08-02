@@ -285,6 +285,9 @@ public class KartRespawn : MonoBehaviour
     {
         Vector3 targetPosition = FindSafeRespawnPosition(basePosition);
 
+        // Debuffs de pista nunca atravessam um respawn. A remoção restaura o limite de
+        // velocidade imediatamente e também limpa a aura anexada ao kart.
+        KartElectricShockEffect.ClearFrom(gameObject);
         kartCollision?.ResetIgnoredCollisionState();
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;

@@ -25,6 +25,13 @@ namespace PartyRacers.AI
         [Header("Swap")]
         [SerializeField] private float swapMaxHoldSeconds = 3f;
 
+        [Header("Armadilha Elétrica")]
+        [Tooltip("Distância máxima atrás do bot em que um adversário torna a soltura útil.")]
+        [SerializeField] private float trapRearDetectionDistance = 28f;
+        [SerializeField] private float trapMaxLateralOffset = 10f;
+        [SerializeField] private float trapMinRearDistance = 2.5f;
+        [SerializeField] private float trapMaxHoldSeconds = 4f;
+
         private KartController kart;
         private KartPowerInventory inventory;
         private KartPowerUser powerUser;
@@ -158,6 +165,10 @@ namespace PartyRacers.AI
                     return HasOpponentAheadByProgress()
                         || Time.time - acquiredPowerTime >= swapMaxHoldSeconds;
 
+                case KartPowerType.ElectricTrap:
+                    return HasUsefulTrapDrop()
+                        || Time.time - acquiredPowerTime >= trapMaxHoldSeconds;
+
                 default:
                     return false;
             }
@@ -242,6 +253,31 @@ namespace PartyRacers.AI
                 {
                     return true;
                 }
+            }
+
+            return false;
+        }
+
+        private bool HasUsefulTrapDrop()
+        {
+            IReadOnlyList<KartController> karts = GetRaceKarts();
+            if (karts == null)
+                return false;
+
+            Vector3 origin = transform.position;
+            for (int i = 0; i < karts.Count; i++)
+            {
+                KartController other = karts[i];
+                if (!IsValidOpponent(other))
+                    continue;
+
+                Vector3 local = transform.InverseTransformPoint(other.transform.position);
+                float rearDistance = -local.z;
+                if (rearDistance < trapMinRearDistance || rearDistance > trapRearDetectionDistance)
+                    continue;
+
+                if (Mathf.Abs(local.x) <= trapMaxLateralOffset)
+                    return true;
             }
 
             return false;

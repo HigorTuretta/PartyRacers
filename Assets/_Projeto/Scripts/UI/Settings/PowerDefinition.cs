@@ -4,9 +4,8 @@ namespace PartyRacers.UI.Settings
 {
     /// <summary>
     /// Dados de apresentação de um poder, para o designer editar sem programador.
-    /// A arte traz 5 poderes (Mine, Oil, Rocket, Shield, Ufo) mas o gameplay só tem
-    /// None/SwapPosition/Rocket/Shield — Ufo é usado como SwapPosition; Mine e Oil
-    /// ficam disponíveis para quando virarem gameplay.
+    /// Ufo é usado como SwapPosition e Mine representa a Armadilha Elétrica. Oil
+    /// permanece disponível para uma futura implementação de gameplay.
     /// </summary>
     [CreateAssetMenu(menuName = "Party Racers/Power Definition", fileName = "Power_")]
     public class PowerDefinition : ScriptableObject

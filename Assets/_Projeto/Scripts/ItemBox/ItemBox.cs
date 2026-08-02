@@ -3,8 +3,24 @@ using UnityEngine;
 
 public class ItemBox : MonoBehaviour
 {
+    private static readonly KartPowerType[] DefaultPowerPool =
+    {
+        KartPowerType.SwapPosition,
+        KartPowerType.Rocket,
+        KartPowerType.Shield,
+        KartPowerType.ElectricTrap
+    };
+
     [Header("Configuração")]
     [SerializeField] private float respawnTime = 4f;
+    [Tooltip("Poderes que esta caixa pode sortear. Vazio usa o conjunto padrão do jogo.")]
+    [SerializeField] private KartPowerType[] availablePowers =
+    {
+        KartPowerType.SwapPosition,
+        KartPowerType.Rocket,
+        KartPowerType.Shield,
+        KartPowerType.ElectricTrap
+    };
 
     [Header("Estado")]
     [SerializeField] private bool available = true;
@@ -87,15 +103,11 @@ public class ItemBox : MonoBehaviour
 
     private KartPowerType GetRandomPower()
     {
-        int random = Random.Range(0, 3);
+        KartPowerType[] pool = availablePowers != null && availablePowers.Length > 0
+            ? availablePowers
+            : DefaultPowerPool;
 
-        return random switch
-        {
-            0 => KartPowerType.SwapPosition,
-            1 => KartPowerType.Rocket,
-            2 => KartPowerType.Shield,
-            _ => KartPowerType.Shield
-        };
+        return pool[Random.Range(0, pool.Length)];
     }
 
     private IEnumerator RespawnRoutine()

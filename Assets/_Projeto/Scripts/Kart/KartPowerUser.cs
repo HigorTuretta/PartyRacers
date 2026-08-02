@@ -45,6 +45,17 @@ public class KartPowerUser : MonoBehaviour
     [Tooltip("Quão à frente do socket o disco nasce ao disparar.")]
     [SerializeField] private float ufoLaunchForwardOffset = 1.2f;
 
+    [Header("Armadilha Elétrica")]
+    [Tooltip("Prefab final da armadilha, usado tanto equipado quanto depois de solto na pista.")]
+    [SerializeField] private GameObject electricTrapPrefab;
+    [SerializeField] private Transform electricTrapEquippedSocket;
+    [SerializeField] private Vector3 electricTrapSocketLocalPosition = new Vector3(0f, 0.5f, -1.25f);
+    [Tooltip("Distância entre a traseira visual do kart e o centro da armadilha equipada.")]
+    [SerializeField, Min(0.1f)] private float electricTrapRearClearance = 0.65f;
+    [SerializeField, Min(0f)] private float electricTrapVerticalClearance = 0.08f;
+    [Tooltip("Recuo extra ao soltar, evitando contato com o kart mesmo em alta velocidade.")]
+    [SerializeField, Min(0f)] private float electricTrapLaunchRearOffset = 0.25f;
+
     [Header("Ancoragem adaptativa (Rocket/UFO)")]
     [Tooltip("Ajusta a ALTURA dos sockets do Rocket/UFO pelos bounds reais do carro — em carros " +
              "altos os assets não clipam mais dentro da carroceria. Carros baixos mantêm a posição configurada.")]
@@ -53,6 +64,10 @@ public class KartPowerUser : MonoBehaviour
     [SerializeField] private string rocketAnchorName = "RocketAnchor";
     [Tooltip("Se o modelo do carro tiver um filho com este nome, ele vira a âncora do disco voador.")]
     [SerializeField] private string ufoAnchorName = "UfoAnchor";
+    [Tooltip("Âncora específica opcional nos modelos de kart para a armadilha.")]
+    [SerializeField] private string electricTrapAnchorName = "ElectricTrapAnchor";
+    [Tooltip("Âncora traseira genérica opcional nos modelos de kart.")]
+    [SerializeField] private string rearPowerAnchorName = "RearPowerAnchor";
     [Tooltip("Âncora genérica usada quando não existe âncora específica do poder.")]
     [SerializeField] private string genericAnchorName = "PowerAnchor";
     [Tooltip("Folga (m) entre o topo da carroceria e o foguete (já cobre o bob da animação).")]
@@ -66,6 +81,7 @@ public class KartPowerUser : MonoBehaviour
     private float shieldEndTime;
     private GameObject equippedRocketInstance;
     private GameObject equippedUfoInstance;
+    private GameObject equippedElectricTrapInstance;
 
     public bool IsShieldActive => Time.time < shieldEndTime;
 
@@ -98,6 +114,7 @@ public class KartPowerUser : MonoBehaviour
         UpdateShield();
         UpdateEquippedRocket();
         UpdateEquippedUfo();
+        UpdateEquippedElectricTrap();
     }
 
     private void ReadInput()
@@ -147,6 +164,10 @@ public class KartPowerUser : MonoBehaviour
 
             case KartPowerType.SwapPosition:
                 FireUfo(target);
+                return true;
+
+            case KartPowerType.ElectricTrap:
+                DropElectricTrap();
                 return true;
 
             default:
@@ -360,6 +381,105 @@ public class KartPowerUser : MonoBehaviour
         FitUfoSocket(ufoVisual);
     }
 
+    // ------------------------------------------------------------------ Armadilha Elétrica
+    private void EnsureElectricTrapSocket()
+    {
+        if (electricTrapEquippedSocket != null)
+            return;
+
+        Transform existing = transform.Find("ElectricTrapEquippedSocket");
+        electricTrapEquippedSocket = existing != null
+            ? existing
+            : new GameObject("ElectricTrapEquippedSocket").transform;
+
+        electricTrapEquippedSocket.SetParent(transform, false);
+        electricTrapEquippedSocket.localPosition = electricTrapSocketLocalPosition;
+        electricTrapEquippedSocket.localRotation = Quaternion.identity;
+    }
+
+    private void UpdateEquippedElectricTrap()
+    {
+        bool shouldShow = inventory != null && inventory.CurrentPower == KartPowerType.ElectricTrap;
+
+        if (!shouldShow)
+        {
+            if (equippedElectricTrapInstance != null)
+                equippedElectricTrapInstance.SetActive(false);
+
+            return;
+        }
+
+        if (equippedElectricTrapInstance == null)
+            CreateEquippedElectricTrap();
+
+        if (equippedElectricTrapInstance != null && !equippedElectricTrapInstance.activeSelf)
+        {
+            equippedElectricTrapInstance.SetActive(true);
+            ElectricTrapPower trap = equippedElectricTrapInstance.GetComponent<ElectricTrapPower>();
+            if (trap != null)
+                trap.SetEquipped(gameObject, kart);
+        }
+    }
+
+    private void CreateEquippedElectricTrap()
+    {
+        if (electricTrapPrefab == null)
+            return;
+
+        EnsureElectricTrapSocket();
+        FitElectricTrapSocket();
+
+        equippedElectricTrapInstance = Instantiate(electricTrapPrefab, electricTrapEquippedSocket);
+        equippedElectricTrapInstance.transform.localPosition = Vector3.zero;
+        equippedElectricTrapInstance.transform.localRotation = Quaternion.identity;
+
+        ElectricTrapPower trap = equippedElectricTrapInstance.GetComponent<ElectricTrapPower>();
+        if (trap == null)
+        {
+            Debug.LogError("Armadilha Elétrica sem ElectricTrapPower no prefab.", equippedElectricTrapInstance);
+            Destroy(equippedElectricTrapInstance);
+            equippedElectricTrapInstance = null;
+            return;
+        }
+
+        trap.SetEquipped(gameObject, kart);
+    }
+
+    private void DropElectricTrap()
+    {
+        EnsureElectricTrapSocket();
+        FitElectricTrapSocket();
+
+        if (equippedElectricTrapInstance == null && electricTrapPrefab != null)
+            CreateEquippedElectricTrap();
+
+        if (equippedElectricTrapInstance == null)
+        {
+            Debug.LogWarning("Armadilha Elétrica não lançada: prefab ou socket ausente.");
+            return;
+        }
+
+        GameObject trapObject = equippedElectricTrapInstance;
+        equippedElectricTrapInstance = null;
+
+        Vector3 forward = transform.forward;
+        trapObject.transform.SetParent(null, true);
+        trapObject.transform.position -= forward * electricTrapLaunchRearOffset;
+
+        ElectricTrapPower trap = trapObject.GetComponent<ElectricTrapPower>();
+        if (trap == null)
+        {
+            Debug.LogError("Armadilha Elétrica sem ElectricTrapPower no momento do uso.", trapObject);
+            Destroy(trapObject);
+            return;
+        }
+
+        Vector3 inheritedVelocity = kart != null && kart.Rigidbody != null
+            ? kart.Rigidbody.linearVelocity
+            : Vector3.zero;
+        trap.Deploy(gameObject, kart, inheritedVelocity, forward);
+    }
+
     // ------------------------------------------------------------------ Ancoragem adaptativa
     // Posiciona os sockets do Rocket/UFO ACIMA da carroceria real do carro. Recalculado a cada
     // criação do visual equipado (cobre troca de modelo na garagem/customização dos bots).
@@ -411,11 +531,46 @@ public class KartPowerUser : MonoBehaviour
         ufoEquippedSocket.localPosition = local;
     }
 
+    private void FitElectricTrapSocket()
+    {
+        EnsureElectricTrapSocket();
+
+        Transform anchor = FindDeepChild(transform, electricTrapAnchorName)
+            ?? FindDeepChild(transform, rearPowerAnchorName);
+        if (anchor != null)
+        {
+            electricTrapEquippedSocket.SetPositionAndRotation(anchor.position, anchor.rotation);
+            return;
+        }
+
+        if (!fitSocketsToCarBounds || !TryComputeBodyLocalBounds(out Bounds bodyBounds))
+            return;
+
+        float halfHeight = 0.34f;
+        if (electricTrapPrefab != null)
+        {
+            ElectricTrapPower trap = electricTrapPrefab.GetComponent<ElectricTrapPower>();
+            if (trap != null)
+                halfHeight = trap.VisualHalfHeight;
+        }
+
+        Vector3 local = electricTrapSocketLocalPosition;
+        local.z = Mathf.Min(local.z, bodyBounds.min.z - electricTrapRearClearance);
+        local.y = Mathf.Max(local.y, bodyBounds.min.y + halfHeight + electricTrapVerticalClearance);
+        electricTrapEquippedSocket.localPosition = local;
+        electricTrapEquippedSocket.localRotation = Quaternion.identity;
+    }
+
     // Topo da carroceria em Y LOCAL do kart, medindo os renderers reais do modelo atual.
     // Ignora visuais de poderes (sockets/escudo) e emissores (partículas/trilhas).
     private float ComputeBodyTopLocalY()
     {
-        float topY = 0.9f; // fallback razoável se o carro não tiver renderers ativos
+        return TryComputeBodyLocalBounds(out Bounds bounds) ? bounds.max.y : 0.9f;
+    }
+
+    private bool TryComputeBodyLocalBounds(out Bounds localBounds)
+    {
+        localBounds = default;
 
         Renderer[] renderers = GetComponentsInChildren<Renderer>(false);
         bool found = false;
@@ -433,6 +588,8 @@ public class KartPowerUser : MonoBehaviour
                 continue;
             if (ufoEquippedSocket != null && t.IsChildOf(ufoEquippedSocket))
                 continue;
+            if (electricTrapEquippedSocket != null && t.IsChildOf(electricTrapEquippedSocket))
+                continue;
             if (IsUnderIgnoredVisual(t))
                 continue;
 
@@ -447,16 +604,18 @@ public class KartPowerUser : MonoBehaviour
                     (i & 2) == 0 ? min.y : max.y,
                     (i & 4) == 0 ? min.z : max.z);
 
-                float localY = transform.InverseTransformPoint(corner).y;
-                if (!found || localY > topY)
+                Vector3 localPoint = transform.InverseTransformPoint(corner);
+                if (!found)
                 {
-                    topY = found ? Mathf.Max(topY, localY) : localY;
+                    localBounds = new Bounds(localPoint, Vector3.zero);
                     found = true;
                 }
+                else
+                    localBounds.Encapsulate(localPoint);
             }
         }
 
-        return found ? topY : 0.9f;
+        return found;
     }
 
     private static bool IsUnderIgnoredVisual(Transform target)

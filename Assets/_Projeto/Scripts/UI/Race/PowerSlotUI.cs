@@ -42,6 +42,7 @@ namespace PartyRacers.UI.Race
 
         private KartPowerType ultimoTipo = (KartPowerType)(-1);
         private bool ultimoTinha;
+        private static PowerDefinition[] supplementalCatalog;
 
         private void Reset() => dados = FindAnyObjectByType<RaceHUDDataProvider>();
 
@@ -93,11 +94,24 @@ namespace PartyRacers.UI.Race
 
         private PowerDefinition Resolver(KartPowerType tipo)
         {
-            if (catalogo == null)
-                return null;
-
-            foreach (PowerDefinition def in catalogo)
+            if (catalogo != null)
             {
+                foreach (PowerDefinition def in catalogo)
+                {
+                    if (def != null && def.tipo == tipo)
+                        return def;
+                }
+            }
+
+            // Mantém o catálogo serializado das cenas como fonte principal. Poderes acrescentados
+            // depois da montagem da HUD podem fornecer uma definição suplementar em Resources,
+            // sem exigir editar e salvar todas as cenas/prefabs que já usam este binder.
+            if (supplementalCatalog == null)
+                supplementalCatalog = Resources.LoadAll<PowerDefinition>("PowerDefinitions");
+
+            for (int i = 0; i < supplementalCatalog.Length; i++)
+            {
+                PowerDefinition def = supplementalCatalog[i];
                 if (def != null && def.tipo == tipo)
                     return def;
             }
