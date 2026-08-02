@@ -33,19 +33,51 @@ public class DriftPuffBubble : MonoBehaviour
     [SerializeField] private Color youngColor = new Color(0.95f, 0.97f, 1f, 1f);
     [SerializeField] private Color oldColor = new Color(0.70f, 0.77f, 0.90f, 1f);
     [SerializeField] private Color burnoutTint = new Color(0.80f, 0.78f, 0.76f, 1f);
-    [SerializeField, Range(0f, 0.3f)] private float colorJitter = 0.06f;
 
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
+
+    // A cor da nuvem era aplicada com MaterialPropertyBlock por puff, por frame. Isso desliga o SRP
+    // Batcher para cada puff: medido em playmode, os ~900 puffs vivos custavam 1246 draw calls e 885
+    // setPass calls extras — cerca de 11 ms dos 19 ms do frame, mais que todo o resto da cena junta.
+    //
+    // A troca: em vez de uma cor contínua por puff, uma RAMPA de materiais compartilhados. Todos os
+    // puffs no mesmo estágio de vida usam o MESMO material, então o SRP Batcher volta a agrupá-los e
+    // o custo cai para alguns setPass no total. Com EstagiosDeCor estágios ao longo de uma vida de
+    // ~0,7 s, o degrau entre estágios dura ~0,09 s e não é perceptível numa fumaça que já está
+    // crescendo e sumindo.
+    private const int EstagiosDeCor = 8;
+    private static Material[] rampaNormal;
+    private static Material[] rampaBurnout;
+    private static Material materialModelo;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void LimparRampas()
+    {
+        rampaNormal = null;
+        rampaBurnout = null;
+        materialModelo = null;
+    }
+
+    private Material[] rampaAtual;
+    private int estagioAplicado = -1;
 
     private float timer;
     private Vector3 currentVelocity;
     private Vector3 randomRotationSpeed;
     private Vector3 scaleMultiplier;
     private MeshRenderer meshRenderer;
-    private MaterialPropertyBlock propertyBlock;
-    private Color baseYoung;
-    private Color baseOld;
+    private MeshFilter meshFilter;
+    private DriftPuffBubble prefabDoPool;
+
+    /// <summary>
+    /// Marca este puff como reciclável e guarda de qual prefab ele saiu, para o
+    /// <see cref="DriftPuffPool"/> devolvê-lo à pilha certa no fim da vida.
+    /// </summary>
+    public void MarcarComoDoPool(DriftPuffBubble prefab)
+    {
+        prefabDoPool = prefab;
+    }
 
     public void Initialize(
         float customLifetime,
@@ -59,6 +91,11 @@ public class DriftPuffBubble : MonoBehaviour
         endScale = customEndScale;
         currentVelocity = customVelocity;
         timer = 0f;
+
+        // Sorteia a variação de nuvem a cada spawn (e não uma vez no Awake): com o pool ligado,
+        // um puff reciclado ficaria preso na mesma silhueta pelo resto da partida.
+        if (generateCloudMesh)
+            ApplyCloudMesh();
 
         scaleMultiplier = new Vector3(
             Random.Range(1f - squashVariation, 1f + squashVariation),
@@ -84,7 +121,7 @@ public class DriftPuffBubble : MonoBehaviour
     private void Awake()
     {
         meshRenderer = GetComponent<MeshRenderer>();
-        propertyBlock = new MaterialPropertyBlock();
+        meshFilter = GetComponent<MeshFilter>();
 
         if (meshRenderer != null)
         {
@@ -119,31 +156,66 @@ public class DriftPuffBubble : MonoBehaviour
             );
         }
 
-        if (baseYoung == default)
+        if (rampaAtual == null)
             SetupColors(false);
     }
 
     private void SetupColors(bool isBurnout)
     {
-        baseYoung = youngColor;
-        baseOld = isBurnout ? burnoutTint : oldColor;
-
-        if (colorJitter > 0f)
-        {
-            float j = Random.Range(-colorJitter, colorJitter);
-            baseYoung = Shift(baseYoung, j);
-            baseOld = Shift(baseOld, j * 0.5f);
-        }
+        rampaAtual = GarantirRampa(isBurnout);
+        estagioAplicado = -1;
     }
 
-    private static Color Shift(Color c, float amount)
+    /// <summary>
+    /// Constrói (uma vez por sessão) a rampa de materiais compartilhados que substitui o
+    /// MaterialPropertyBlock por puff. Os materiais saem do próprio material do prefab, então
+    /// shader, textura e demais parâmetros continuam idênticos — só a cor varia entre os estágios.
+    /// </summary>
+    private Material[] GarantirRampa(bool isBurnout)
     {
-        return new Color(
-            Mathf.Clamp01(c.r + amount),
-            Mathf.Clamp01(c.g + amount * 0.9f),
-            Mathf.Clamp01(c.b + amount * 1.1f),
-            c.a
-        );
+        Material[] cache = isBurnout ? rampaBurnout : rampaNormal;
+        if (cache != null)
+            return cache;
+
+        // O modelo é capturado UMA vez, antes de qualquer puff trocar o próprio material: se fosse
+        // relido depois, a rampa de burnout acabaria derivada de um material já da rampa normal.
+        if (materialModelo == null)
+        {
+            if (meshRenderer == null)
+                meshRenderer = GetComponent<MeshRenderer>();
+
+            materialModelo = meshRenderer != null ? meshRenderer.sharedMaterial : null;
+        }
+
+        Material modelo = materialModelo;
+        if (modelo == null)
+            return null;
+
+        Color fim = isBurnout ? burnoutTint : oldColor;
+        cache = new Material[EstagiosDeCor];
+
+        for (int i = 0; i < EstagiosDeCor; i++)
+        {
+            float t = EstagiosDeCor == 1 ? 0f : i / (float)(EstagiosDeCor - 1);
+            Color cor = Color.Lerp(youngColor, fim, Mathf.SmoothStep(0f, 1f, t));
+
+            var m = new Material(modelo)
+            {
+                name = $"{modelo.name}_{(isBurnout ? "burnout" : "drift")}_{i}",
+                hideFlags = HideFlags.HideAndDontSave,
+                enableInstancing = true,
+            };
+
+            if (m.HasProperty(BaseColorId)) m.SetColor(BaseColorId, cor);
+            if (m.HasProperty(ColorId)) m.SetColor(ColorId, cor);
+
+            cache[i] = m;
+        }
+
+        if (isBurnout) rampaBurnout = cache;
+        else rampaNormal = cache;
+
+        return cache;
     }
 
     // Cache estático de meshes de nuvem: antes cada puff GERAVA um mesh procedural novo no Awake
@@ -155,12 +227,14 @@ public class DriftPuffBubble : MonoBehaviour
 
     private void ApplyCloudMesh()
     {
-        MeshFilter mf = GetComponent<MeshFilter>();
-        if (mf == null)
+        if (meshFilter == null)
+            meshFilter = GetComponent<MeshFilter>();
+
+        if (meshFilter == null)
             return;
 
         EnsureCloudMeshCache();
-        mf.sharedMesh = cloudMeshCache[Random.Range(0, cloudMeshCache.Length)];
+        meshFilter.sharedMesh = cloudMeshCache[Random.Range(0, cloudMeshCache.Length)];
     }
 
     private void EnsureCloudMeshCache()
@@ -204,20 +278,28 @@ public class DriftPuffBubble : MonoBehaviour
 
         ApplyColor(t);
 
-        if (t >= 1f)
+        if (t < 1f)
+            return;
+
+        if (prefabDoPool != null)
+            DriftPuffPool.Devolver(this, prefabDoPool);
+        else
             Destroy(gameObject);
     }
 
     private void ApplyColor(float t)
     {
-        if (meshRenderer == null || propertyBlock == null)
+        if (meshRenderer == null || rampaAtual == null)
             return;
 
-        Color color = Color.Lerp(baseYoung, baseOld, Mathf.SmoothStep(0f, 1f, t));
+        int estagio = Mathf.Clamp(Mathf.RoundToInt(t * (EstagiosDeCor - 1)), 0, EstagiosDeCor - 1);
 
-        meshRenderer.GetPropertyBlock(propertyBlock);
-        propertyBlock.SetColor(BaseColorId, color);
-        propertyBlock.SetColor(ColorId, color);
-        meshRenderer.SetPropertyBlock(propertyBlock);
+        // Só toca no renderer quando o estágio realmente muda: na maioria dos frames isto é um
+        // comparativo de int e nada mais.
+        if (estagio == estagioAplicado)
+            return;
+
+        estagioAplicado = estagio;
+        meshRenderer.sharedMaterial = rampaAtual[estagio];
     }
 }

@@ -42,13 +42,6 @@ public class UFOSwapProjectile : MonoBehaviour
     [SerializeField] private float ignoreOwnerTime = 0.45f;
     [SerializeField] private float ignoreOwnerDistance = 5f;
 
-    [Header("Grace de lancamento (anti-sumico no disparo)")]
-    [Tooltip("Tempo inicial (s) em que o UFO ignora obstaculos/quiques — evita 'morrer' preso em " +
-             "geometria perto do carro logo ao disparar.")]
-    [SerializeField] private float launchClearTime = 0.22f;
-    [Tooltip("Distancia inicial (m) em que o UFO ignora obstaculos/quiques ao sair do carro.")]
-    [SerializeField] private float launchClearDistance = 5f;
-
     [Header("Quique em parede")]
     [SerializeField] private int maxBounces = 4;
     [SerializeField, Range(0.5f, 1f)] private float bounceSpeedRetention = 0.95f;
@@ -190,7 +183,7 @@ public class UFOSwapProjectile : MonoBehaviour
 
         UpdateHoming();
 
-        if (TryFindOverlapTarget(transform.position, out ProjectileHit overlapHit))
+        if (TryFindOverlapHit(transform.position, out ProjectileHit overlapHit))
         {
             HandleHit(overlapHit);
             return;
@@ -214,6 +207,12 @@ public class UFOSwapProjectile : MonoBehaviour
         MaintainHoverHeight(ref position);
         transform.position = position;
         baseY = position.y;
+
+        if (TryFindOverlapHit(transform.position, out ProjectileHit postMoveOverlap))
+        {
+            HandleHit(postMoveOverlap);
+            return;
+        }
 
         AnimateSpin();
         UpdateTrail();
@@ -391,6 +390,49 @@ public class UFOSwapProjectile : MonoBehaviour
         return hit.Collider != null;
     }
 
+    private bool TryFindOverlapHit(Vector3 position, out ProjectileHit hit)
+    {
+        if (TryFindOverlapTarget(position, out hit))
+            return true;
+
+        int mask = obstacleMask.value | collisionMask.value | groundMask.value;
+        int count = Physics.OverlapSphereNonAlloc(
+            position,
+            radius,
+            overlapHits,
+            mask,
+            QueryTriggerInteraction.Ignore);
+
+        hit = default;
+        hit.Distance = float.MaxValue;
+        float bestSqrDistance = float.MaxValue;
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider candidate = overlapHits[i];
+            if (candidate == null || candidate.transform.IsChildOf(transform))
+                continue;
+
+            Vector3 point = candidate.ClosestPoint(position);
+            Vector3 normal = position - point;
+            if (normal.sqrMagnitude < 0.001f)
+                normal = -direction;
+
+            if (!TryClassifyHit(candidate, point, normal.normalized, 0f, out ProjectileHit classified)
+                || classified.Kind != HitKind.Obstacle)
+                continue;
+
+            float sqrDistance = (point - position).sqrMagnitude;
+            if (sqrDistance >= bestSqrDistance)
+                continue;
+
+            bestSqrDistance = sqrDistance;
+            hit = classified;
+        }
+
+        return hit.Collider != null;
+    }
+
     private bool TryClassifyHit(Collider candidate, Vector3 point, Vector3 normal, float distance, out ProjectileHit hit)
     {
         hit = default;
@@ -415,15 +457,10 @@ public class UFOSwapProjectile : MonoBehaviour
             return true;
         }
 
-        // Grace de lancamento: ignora qualquer obstaculo nos primeiros instantes/metros para o UFO
-        // nao "morrer" preso na geometria ao redor do carro logo ao disparar.
-        if (IsInLaunchGrace())
-            return false;
-
         // Chao/rampa: qualquer superficie razoavelmente horizontal e SOBREVOADA (nunca quica).
         // O UFO mantem altura fixa sobre ela via MaintainHoverHeight. So paredes verticais
         // (normal.y < wallMaxNormalY) sao tratadas como obstaculo e fazem o UFO quicar.
-        if (normal.y >= wallMaxNormalY)
+        if (IsGroundContact(point, normal))
             return false;
 
         if (candidate.isTrigger || !IsInMask(candidate.gameObject.layer, obstacleMask))
@@ -438,6 +475,15 @@ public class UFOSwapProjectile : MonoBehaviour
             Kind = HitKind.Obstacle
         };
         return true;
+    }
+
+    private bool IsGroundContact(Vector3 point, Vector3 normal)
+    {
+        if (normal.y < wallMaxNormalY)
+            return false;
+
+        float minimumBelowCenter = Mathf.Max(0.18f, radius * 0.42f);
+        return transform.position.y - point.y >= minimumBelowCenter;
     }
 
     private bool IsValidTarget(KartController kart, Collider candidate)
@@ -733,8 +779,4 @@ public class UFOSwapProjectile : MonoBehaviour
         return (mask.value & (1 << layer)) != 0;
     }
 
-    private bool IsInLaunchGrace()
-    {
-        return lifeTimer < launchClearTime || travelled < launchClearDistance;
-    }
 }

@@ -87,7 +87,9 @@ public class RaceManager : MonoBehaviour
             PlaceKartOnSpawn(kart, karts.Count - 1);
 
         // Karts que entram após a largada já largam liberados.
-        kart.SetControlEnabled(raceStarted);
+        // O grid bloqueia a física, mas mantém a leitura local para o burnout de pré-largada.
+        kart.SetControlEnabled(true);
+        kart.SetStartGridLocked(!raceStarted);
     }
 
     public void UnregisterKart(KartController kart)
@@ -310,6 +312,15 @@ public class RaceManager : MonoBehaviour
         }
     }
 
+    private void SetAllStartGridLocked(bool locked)
+    {
+        foreach (KartController kart in karts)
+        {
+            if (kart != null)
+                kart.SetStartGridLocked(locked);
+        }
+    }
+
     // Arma o cronômetro de volta de todos os karts no "VAI!". A contagem em si só inicia
     // quando cada kart cruza a linha de largada/chegada (ver KartRaceTracker).
     private void StartLapTimers()
@@ -328,11 +339,13 @@ public class RaceManager : MonoBehaviour
     private IEnumerator StartRaceRoutine()
     {
         raceStarted = false;
-        SetAllControl(false);
+        SetAllControl(true);
+        SetAllStartGridLocked(true);
 
 #if PARTYRACERS_ONLINE
         yield return WaitForOnlinePlayersBeforeCountdown();
-        SetAllControl(false);
+        SetAllControl(true);
+        SetAllStartGridLocked(true);
 #endif
 
         // Etapas da contagem — disparadas como evento; o CountdownUI (na cena) renderiza para todos.
@@ -343,6 +356,7 @@ public class RaceManager : MonoBehaviour
         BroadcastPhase(CountdownPhase.Go);
 
         raceStarted = true;
+        SetAllStartGridLocked(false);
         SetAllControl(true);
         StartLapTimers();
 
@@ -368,13 +382,15 @@ public class RaceManager : MonoBehaviour
         while (!AllExpectedOnlineKartsSpawned())
         {
             CollectKarts();
-            SetAllControl(false);
+            SetAllControl(true);
+            SetAllStartGridLocked(true);
             UpdateOnlineWaitingText();
             yield return wait;
         }
 
         CollectKarts();
-        SetAllControl(false);
+        SetAllControl(true);
+        SetAllStartGridLocked(true);
     }
 
     private bool ShouldWaitForOnlinePlayers()

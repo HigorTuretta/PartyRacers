@@ -39,13 +39,6 @@ namespace PartyRacers.UI.HUD
         [Tooltip("Prefab de vento/turbo aplicado ao kart local (KartTurboScreenEffect).")]
         [SerializeField] private GameObject screenWindPrefab;
 
-        [Header("Nomes de fallback (quando o kart não tem identidade de rede)")]
-        [SerializeField]
-        private string[] fallbackNames =
-        {
-            "ALEX", "LUCAS", "BRUNO", "MARIA", "JOAO", "ENZO", "FELIPE", "NINA"
-        };
-
         // ---- Snapshot (lido pelos widgets) -------------------------------------------------
         public KartController LocalKart { get; private set; }
         public bool HasLocalKart => LocalKart != null;
@@ -273,11 +266,7 @@ namespace PartyRacers.UI.HUD
                 });
             }
 
-            ranked.Sort((a, b) =>
-            {
-                int byProgress = b.Progress.CompareTo(a.Progress);
-                return byProgress != 0 ? byProgress : b.Tiebreak.CompareTo(a.Tiebreak);
-            });
+            ranked.Sort(CompareStandings);
 
             LocalPosition = ranked.Count > 0 ? ranked.Count : 1;
             RacerCount = ranked.Count;
@@ -333,6 +322,48 @@ namespace PartyRacers.UI.HUD
             return kart.SpeedKmh * 0.01f;
         }
 
+        /// <summary>
+        /// A classificacao final e definida pela passagem na linha de chegada. O tempo total e a
+        /// melhor volta sao estatisticas e nunca podem reordenar quem ja terminou. Enquanto ainda
+        /// estao correndo, progresso e distancia ao proximo checkpoint continuam sendo usados.
+        /// </summary>
+        private static int CompareStandings(RankedKart a, RankedKart b)
+        {
+            bool aFinished = a.Tracker != null && a.Tracker.RaceFinished;
+            bool bFinished = b.Tracker != null && b.Tracker.RaceFinished;
+
+            if (aFinished != bFinished)
+                return aFinished ? -1 : 1;
+
+            if (aFinished)
+            {
+                float aFinish = a.Tracker.FinishRealtime >= 0f
+                    ? a.Tracker.FinishRealtime
+                    : float.PositiveInfinity;
+                float bFinish = b.Tracker.FinishRealtime >= 0f
+                    ? b.Tracker.FinishRealtime
+                    : float.PositiveInfinity;
+
+                int byArrival = aFinish.CompareTo(bFinish);
+                if (byArrival != 0)
+                    return byArrival;
+            }
+            else
+            {
+                int byProgress = b.Progress.CompareTo(a.Progress);
+                if (byProgress != 0)
+                    return byProgress;
+
+                int byTrackPosition = b.Tiebreak.CompareTo(a.Tiebreak);
+                if (byTrackPosition != 0)
+                    return byTrackPosition;
+            }
+
+            int aId = a.Kart != null ? a.Kart.GetInstanceID() : int.MaxValue;
+            int bId = b.Kart != null ? b.Kart.GetInstanceID() : int.MaxValue;
+            return aId.CompareTo(bId);
+        }
+
         private RaceCheckpoint FindCheckpoint(int index)
         {
             if (checkpoints == null)
@@ -350,18 +381,31 @@ namespace PartyRacers.UI.HUD
 
         private string ResolveDisplayName(KartController kart, int position)
         {
-            if (kart == LocalKart)
-                return "VOCÊ";
-
             KartNetworkIdentity identity = kart != null ? kart.GetComponent<KartNetworkIdentity>() : null;
             if (identity != null && !string.IsNullOrWhiteSpace(identity.DisplayName) && identity.DisplayName != "Player")
                 return identity.DisplayName;
 
-            if (fallbackNames == null || fallbackNames.Length == 0)
-                return $"P{position}";
+            if (kart == LocalKart)
+            {
+                RacePlayerInfo local = RacePlayerRegistry.Instance != null
+                    ? RacePlayerRegistry.Instance.LocalPlayer
+                    : null;
+                if (local != null && !string.IsNullOrWhiteSpace(local.DisplayName))
+                    return local.DisplayName;
 
-            int index = Mathf.Abs(position - 1) % fallbackNames.Length;
-            return fallbackNames[index];
+                return "VOCÊ";
+            }
+
+            // Em cenas offline antigas pode não existir KartNetworkIdentity. Nesse caso usamos
+            // a identidade do próprio objeto em vez de inventar nomes de jogadores.
+            if (kart != null)
+            {
+                string objectName = kart.gameObject.name.Replace("(Clone)", string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(objectName) && objectName != "PlayerKart")
+                    return objectName;
+            }
+
+            return $"JOGADOR {position}";
         }
 
         private struct RankedKart

@@ -195,10 +195,14 @@ namespace PartyRacers.UI.Frontend
                 ? seletorDePista.Atual.nome
                 : cena;
 
-            if (telaDeCarregamento != null)
-                telaDeCarregamento.CarregarCena(cena, "CARREGANDO " + nomeDaPista.ToUpperInvariant());
+            LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
+            if (loading != null)
+                loading.CarregarCena(cena, "CARREGANDO " + nomeDaPista.ToUpperInvariant());
             else
+            {
+                Debug.LogWarning("[FrontendFlow] Screen_Loading nao encontrada; usando troca de cena direta.");
                 SceneManager.LoadScene(cena);
+            }
         }
 
         // ---------- garagem ----------

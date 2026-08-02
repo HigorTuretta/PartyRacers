@@ -29,12 +29,15 @@ namespace PartyRacers.UI.Frontend
         [Tooltip("Bloco de ping. Sem fonte de dados real ele fica escondido em vez de mentir.")]
         [SerializeField] private GameObject blocoConexao;
 
+        [Header("Camada de apresentacao")]
+        [SerializeField] private int ordemDeRenderizacao = 32000;
+
         [Header("Ritmo")]
         [SerializeField] private float intervaloDoPulso = 0.16f;
         [SerializeField] private float segundosPorDica = 3.5f;
         [SerializeField] private float fadeDaDica = 0.25f;
         [Tooltip("Tempo mínimo na tela, para a dica dar tempo de ser lida.")]
-        [SerializeField] private float tempoMinimo = 1.6f;
+        [SerializeField] private float tempoMinimo = 0.6f;
 
         [Header("Cores do pulso")]
         [SerializeField] private Color passoAceso = new Color(1f, 0.690f, 0.125f);
@@ -54,11 +57,14 @@ namespace PartyRacers.UI.Frontend
         };
 
         private Coroutine animacao;
+        private Coroutine carregamento;
         private int proximaDica;
+        private Canvas canvasDeTopo;
 
         void Awake()
         {
             if (grupo == null) grupo = GetComponent<CanvasGroup>();
+            GarantirCamadaDeTopo();
             // sem medidor de ping de verdade, o rótulo de conexão seria número inventado
             if (blocoConexao != null) blocoConexao.SetActive(false);
         }
@@ -67,18 +73,76 @@ namespace PartyRacers.UI.Frontend
         public void Mostrar(string estado = "CARREGANDO")
         {
             gameObject.SetActive(true);
-            if (grupo != null) { grupo.alpha = 1f; grupo.blocksRaycasts = true; }
+            transform.SetAsLastSibling();
+            GarantirCamadaDeTopo();
+            if (grupo != null)
+            {
+                grupo.alpha = 1f;
+                grupo.interactable = true;
+                grupo.blocksRaycasts = true;
+            }
             if (textoEstado != null) textoEstado.text = estado;
 
             SortearDica(imediato: true);
             if (animacao != null) StopCoroutine(animacao);
             animacao = StartCoroutine(Animar());
+
+            // Atualiza texto/layout no mesmo clique. O carregamento pesado só começa depois de
+            // um frame já renderizado, evitando a sensação de que o botão congelou o jogo.
+            if (transform is RectTransform rect)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+            Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>
+        /// Resolve a tela da cena ativa mesmo quando uma referencia serializada antiga se perdeu.
+        /// Isso evita que qualquer botao volte silenciosamente ao LoadScene sincrono.
+        /// </summary>
+        public static LoadingScreenUI Resolver(LoadingScreenUI preferida = null)
+        {
+            if (preferida != null)
+                return preferida;
+
+            Scene ativa = SceneManager.GetActiveScene();
+            LoadingScreenUI primeira = null;
+            foreach (LoadingScreenUI candidata in FindObjectsByType<LoadingScreenUI>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                if (candidata == null)
+                    continue;
+                if (primeira == null)
+                    primeira = candidata;
+                if (candidata.gameObject.scene == ativa)
+                    return candidata;
+            }
+
+            return primeira;
+        }
+
+        private void GarantirCamadaDeTopo()
+        {
+            if (canvasDeTopo == null)
+                canvasDeTopo = GetComponent<Canvas>();
+            if (canvasDeTopo == null)
+                canvasDeTopo = gameObject.AddComponent<Canvas>();
+
+            canvasDeTopo.overrideSorting = true;
+            canvasDeTopo.sortingOrder = ordemDeRenderizacao;
+
+            if (GetComponent<GraphicRaycaster>() == null)
+                gameObject.AddComponent<GraphicRaycaster>();
         }
 
         public void Esconder()
         {
             if (animacao != null) { StopCoroutine(animacao); animacao = null; }
-            if (grupo != null) { grupo.alpha = 0f; grupo.blocksRaycasts = false; }
+            if (grupo != null)
+            {
+                grupo.alpha = 0f;
+                grupo.interactable = false;
+                grupo.blocksRaycasts = false;
+            }
             gameObject.SetActive(false);
         }
 
@@ -88,6 +152,9 @@ namespace PartyRacers.UI.Frontend
         /// </summary>
         public void CarregarCena(string cena, string estado = "CARREGANDO PISTA")
         {
+            if (carregamento != null)
+                return;
+
             if (string.IsNullOrWhiteSpace(cena))
             {
                 Debug.LogError("[Carregando] nome de cena vazio.");
@@ -100,22 +167,30 @@ namespace PartyRacers.UI.Frontend
             }
 
             Mostrar(estado);
-            StartCoroutine(Carregando(cena));
+            carregamento = StartCoroutine(Carregando(cena));
         }
 
         IEnumerator Carregando(string cena)
         {
+            float inicio = Time.unscaledTime;
+            yield return new WaitForEndOfFrame();
             // um frame para a tela realmente aparecer antes do trabalho pesado começar
             yield return null;
 
             AsyncOperation carga = SceneManager.LoadSceneAsync(cena);
+            if (carga == null)
+            {
+                carregamento = null;
+                Debug.LogError($"[Carregando] não foi possível iniciar a carga de '{cena}'.");
+                yield break;
+            }
             carga.allowSceneActivation = false;
 
-            float inicio = Time.unscaledTime;
             // 0.9 é o teto do progresso enquanto allowSceneActivation está desligado
-            while (carga.progress < 0.9f || Time.unscaledTime - inicio < tempoMinimo)
+            while (carga.progress < 0.9f || Time.unscaledTime - inicio < Mathf.Max(0f, tempoMinimo))
                 yield return null;
 
+            carregamento = null;
             carga.allowSceneActivation = true;
         }
 

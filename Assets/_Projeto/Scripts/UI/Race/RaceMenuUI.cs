@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using PartyRacers.UI.Frontend;
 
 namespace PartyRacers.UI.Race
 {
@@ -44,6 +45,7 @@ namespace PartyRacers.UI.Race
         [Header("Destino ao sair")]
         [Tooltip("Cena do frontend carregada por SAIR DA PARTIDA. Precisa estar no Build Settings.")]
         [SerializeField] private string cenaDoFrontend = "Frontend";
+        [SerializeField] private LoadingScreenUI telaDeCarregamento;
 
         public bool Aberto { get; private set; }
 
@@ -125,7 +127,14 @@ namespace PartyRacers.UI.Race
                 return;
             }
 
-            UnityEngine.SceneManagement.SceneManager.LoadScene(cenaDoFrontend);
+            LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
+            if (loading != null)
+                loading.CarregarCena(cenaDoFrontend, "VOLTANDO AO LOBBY");
+            else
+            {
+                Debug.LogWarning("[RaceMenuUI] Screen_Loading nao encontrada; usando troca de cena direta.");
+                UnityEngine.SceneManagement.SceneManager.LoadScene(cenaDoFrontend);
+            }
         }
 
         private static void Ligar(GameObject alvo, bool ativo)

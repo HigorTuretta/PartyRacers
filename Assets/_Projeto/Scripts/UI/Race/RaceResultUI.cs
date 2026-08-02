@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 using PartyRacers.UI.Frontend;
 using PartyRacers.UI.HUD;
@@ -11,6 +12,7 @@ namespace PartyRacers.UI.Race
     /// montado na cena. A corrida continua rodando atrás — nada de Time.timeScale.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(10000)]
     public class RaceResultUI : MonoBehaviour
     {
         [Header("Tela 11 já montada na cena")]
@@ -20,6 +22,12 @@ namespace PartyRacers.UI.Race
         [Header("Dados")]
         [SerializeField] private RaceHUDDataProvider dados;
 
+        [Header("Apresentacao ao terminar")]
+        [Tooltip("HUD de corrida que deve desaparecer quando o resultado abrir.")]
+        [SerializeField] private GameObject hudDaCorrida;
+        [Tooltip("Camera da corrida. Se vazio, e localizada automaticamente.")]
+        [SerializeField] private CinemachineCamera cameraDaCorrida;
+
         [Tooltip("Segundos entre atualizações enquanto os retardatários ainda cruzam a linha.")]
         [SerializeField] private float intervaloAtualizacao = 1f;
 
@@ -28,10 +36,12 @@ namespace PartyRacers.UI.Race
         [SerializeField] private UnityEngine.UI.Button btnJogarNovamente;
         [Tooltip("Cena do frontend carregada por VOLTAR À GARAGEM. Precisa estar no Build Settings.")]
         [SerializeField] private string cenaDoFrontend = "Frontend";
+        [SerializeField] private LoadingScreenUI telaDeCarregamento;
 
         private KartRaceTracker rastreadorLocal;
         private bool aberta;
         private float proximaAtualizacao;
+        private KartController alvoEspectador;
 
         private void Reset()
         {
@@ -47,8 +57,12 @@ namespace PartyRacers.UI.Race
 
         private void OnEnable()
         {
+            aberta = false;
+            alvoEspectador = null;
             if (telaResultado != null)
                 telaResultado.SetActive(false);
+            if (hudDaCorrida != null)
+                hudDaCorrida.SetActive(true);
         }
 
         /// <summary>Sai da pista para o frontend. Não mexe em Time.timeScale — nunca houve pausa.</summary>
@@ -60,14 +74,22 @@ namespace PartyRacers.UI.Race
                 return;
             }
 
-            UnityEngine.SceneManagement.SceneManager.LoadScene(cenaDoFrontend);
+            LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
+            if (loading != null)
+                loading.CarregarCena(cenaDoFrontend, "VOLTANDO AO LOBBY");
+            else
+                UnityEngine.SceneManagement.SceneManager.LoadScene(cenaDoFrontend);
         }
 
         /// <summary>Recarrega a pista atual para outra partida.</summary>
         public void Recomecar()
         {
             UnityEngine.SceneManagement.Scene atual = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            UnityEngine.SceneManagement.SceneManager.LoadScene(atual.buildIndex >= 0 ? atual.buildIndex : 0);
+            LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
+            if (loading != null && !string.IsNullOrEmpty(atual.name))
+                loading.CarregarCena(atual.name, "PREPARANDO REVANCHE");
+            else
+                UnityEngine.SceneManagement.SceneManager.LoadScene(atual.buildIndex >= 0 ? atual.buildIndex : 0);
         }
 
         private void OnDisable() => Desassinar();
@@ -89,6 +111,15 @@ namespace PartyRacers.UI.Race
 
             proximaAtualizacao = Time.unscaledTime + Mathf.Max(0.1f, intervaloAtualizacao);
             Preencher();
+        }
+
+        private void LateUpdate()
+        {
+            if (!aberta)
+                return;
+
+            AtualizarAlvoEspectador();
+            AplicarCameraEspectador();
         }
 
         private void AssinarRastreadorLocal()
@@ -127,8 +158,76 @@ namespace PartyRacers.UI.Race
 
             if (telaResultado != null)
                 telaResultado.SetActive(true);
+            if (hudDaCorrida != null)
+                hudDaCorrida.SetActive(false);
+
+            AtualizarAlvoEspectador();
+            AplicarCameraEspectador();
 
             Preencher();
+        }
+
+        private void AtualizarAlvoEspectador()
+        {
+            if (EstaCorrendo(alvoEspectador))
+                return;
+
+            if (dados == null)
+                return;
+
+            foreach (RaceHUDDataProvider.Standing standing in dados.Standings)
+            {
+                if (!EstaCorrendo(standing.Kart))
+                    continue;
+
+                alvoEspectador = standing.Kart;
+                return;
+            }
+
+            // Quando o ultimo retardatario termina, mantem o ultimo enquadramento em vez de
+            // devolver abruptamente a camera ao kart local parado.
+            if (alvoEspectador == null)
+                alvoEspectador = dados.LocalKart;
+        }
+
+        private void AplicarCameraEspectador()
+        {
+            if (alvoEspectador == null)
+                return;
+
+            if (cameraDaCorrida == null)
+                cameraDaCorrida = FindAnyObjectByType<CinemachineCamera>(FindObjectsInactive.Include);
+            if (cameraDaCorrida == null)
+                return;
+
+            Transform follow = EncontrarAlvo(alvoEspectador.transform, "CameraFollowTarget");
+            Transform look = EncontrarAlvo(alvoEspectador.transform, "CameraLookTarget");
+            cameraDaCorrida.Follow = follow != null ? follow : alvoEspectador.transform;
+            cameraDaCorrida.LookAt = look != null ? look : alvoEspectador.transform;
+        }
+
+        private static bool EstaCorrendo(KartController kart)
+        {
+            if (kart == null || !kart.gameObject.activeInHierarchy)
+                return false;
+
+            KartRaceTracker tracker = kart.GetComponent<KartRaceTracker>();
+            return tracker != null && !tracker.RaceFinished;
+        }
+
+        private static Transform EncontrarAlvo(Transform raiz, string nome)
+        {
+            Transform direto = raiz.Find(nome);
+            if (direto != null)
+                return direto;
+
+            foreach (Transform candidato in raiz.GetComponentsInChildren<Transform>(true))
+            {
+                if (candidato.name == nome)
+                    return candidato;
+            }
+
+            return null;
         }
 
         private void Preencher()

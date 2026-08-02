@@ -117,11 +117,24 @@ namespace PartyRacers.UI.EditorTools
 
             var tela = loading.GetComponent<LoadingScreenUI>() ?? loading.AddComponent<LoadingScreenUI>();
             var grupo = loading.GetComponent<CanvasGroup>() ?? loading.AddComponent<CanvasGroup>();
+            var overlay = loading.GetComponent<Canvas>();
+            if (overlay == null)
+                overlay = loading.AddComponent<Canvas>();
+            overlay.overrideSorting = true;
+            overlay.sortingOrder = 32000;
+            var overlaySerialized = new SerializedObject(overlay);
+            overlaySerialized.FindProperty("m_OverrideSorting").boolValue = true;
+            overlaySerialized.FindProperty("m_SortingOrder").intValue = 32000;
+            overlaySerialized.ApplyModifiedPropertiesWithoutUndo();
+            if (loading.GetComponent<GraphicRaycaster>() == null)
+                loading.AddComponent<GraphicRaycaster>();
 
             Definir(tela, "grupo", grupo);
             Definir(tela, "textoEstado", Achar<TextMeshProUGUI>(loading, "Centro/Estado"));
             Definir(tela, "textoDica", Achar<TextMeshProUGUI>(loading, "Dica/Texto"));
             Definir(tela, "blocoConexao", Obj(loading, "Conexao"));
+            Definir(tela, "intervaloDoPulso", 0.12f);
+            Definir(tela, "tempoMinimo", 0.6f);
 
             var passos = new List<Object>();
             var pulso = loading.transform.Find("Centro/Pulso");
@@ -616,9 +629,17 @@ namespace PartyRacers.UI.EditorTools
             if (resultado == null)
                 return;
 
+            ResultScreenLayoutBuilder.Configure(resultado);
+
             var ui = resultado.GetComponent<ResultScreenUI>() ?? resultado.AddComponent<ResultScreenUI>();
             Definir(ui, "prefabLinha", AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Projeto/Prefabs/UI/Items/Item_ResultRow.prefab"));
-            Definir(ui, "containerTabela", resultado.transform.Find("Tabela"));
+            Transform viewport = resultado.transform.Find("Tabela");
+            Transform conteudo = viewport != null ? viewport.Find("Conteudo") : null;
+            Definir(ui, "containerTabela", conteudo);
+            Definir(ui, "viewportTabela", viewport as RectTransform);
+            Definir(ui, "conteudoTabela", conteudo as RectTransform);
+            Definir(ui, "gradeTabela", conteudo != null ? conteudo.GetComponent<GridLayoutGroup>() : null);
+            Definir(ui, "cabecalhoDireito", conteudo != null ? Obj(conteudo.gameObject, "Cabecalho_Dir") : null);
             Definir(ui, "textoSuaPosicao", Achar<TextMeshProUGUI>(resultado, "Resumo/SuaPosicao/Valor"));
             Definir(ui, "textoTempoTotal", Achar<TextMeshProUGUI>(resultado, "Resumo/TempoTotal/Valor"));
             Definir(ui, "textoMelhorVolta", Achar<TextMeshProUGUI>(resultado, "Resumo/MelhorVolta/Valor"));
@@ -627,11 +648,22 @@ namespace PartyRacers.UI.EditorTools
             Definir(ui, "btnVoltarGaragem", Achar<Button>(resultado, "Rodape/Btn_VoltarGaragem"));
             Definir(ui, "btnJogarNovamente", Achar<Button>(resultado, "Rodape/Btn_JogarNovamente"));
 
-            // o binder que abre a tela quando o jogador local cruza a linha
-            var ponte = resultado.AddComponent<RaceResultUI>();
+            // O binder que abre a tela quando o jogador local cruza a linha NÃO pode morar na própria
+            // tela: ela nasce desativada (SetActive(false) logo abaixo), e um MonoBehaviour em objeto
+            // inativo não roda Update — ele nunca assinaria RaceJustFinished e a tela era impossível
+            // de abrir. Pior: o OnEnable dele desativa a tela, então até uma ativação manual se
+            // desfazia sozinha. Por isso ele vive no canvas, que está sempre ativo.
+            var hospedeiro = resultado.transform.parent != null
+                ? resultado.transform.parent.gameObject
+                : resultado;
+
+            var ponte = hospedeiro.GetComponent<RaceResultUI>() ?? hospedeiro.AddComponent<RaceResultUI>();
             Definir(ponte, "telaResultado", resultado);
             Definir(ponte, "resultado", ui);
             Definir(ponte, "dados", provedor);
+            Definir(ponte, "hudDaCorrida", resultado.transform.parent != null
+                ? resultado.transform.parent.Find("Screen_RaceHUD_PC")?.gameObject
+                : null);
             Definir(ponte, "btnVoltarGaragem", Achar<Button>(resultado, "Rodape/Btn_VoltarGaragem"));
             Definir(ponte, "btnJogarNovamente", Achar<Button>(resultado, "Rodape/Btn_JogarNovamente"));
 
@@ -756,7 +788,19 @@ namespace PartyRacers.UI.EditorTools
             if (contagem == null)
                 return;
 
-            var ui = contagem.AddComponent<CountdownUI>();
+            // O Screen_Countdown começa inativo. O binder precisa viver no Canvas (ativo),
+            // senão nunca chega a assinar os eventos emitidos pelo RaceManager.
+            GameObject host = contagem.transform.parent != null
+                ? contagem.transform.parent.gameObject
+                : contagem;
+
+            if (host != contagem)
+            {
+                foreach (CountdownUI antigo in contagem.GetComponents<CountdownUI>())
+                    Object.DestroyImmediate(antigo, true);
+            }
+
+            var ui = host.GetComponent<CountdownUI>() ?? host.AddComponent<CountdownUI>();
             Definir(ui, "raiz", contagem);
             Definir(ui, "passo3", Obj(contagem, "Centro/State_3"));
             Definir(ui, "passo2", Obj(contagem, "Centro/State_2"));

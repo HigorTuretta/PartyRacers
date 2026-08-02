@@ -11,6 +11,7 @@ public class KartController : MonoBehaviour
     [SerializeField] private Rigidbody rb;
     [SerializeField] private KartSuspension suspension;
     [SerializeField] private KartArcadeCollisionResponse arcadeCollisionResponse;
+    [SerializeField] private KartCollisionSparks collisionSparks;
 
     [Header("Velocidade")]
     [SerializeField] private float maxForwardSpeedKmh = 200f;
@@ -153,6 +154,12 @@ public class KartController : MonoBehaviour
     [SerializeField, Range(0.3f, 1f)] private float wallSlideRetention = 0.82f;
     [Tooltip("Velocidade mínima (m/s) para aplicar o redirecionamento de colisão.")]
     [SerializeField] private float collisionGlideMinSpeed = 2f;
+    [Header("Faíscas de raspagem lateral")]
+    [SerializeField] private float wallScrapeSparkMinSpeed = 4.5f;
+    [SerializeField] private float wallScrapeSparkFullSpeed = 24f;
+    [SerializeField, Range(0f, 1f)] private float wallScrapeMinSideAlignment = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float wallScrapeMinIntensity = 0.22f;
+    [SerializeField, Range(0f, 1f)] private float wallScrapeMaxIntensity = 0.62f;
     [Tooltip("Velocidade com que o sinal de impacto (usado pela câmera) decai.")]
     [SerializeField] private float impactDecaySpeed = 2.6f;
     private float recentImpact01;
@@ -190,6 +197,7 @@ public class KartController : MonoBehaviour
 
     [Header("Estado")]
     [SerializeField] private bool canControl = true;
+    [SerializeField] private bool startGridLocked;
     [SerializeField] private bool isGrounded;
     [SerializeField] private bool isDrifting;
     [SerializeField] private bool isBurningOut;
@@ -228,6 +236,10 @@ public class KartController : MonoBehaviour
     private float launchSlip01;
     private float brakeSlip01;
     private float tireStress01;
+    private RigidbodyConstraints constraintsBeforeStartGridLock;
+    private bool capturedStartGridConstraints;
+    private Vector3 startGridPosition;
+    private Quaternion startGridRotation;
 
     // True enquanto grounded OU dentro do grace period pós-ground (para steering e grip)
     private bool IsEffectivelyGrounded => isGrounded || (Time.time - lastGroundedTime < groundGraceTime);
@@ -251,7 +263,8 @@ public class KartController : MonoBehaviour
     public bool IsGrounded => isGrounded;
 
     public Rigidbody Rigidbody => rb;
-    public bool CanControl => canControl;
+    public bool CanControl => canControl && !startGridLocked;
+    public bool IsStartGridLocked => startGridLocked;
 
     /// <summary>
     /// Velocidade (mundo) medida no fim do passo de física ANTERIOR — ou seja, a velocidade
@@ -302,6 +315,9 @@ public class KartController : MonoBehaviour
         if (arcadeCollisionResponse == null)
             arcadeCollisionResponse = gameObject.AddComponent<KartArcadeCollisionResponse>();
 
+        if (collisionSparks == null)
+            collisionSparks = GetComponent<KartCollisionSparks>();
+
         localRig = GetComponent<KartLocalRig>();
 
         rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -316,6 +332,17 @@ public class KartController : MonoBehaviour
         UpdateBoostState();
 
         recentImpact01 = Mathf.MoveTowards(recentImpact01, 0f, impactDecaySpeed * Time.deltaTime);
+
+        if (startGridLocked)
+        {
+            // O jogador ainda pode segurar acelerador + freio para cantar pneu. Nenhum outro
+            // input chega à física porque FixedUpdate mantém o Rigidbody preso ao grid.
+            ReadInput();
+            ForceEndDrift();
+            UpdateBurnoutState();
+            UpdateDriftBlend();
+            return;
+        }
 
         if (!canControl)
         {
@@ -343,6 +370,15 @@ public class KartController : MonoBehaviour
     private void FixedUpdate()
     {
         CheckGround();
+
+        if (startGridLocked)
+        {
+            HoldStartGridPose();
+            prevGrounded = isGrounded;
+            ClearTireStressSignals();
+            return;
+        }
+
         TickKnockback();
 
         // Durante o knockback o kart é um projétil: nenhuma força de controle, grip ou clamp
@@ -410,6 +446,67 @@ public class KartController : MonoBehaviour
         // Remove APENAS o excesso na direção da normal — preserva intacto o movimento ao longo da rampa
         float excess = velAlongNormal - maxGroundedUpwardVelocity;
         rb.linearVelocity -= groundNormal * excess;
+    }
+
+    /// <summary>
+    /// Prende o kart ao grid de largada sem desligar a leitura local de acelerador/freio. Isso
+    /// elimina creep em rampas e impulsos de colisão durante 3-2-1, preservando o burnout visual.
+    /// </summary>
+    public void SetStartGridLocked(bool locked)
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
+        if (rb == null)
+            return;
+
+        if (startGridLocked == locked)
+        {
+            if (locked)
+                HoldStartGridPose();
+            return;
+        }
+
+        if (locked)
+        {
+            constraintsBeforeStartGridLock = rb.constraints;
+            capturedStartGridConstraints = true;
+            startGridPosition = rb.position;
+            startGridRotation = rb.rotation;
+            startGridLocked = true;
+
+            ClearInput();
+            ForceEndDrift();
+            isBurningOut = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.constraints = RigidbodyConstraints.FreezeAll;
+            previousLocalVelocity = Vector3.zero;
+            localAcceleration = Vector3.zero;
+            ClearTireStressSignals();
+            return;
+        }
+
+        startGridLocked = false;
+        if (capturedStartGridConstraints)
+            rb.constraints = constraintsBeforeStartGridLock;
+        capturedStartGridConstraints = false;
+
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        previousLocalVelocity = Vector3.zero;
+        localAcceleration = Vector3.zero;
+        ClearTireStressSignals();
+    }
+
+    private void HoldStartGridPose()
+    {
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.position = startGridPosition;
+        rb.rotation = startGridRotation;
     }
 
     public void SetControlEnabled(bool enabled)
@@ -1396,16 +1493,25 @@ public class KartController : MonoBehaviour
         // moinho, tacada, empurrão pesado da bola). Sem isto o glide tratava a pá do moinho como
         // parede e o kart ficava "agarrado" deslizando nela.
         if (collision.collider != null && collision.collider.GetComponentInParent<IKartImpactObstacle>() != null)
+        {
+            TryEmitCollisionSparks(collision, collision.relativeVelocity.magnitude);
             return;
+        }
 
         Vector3 velocity = rb.linearVelocity;
         float speed = velocity.magnitude;
         if (speed < collisionGlideMinSpeed)
             return;
 
+        KartController otherKart = collision.rigidbody != null
+            ? collision.rigidbody.GetComponent<KartController>()
+            : null;
+
         // Normal que mais se opõe ao movimento = a superfície que está freando o kart.
         Vector3 blockingNormal = Vector3.zero;
+        Vector3 scrapeNormal = Vector3.zero;
         float worstInto = 0f;
+        float bestScrapeScore = 0f;
         int contactCount = collision.contactCount;
 
         for (int i = 0; i < contactCount; i++)
@@ -1417,7 +1523,22 @@ public class KartController : MonoBehaviour
                 worstInto = into;
                 blockingNormal = n;
             }
+
+            if (n.y < rampMinNormalY)
+            {
+                float sideAlignment = Mathf.Abs(Vector3.Dot(n, transform.right));
+                float parallelAlignment = 1f - Mathf.Abs(Vector3.Dot(velocity.normalized, n));
+                float score = sideAlignment * 0.7f + parallelAlignment * 0.3f;
+                if (score > bestScrapeScore)
+                {
+                    bestScrapeScore = score;
+                    scrapeNormal = n;
+                }
+            }
         }
+
+        if (otherKart == null)
+            TryEmitWallScrapeSparks(collision, velocity, scrapeNormal);
 
         if (worstInto <= 0f)
             return;
@@ -1426,7 +1547,6 @@ public class KartController : MonoBehaviour
         if (blockingNormal.y >= collisionGroundNormalY)
             return;
 
-        KartController otherKart = collision.rigidbody != null ? collision.rigidbody.GetComponent<KartController>() : null;
         if (otherKart != null && otherKart != this)
         {
             if (arcadeCollisionResponse != null &&
@@ -1469,6 +1589,68 @@ public class KartController : MonoBehaviour
         // Sinaliza o impacto para a câmera (forte quanto mais perpendicular for a batida).
         float impact = worstInto / Mathf.Max(1f, GetCurrentMaxForwardSpeedMps());
         recentImpact01 = Mathf.Clamp01(Mathf.Max(recentImpact01, impact));
+        TryEmitCollisionSparks(collision, worstInto, blockingNormal);
+    }
+
+    private void TryEmitWallScrapeSparks(Collision collision, Vector3 velocity, Vector3 wallNormal)
+    {
+        if (collisionSparks == null || collision == null || collision.contactCount == 0)
+            return;
+        if (wallNormal.sqrMagnitude < 0.0001f)
+            return;
+
+        wallNormal.Normalize();
+        float sideAlignment = Mathf.Abs(Vector3.Dot(wallNormal, transform.right));
+        if (sideAlignment < wallScrapeMinSideAlignment)
+            return;
+
+        float scrapeSpeed = Vector3.ProjectOnPlane(velocity, wallNormal).magnitude;
+        if (scrapeSpeed < wallScrapeSparkMinSpeed)
+            return;
+
+        Vector3 point = Vector3.zero;
+        int matchingContacts = 0;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint contact = collision.GetContact(i);
+            if (Vector3.Dot(contact.normal, wallNormal) < 0.6f)
+                continue;
+
+            point += contact.point;
+            matchingContacts++;
+        }
+
+        if (matchingContacts == 0)
+            return;
+
+        point /= matchingContacts;
+        float scrape01 = Mathf.InverseLerp(
+            wallScrapeSparkMinSpeed,
+            Mathf.Max(wallScrapeSparkMinSpeed + 0.01f, wallScrapeSparkFullSpeed),
+            scrapeSpeed);
+        float intensity = Mathf.Lerp(wallScrapeMinIntensity, wallScrapeMaxIntensity, scrape01);
+        collisionSparks.TryEmit(point, wallNormal, intensity);
+    }
+
+    private void TryEmitCollisionSparks(Collision collision, float impactSpeed, Vector3 preferredNormal = default)
+    {
+        if (collisionSparks == null || collision == null || collision.contactCount == 0)
+            return;
+
+        Vector3 contactPoint = Vector3.zero;
+        Vector3 contactNormal = preferredNormal;
+
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint contact = collision.GetContact(i);
+            contactPoint += contact.point;
+            if (contactNormal.sqrMagnitude < 0.0001f)
+                contactNormal += contact.normal;
+        }
+
+        contactPoint /= collision.contactCount;
+        float impact01 = Mathf.InverseLerp(collisionGlideMinSpeed, 18f, impactSpeed);
+        collisionSparks.TryEmit(contactPoint, contactNormal.normalized, impact01);
     }
 
     private float GetCurrentMaxForwardSpeedMps()

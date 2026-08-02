@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 // Mostra o prefab de escudo (Magic shield blue, baseado em ParticleSystem) envolvendo o carro.
 // Reutilizável e independente do modelo: cria um ShieldRoot centralizado no bounds real do carro
@@ -20,10 +21,11 @@ public class KartShieldVisual : MonoBehaviour
     [SerializeField] private float manualScale = 0f;
     [Tooltip("Deslocamento extra da âncora em relação ao centro medido do carro.")]
     [SerializeField] private Vector3 rootLocalOffset = Vector3.zero;
-    [Tooltip("Offset vertical absoluto da ancora. Use valores negativos para fazer a base do domo entrar no chao.")]
+    [Tooltip("Ajuste fino depois de centralizar a esfera no carro.")]
     [SerializeField] private float verticalOffset = -0.18f;
-    [Tooltip("Afunda o domo do escudo em direção ao chão (fração do raio do carro). Em vez de uma bolha flutuando acima do carro, cria uma cúpula de proteção cuja base entra um pouco no chão.")]
-    [SerializeField, Range(0f, 1f)] private float groundSink = 0.4f;
+    [Tooltip("Altura local do centro visual da esfera no prefab. No Magic shield blue, o centro fica em Y=1.")]
+    [FormerlySerializedAs("groundSink")]
+    [SerializeField, Range(0f, 2f)] private float prefabSphereCenterY = 1f;
     [Tooltip("Correção de rotação aplicada ao prefab do escudo, se necessário.")]
     [SerializeField] private Vector3 prefabEulerOffset = Vector3.zero;
     [Tooltip("Trechos de nome ignorados ao medir o carro (evita medir o próprio escudo, HUD, etc.).")]
@@ -40,6 +42,7 @@ public class KartShieldVisual : MonoBehaviour
     private ParticleSystem[] shieldSystems;
     private float baseScale = 1f;
     private float currentScale;
+    private Vector3 shieldCenterLocal;
     private bool active;
 
     public bool IsActive => active;
@@ -118,7 +121,20 @@ public class KartShieldVisual : MonoBehaviour
     private void ApplyScale()
     {
         if (shieldInstance != null)
+        {
             shieldInstance.transform.localScale = Vector3.one * currentScale;
+            UpdateRootPosition(currentScale);
+        }
+    }
+
+    private void UpdateRootPosition(float visualScale)
+    {
+        if (shieldRoot == null)
+            return;
+
+        shieldRoot.localPosition = shieldCenterLocal
+            + rootLocalOffset
+            + Vector3.up * (verticalOffset - prefabSphereCenterY * visualScale);
     }
 
     private void EnsureRoot()
@@ -143,7 +159,12 @@ public class KartShieldVisual : MonoBehaviour
         EnsureRoot();
 
         MeasureCar(out Vector3 localCenter, out float radius);
-        shieldRoot.localPosition = localCenter + rootLocalOffset + Vector3.up * verticalOffset + Vector3.down * radius * groundSink;
+        shieldCenterLocal = localCenter;
+        baseScale = manualScale > 0f ? manualScale : Mathf.Max(0.25f, radius * fitMultiplier);
+
+        // A esfera principal do prefab fica centrada em Y=1. Compensar esse centro depois da
+        // escala coloca o carro no meio da bola e faz a metade inferior entrar no terreno.
+        UpdateRootPosition(baseScale);
 
         shieldInstance = Instantiate(shieldPrefab, shieldRoot);
         shieldInstance.transform.localPosition = Vector3.zero;
@@ -161,7 +182,6 @@ public class KartShieldVisual : MonoBehaviour
 
         shieldSystems = shieldInstance.GetComponentsInChildren<ParticleSystem>(true);
 
-        baseScale = manualScale > 0f ? manualScale : Mathf.Max(0.25f, radius * fitMultiplier);
         currentScale = baseScale;
         ApplyScale();
 

@@ -76,9 +76,6 @@ PrefabInstance:
       addedObject: {fileID: 5542887453879921608}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: -2839252114089925526}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 3493457961803637396}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
       insertIndex: -1
@@ -86,6 +83,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 9111184244469315441}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8359504595444741781}
   m_SourcePrefab: {fileID: 100100000, guid: 73e7feea75218f842975c1e4a7b81bb6, type: 3}
 --- !u!1 &4322026653664869586 stripped
 GameObject:
@@ -140,21 +140,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &-2839252114089925526
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4322026653664869586}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 608c35c3021a99047aa5a155aa49f778, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GolfBallImpact
-  impactEffectPrefab: {fileID: 2708598583397607911, guid: 6398d43fe79ea0140913dc5530c646af, type: 3}
-  effectLifetime: 10
-  impactCooldown: 0.1
 --- !u!82 &3493457961803637396
 AudioSource:
   m_ObjectHideFlags: 0
@@ -295,3 +280,36 @@ MonoBehaviour:
   velocidadeDeImpactoForte: 18
   cooldownPorKart: 0.35
   debugMode: 0
+--- !u!114 &8359504595444741781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322026653664869586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9bb690858ff1b7a46bace114f6d33087, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GolfBallSmokeTrail
+  puffPrefab: {fileID: 9194649056648075105, guid: bb0fc8cc42c663a42ad49333b18eec0b, type: 3}
+  velocidadeMinima: 4
+  velocidadeMaxima: 32
+  espacamentoLento: 2.4
+  espacamentoRapido: 1.2
+  puffsPorPasso: 1
+  maxPassosPorFrame: 2
+  escalaInicialMin: 0.2
+  escalaInicialMax: 0.38
+  escalaFinalMin: 0.7
+  escalaFinalMax: 1.15
+  vidaMin: 0.4
+  vidaMax: 0.7
+  espalhamento: 0.55
+  velocidadeParaCima: 0.9
+  velocidadeLateral: 0.65
+  arrasto: 0.12
+  puffsNoImpacto: 4
+  impactoVelocidadeMinima: 6
+  impactoIntervalo: 0.15
+  impactoEscalaExtra: 1.5

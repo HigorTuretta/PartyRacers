@@ -1,9 +1,8 @@
 using UnityEngine;
 
-// Emite faíscas (VFXSparks) quando dois karts se chocam com força relevante.
-// É chamado pela KartArcadeCollisionResponse, que já calcula ponto de contato, normal e
-// intensidade do impacto. Mantém um cooldown próprio para não gerar spam de partículas em
-// colisões contínuas (raspões) e destrói o VFX automaticamente pela duração do ParticleSystem.
+// Emite faíscas (VFXSparks) em colisões relevantes do kart: outros carros, paredes, rampas e
+// obstáculos de impacto. Os caminhos de resposta física calculam ponto, normal e intensidade;
+// este componente só controla o feedback visual e seu cooldown, evitando spam em raspões.
 [DisallowMultipleComponent]
 public class KartCollisionSparks : MonoBehaviour
 {

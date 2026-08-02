@@ -1,4 +1,5 @@
 using UnityEngine;
+using PartyRacers.UI.Motion;
 
 namespace PartyRacers.UI.Race
 {
@@ -19,16 +20,22 @@ namespace PartyRacers.UI.Race
         [Header("Raiz da tela")]
         [SerializeField] private GameObject raiz;
 
-        [Header("Ritmo")]
-        [SerializeField] private float duracaoPorPasso = 1f;
-        [SerializeField] private float duracaoDoJa = 0.7f;
+        private void OnEnable()
+        {
+            RaceManager.CountdownPhaseChanged += AoMudarFase;
+            RaceManager.CountdownHidden += Parar;
+            Parar();
+        }
 
-        private float relogio = -1f;
+        private void OnDisable()
+        {
+            RaceManager.CountdownPhaseChanged -= AoMudarFase;
+            RaceManager.CountdownHidden -= Parar;
+        }
 
         /// <summary>Começa a contagem. Chamado pelo RaceManager quando a corrida vai largar.</summary>
         public void Iniciar()
         {
-            relogio = 0f;
             if (raiz != null) raiz.SetActive(true);
             Mostrar(passo3);
         }
@@ -36,23 +43,28 @@ namespace PartyRacers.UI.Race
         /// <summary>Esconde a contagem imediatamente.</summary>
         public void Parar()
         {
-            relogio = -1f;
             Mostrar(null);
             if (raiz != null) raiz.SetActive(false);
         }
 
-        private void Update()
+        private void AoMudarFase(RaceManager.CountdownPhase fase)
         {
-            if (relogio < 0f)
+            if (fase == RaceManager.CountdownPhase.Idle)
+            {
+                Parar();
                 return;
+            }
 
-            relogio += Time.deltaTime;
+            if (raiz != null)
+                raiz.SetActive(true);
 
-            if (relogio < duracaoPorPasso) Mostrar(passo3);
-            else if (relogio < duracaoPorPasso * 2f) Mostrar(passo2);
-            else if (relogio < duracaoPorPasso * 3f) Mostrar(passo1);
-            else if (relogio < duracaoPorPasso * 3f + duracaoDoJa) Mostrar(passoJa);
-            else Parar();
+            switch (fase)
+            {
+                case RaceManager.CountdownPhase.Three: Mostrar(passo3); break;
+                case RaceManager.CountdownPhase.Two: Mostrar(passo2); break;
+                case RaceManager.CountdownPhase.One: Mostrar(passo1); break;
+                case RaceManager.CountdownPhase.Go: Mostrar(passoJa); break;
+            }
         }
 
         private void Mostrar(GameObject alvo)
@@ -67,6 +79,9 @@ namespace PartyRacers.UI.Race
         {
             if (alvo != null && alvo.activeSelf != ativo)
                 alvo.SetActive(ativo);
+
+            if (ativo && alvo != null)
+                alvo.GetComponent<UIAppear>()?.Tocar();
         }
     }
 }

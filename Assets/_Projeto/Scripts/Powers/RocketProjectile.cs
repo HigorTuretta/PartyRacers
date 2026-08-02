@@ -146,7 +146,7 @@ public class RocketProjectile : MonoBehaviour
 
     private void MoveProjectile()
     {
-        if (TryFindOverlapTarget(transform.position, out ProjectileHit overlapHit))
+        if (TryFindOverlapHit(transform.position, out ProjectileHit overlapHit))
         {
             HandleHit(overlapHit);
             return;
@@ -182,6 +182,14 @@ public class RocketProjectile : MonoBehaviour
                 position.y = Mathf.Max(position.y, ultimoChaoY + hoverHeight);
             }
             transform.position = position;
+        }
+
+        // SphereCast nao reporta de forma confiavel quando o frame comeca ou termina dentro de
+        // uma borda fina. A verificacao volumetrica fecha essa brecha sem depender do framerate.
+        if (TryFindOverlapHit(transform.position, out ProjectileHit postMoveOverlap))
+        {
+            HandleHit(postMoveOverlap);
+            return;
         }
 
         if (debugMode)
@@ -262,6 +270,49 @@ public class RocketProjectile : MonoBehaviour
         return hit.Collider != null;
     }
 
+    private bool TryFindOverlapHit(Vector3 position, out ProjectileHit hit)
+    {
+        if (TryFindOverlapTarget(position, out hit))
+            return true;
+
+        int mask = obstacleMask.value | collisionMask.value | groundMask.value;
+        int count = Physics.OverlapSphereNonAlloc(
+            position,
+            radius,
+            overlapHits,
+            mask,
+            QueryTriggerInteraction.Ignore);
+
+        hit = default;
+        hit.Distance = float.MaxValue;
+        float bestSqrDistance = float.MaxValue;
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider candidate = overlapHits[i];
+            if (candidate == null || candidate.transform.IsChildOf(transform))
+                continue;
+
+            Vector3 point = candidate.ClosestPoint(position);
+            Vector3 normal = position - point;
+            if (normal.sqrMagnitude < 0.001f)
+                normal = -direction;
+
+            if (!TryClassifyHit(candidate, point, normal.normalized, 0f, out ProjectileHit classified)
+                || classified.Kind != HitKind.Obstacle)
+                continue;
+
+            float sqrDistance = (point - position).sqrMagnitude;
+            if (sqrDistance >= bestSqrDistance)
+                continue;
+
+            bestSqrDistance = sqrDistance;
+            hit = classified;
+        }
+
+        return hit.Collider != null;
+    }
+
     private bool TryClassifyHit(Collider candidate, Vector3 point, Vector3 normal, float distance, out ProjectileHit hit)
     {
         hit = default;
@@ -286,7 +337,7 @@ public class RocketProjectile : MonoBehaviour
             return true;
         }
 
-        if (maintainGroundHeight && normal.y >= groundNormalMinY)
+        if (maintainGroundHeight && IsGroundContact(point, normal))
             return false;
 
         if (candidate.isTrigger || !IsInMask(candidate.gameObject.layer, obstacleMask))
@@ -301,6 +352,17 @@ public class RocketProjectile : MonoBehaviour
             Kind = HitKind.Obstacle
         };
         return true;
+    }
+
+    private bool IsGroundContact(Vector3 point, Vector3 normal)
+    {
+        if (normal.y < groundNormalMinY)
+            return false;
+
+        // Chao/rampa fica claramente abaixo do centro do foguete. Um topo chanfrado de borda
+        // tocado pela lateral nao satisfaz essa relacao e continua sendo obstaculo.
+        float minimumBelowCenter = Mathf.Max(0.15f, radius * 0.42f);
+        return transform.position.y - point.y >= minimumBelowCenter;
     }
 
     private bool IsValidTarget(KartController kart, Collider candidate)

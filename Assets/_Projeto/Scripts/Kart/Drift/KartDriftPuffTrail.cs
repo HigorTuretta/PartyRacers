@@ -253,11 +253,10 @@ public class KartDriftPuffTrail : MonoBehaviour
         // Só yaw aleatório: a base plana da nuvem permanece voltada para o chão.
         Quaternion spawnRotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
-        DriftPuffBubble puff = Instantiate(
-            puffPrefab,
-            spawnPosition,
-            spawnRotation
-        );
+        DriftPuffBubble puff = DriftPuffPool.Obter(puffPrefab, spawnPosition, spawnRotation);
+
+        if (puff == null)
+            return;
 
         float startScale = Random.Range(minStartScale, maxStartScale);
         float endScale = Random.Range(minEndScale, maxEndScale);
