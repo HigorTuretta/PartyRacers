@@ -9,6 +9,8 @@ public class KartCameraDynamics : MonoBehaviour
     [SerializeField] private Transform cameraFollowTarget;
     [SerializeField] private Transform cameraLookTarget;
     [SerializeField] private CinemachineCamera virtualCamera;
+    [Tooltip("Rig local do kart. Usado para garantir que só o carro do jogador comanda a câmera.")]
+    [SerializeField] private KartLocalRig localRig;
 
     [Header("Chase Central")]
     [SerializeField] private Vector3 baseFollowLocalPosition = new Vector3(0f, 1.08f, 0.72f);
@@ -94,8 +96,10 @@ public class KartCameraDynamics : MonoBehaviour
         if (cameraLookTarget == null)
             cameraLookTarget = transform.Find("CameraLookTarget");
 
-        if (virtualCamera == null)
-            virtualCamera = FindAnyObjectByType<CinemachineCamera>();
+        if (localRig == null)
+            localRig = GetComponent<KartLocalRig>();
+
+        ResolveVirtualCamera();
 
         currentFieldOfView = virtualCamera != null
             ? virtualCamera.Lens.FieldOfView
@@ -104,10 +108,42 @@ public class KartCameraDynamics : MonoBehaviour
         LinkVirtualCameraTargets();
     }
 
+    /// <summary>
+    /// Resolve a câmera DESTE kart — e só dela.
+    ///
+    /// Antes isto era um <c>FindAnyObjectByType&lt;CinemachineCamera&gt;()</c>, que devolve uma
+    /// câmera qualquer da cena. Como todo kart traz uma CinemachineCamera dentro do LocalPlayerRig,
+    /// cada bot que nascia rodava este Awake e apontava a câmera ENCONTRADA — normalmente a do
+    /// jogador — para o próprio CameraFollowTarget. Resultado: a câmera largava o carro do jogador
+    /// e ia atrás do último bot criado.
+    ///
+    /// A busca inclui objetos inativos de propósito: o LocalPlayerRig pode ainda não ter sido
+    /// ligado quando os Awake da mesma GameObject rodam, e a versão anterior (que ignora inativos)
+    /// deixava a referência nula para sempre.
+    /// </summary>
+    private void ResolveVirtualCamera()
+    {
+        if (virtualCamera != null)
+            return;
+
+        virtualCamera = GetComponentInChildren<CinemachineCamera>(true);
+
+        // Pistas em que a câmera vive na cena, e não no kart: aí sim vale procurar fora, mas
+        // apenas para o kart do jogador local — bots nunca devem mexer na câmera de ninguém.
+        if (virtualCamera == null && IsLocalPlayerKart())
+            virtualCamera = FindAnyObjectByType<CinemachineCamera>(FindObjectsInactive.Include);
+    }
+
+    private bool IsLocalPlayerKart() => localRig == null || localRig.IsLocalPlayer;
+
     private void LateUpdate()
     {
         if (kart == null || cameraFollowTarget == null)
             return;
+
+        // A câmera pode aparecer depois do Awake (rig local ligado mais tarde, troca de dono na
+        // rede). Sem esta segunda chance a referência nula nunca se resolvia.
+        ResolveVirtualCamera();
 
         UpdateMouseCamera();
         LinkVirtualCameraTargets();
@@ -246,6 +282,10 @@ public class KartCameraDynamics : MonoBehaviour
     private void LinkVirtualCameraTargets()
     {
         if (virtualCamera == null)
+            return;
+
+        // Trava final: um kart que não é o do jogador local jamais reaponta uma câmera.
+        if (!IsLocalPlayerKart())
             return;
 
         virtualCamera.Follow = cameraFollowTarget;

@@ -729,11 +729,12 @@ public class KartPowerUser : MonoBehaviour
         if (raceManager == null || raceManager.Karts == null)
             return FindClosestKartTarget();
 
-        KartRaceTracker ownTracker = kart.GetComponent<KartRaceTracker>();
-        float ownProgress = CalculateRaceProgress(ownTracker);
+        // Mesma medida de avanço usada pela HUD e pela tela de resultado: o disco tem de mirar em
+        // quem o jogador VÊ à sua frente, não em quem uma segunda régua acha que está à frente.
+        RaceProgress.Sample own = RaceProgress.Measure(kart, kart.GetComponent<KartRaceTracker>());
 
         KartController bestAhead = null;
-        float bestLead = float.MaxValue;
+        RaceProgress.Sample bestAheadSample = default;
         KartController fallbackClosest = null;
         float fallbackDistance = float.MaxValue;
 
@@ -749,13 +750,18 @@ public class KartPowerUser : MonoBehaviour
                 fallbackClosest = other;
             }
 
-            float otherProgress = CalculateRaceProgress(other.GetComponent<KartRaceTracker>());
-            float lead = otherProgress - ownProgress;
-            if (lead <= 0f || lead >= bestLead)
+            RaceProgress.Sample otherSample = RaceProgress.Measure(other, other.GetComponent<KartRaceTracker>());
+
+            // Só interessa quem está à frente (Compare < 0)...
+            if (RaceProgress.Compare(otherSample, own) >= 0)
                 continue;
 
-            bestLead = lead;
+            // ...e, entre esses, o MENOS distante — ou seja, o que está logo à frente.
+            if (bestAhead != null && RaceProgress.Compare(otherSample, bestAheadSample) < 0)
+                continue;
+
             bestAhead = other;
+            bestAheadSample = otherSample;
         }
 
         KartController target = bestAhead != null ? bestAhead : fallbackClosest;
@@ -782,23 +788,6 @@ public class KartPowerUser : MonoBehaviour
         }
 
         return closest != null ? closest.gameObject : null;
-    }
-
-    private static float CalculateRaceProgress(KartRaceTracker tracker)
-    {
-        if (tracker == null)
-            return 0f;
-
-        int totalCheckpoints = Mathf.Max(1, tracker.TotalCheckpoints);
-        if (tracker.RaceFinished)
-            return tracker.TotalLaps * totalCheckpoints + totalCheckpoints;
-
-        int nextCheckpoint = tracker.NextCheckpointIndex;
-        int completedThisLap = nextCheckpoint <= 0
-            ? totalCheckpoints - 1
-            : Mathf.Clamp(nextCheckpoint - 1, 0, totalCheckpoints - 1);
-
-        return (Mathf.Max(1, tracker.CurrentLap) - 1) * totalCheckpoints + completedThisLap;
     }
 
     private static float PlanarSqrDistance(Vector3 a, Vector3 b)

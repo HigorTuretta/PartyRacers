@@ -261,8 +261,7 @@ namespace PartyRacers.UI.HUD
                 {
                     Kart = kart,
                     Tracker = tracker,
-                    Progress = CalculateProgress(tracker),
-                    Tiebreak = CalculateTiebreak(kart, tracker)
+                    Progress = RaceProgress.Measure(kart, tracker)
                 });
             }
 
@@ -292,91 +291,19 @@ namespace PartyRacers.UI.HUD
             }
         }
 
-        private float CalculateProgress(KartRaceTracker tracker)
-        {
-            if (tracker == null)
-                return 0f;
-
-            int totalCheckpoints = Mathf.Max(1, tracker.TotalCheckpoints);
-            if (tracker.RaceFinished)
-                return tracker.TotalLaps * totalCheckpoints + totalCheckpoints;
-
-            int currentLap = Mathf.Max(1, tracker.CurrentLap);
-            int nextCheckpoint = tracker.NextCheckpointIndex;
-            int completedThisLap = nextCheckpoint <= 0
-                ? totalCheckpoints - 1
-                : Mathf.Clamp(nextCheckpoint - 1, 0, totalCheckpoints - 1);
-
-            return (currentLap - 1) * totalCheckpoints + completedThisLap;
-        }
-
-        private float CalculateTiebreak(KartController kart, KartRaceTracker tracker)
-        {
-            if (kart == null)
-                return 0f;
-
-            RaceCheckpoint next = tracker != null ? FindCheckpoint(tracker.NextCheckpointIndex) : null;
-            if (next != null)
-                return -Vector3.Distance(kart.transform.position, next.transform.position);
-
-            return kart.SpeedKmh * 0.01f;
-        }
-
         /// <summary>
-        /// A classificacao final e definida pela passagem na linha de chegada. O tempo total e a
-        /// melhor volta sao estatisticas e nunca podem reordenar quem ja terminou. Enquanto ainda
-        /// estao correndo, progresso e distancia ao proximo checkpoint continuam sendo usados.
+        /// Ordena a classificação. A regra vive em <see cref="RaceProgress"/> para que a HUD, a
+        /// tela de resultado e a mira do disco voador não possam discordar entre si.
         /// </summary>
         private static int CompareStandings(RankedKart a, RankedKart b)
         {
-            bool aFinished = a.Tracker != null && a.Tracker.RaceFinished;
-            bool bFinished = b.Tracker != null && b.Tracker.RaceFinished;
-
-            if (aFinished != bFinished)
-                return aFinished ? -1 : 1;
-
-            if (aFinished)
-            {
-                float aFinish = a.Tracker.FinishRealtime >= 0f
-                    ? a.Tracker.FinishRealtime
-                    : float.PositiveInfinity;
-                float bFinish = b.Tracker.FinishRealtime >= 0f
-                    ? b.Tracker.FinishRealtime
-                    : float.PositiveInfinity;
-
-                int byArrival = aFinish.CompareTo(bFinish);
-                if (byArrival != 0)
-                    return byArrival;
-            }
-            else
-            {
-                int byProgress = b.Progress.CompareTo(a.Progress);
-                if (byProgress != 0)
-                    return byProgress;
-
-                int byTrackPosition = b.Tiebreak.CompareTo(a.Tiebreak);
-                if (byTrackPosition != 0)
-                    return byTrackPosition;
-            }
+            int byProgress = RaceProgress.Compare(a.Progress, b.Progress);
+            if (byProgress != 0)
+                return byProgress;
 
             int aId = a.Kart != null ? a.Kart.GetInstanceID() : int.MaxValue;
             int bId = b.Kart != null ? b.Kart.GetInstanceID() : int.MaxValue;
             return aId.CompareTo(bId);
-        }
-
-        private RaceCheckpoint FindCheckpoint(int index)
-        {
-            if (checkpoints == null)
-                return null;
-
-            for (int i = 0; i < checkpoints.Length; i++)
-            {
-                RaceCheckpoint checkpoint = checkpoints[i];
-                if (checkpoint != null && checkpoint.CheckpointIndex == index)
-                    return checkpoint;
-            }
-
-            return null;
         }
 
         private string ResolveDisplayName(KartController kart, int position)
@@ -412,8 +339,7 @@ namespace PartyRacers.UI.HUD
         {
             public KartController Kart;
             public KartRaceTracker Tracker;
-            public float Progress;
-            public float Tiebreak;
+            public RaceProgress.Sample Progress;
         }
     }
 }

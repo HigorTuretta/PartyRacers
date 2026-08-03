@@ -44,11 +44,15 @@ public class RaceManager : MonoBehaviour
     [SerializeField] private bool waitForOnlinePlayersBeforeCountdown = true;
     [SerializeField] private float onlinePlayerWaitPollInterval = 0.1f;
     [SerializeField] private string onlineWaitingText = "AGUARDANDO";
-    [Tooltip("Tempo máximo esperando os bots entrarem no grid antes de largar assim mesmo.")]
-    [SerializeField, Min(0.5f)] private float botFillTimeout = 5f;
+    [Tooltip("Tempo máximo esperando os jogadores entrarem na pista (rede travada) antes de largar.")]
+    [SerializeField, Min(2f)] private float onlineWaitTimeout = 30f;
     [Tooltip("Prefab do árbitro de rede. Se vazio, é lido do RaceNetworkConfig em Resources.")]
     [SerializeField] private GameObject raceDirectorPrefab;
 #endif
+
+    [Header("Bots")]
+    [Tooltip("Tempo máximo esperando os bots entrarem no grid antes de largar assim mesmo.")]
+    [SerializeField, Min(0.5f)] private float botFillTimeout = 5f;
 
     [Header("Estado")]
     [SerializeField] private bool raceStarted;
@@ -196,14 +200,38 @@ public class RaceManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Resolve o prefab do kart local. A ordem importa: campo do Inspector → RaceNetworkConfig em
+    /// Resources → AssetDatabase (só no Editor).
+    ///
+    /// O caminho por AssetDatabase NÃO existe em build. Como as cenas de pista estão com
+    /// 'playerKartPrefab' vazio, no jogo compilado nenhum kart era instanciado — e sem kart não há
+    /// rig local, ou seja, a câmera nunca ia para trás do carro. Só funcionava dentro do Editor.
+    /// </summary>
     private GameObject ResolvePlayerKartPrefab()
     {
         if (playerKartPrefab != null)
             return playerKartPrefab;
 
+        RaceNetworkConfig config = Resources.Load<RaceNetworkConfig>("RaceNetworkConfig");
+        if (config != null && config.LocalKartPrefab != null)
+        {
+            playerKartPrefab = config.LocalKartPrefab;
+            return playerKartPrefab;
+        }
+
 #if UNITY_EDITOR
-        return AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Projeto/Prefabs/Cars/PlayerKart_Local.prefab");
+        playerKartPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Projeto/Prefabs/Cars/PlayerKart_Local.prefab");
+        if (playerKartPrefab != null)
+        {
+            Debug.LogWarning("[RaceManager] 'playerKartPrefab' vazio: resolvido pelo AssetDatabase, que " +
+                             "NÃO existe em build. Preencha o campo na cena ou o RaceNetworkConfig.", this);
+        }
+
+        return playerKartPrefab;
 #else
+        Debug.LogError("[RaceManager] Sem prefab de kart local: a corrida vai abrir sem carro e sem câmera. " +
+                       "Preencha 'playerKartPrefab' na cena ou 'localKartPrefab' no RaceNetworkConfig.", this);
         return null;
 #endif
     }
@@ -227,6 +255,18 @@ public class RaceManager : MonoBehaviour
         if (networkObject != null && networkObject.IsSpawned)
             return false;
 
+        // Kart de rede que ainda não terminou de spawnar: apenas IGNORA nesta passagem. Ele se
+        // registra sozinho no OnNetworkSpawn.
+        //
+        // Antes ele era DESATIVADO aqui — e como CollectKarts só varre objetos ativos, nunca mais
+        // era encontrado nem reativado. O kart do jogador podia sumir de vez, e com ele a
+        // CinemachineCamera que vive dentro do LocalPlayerRig: a câmera ficava parada no lugar em
+        // vez de seguir o carro.
+        if (networkObject != null)
+            return true;
+
+        // Sem NetworkObject nenhum numa corrida online é sobra de cena (kart posicionado à mão).
+        // Esse sim pode ser escondido.
         kart.gameObject.SetActive(false);
         return true;
 #else
@@ -360,15 +400,35 @@ public class RaceManager : MonoBehaviour
         SetAllStartGridLocked(true);
 
 #if PARTYRACERS_ONLINE
-        yield return WaitForOnlinePlayersBeforeCountdown();
-        EnsureNetworkDirector();
-#endif
+        if (IsOnlineRace())
+        {
+            // O servidor cria o árbitro; o cliente espera a réplica chegar.
+            EnsureNetworkDirector();
+            yield return WaitForNetworkDirector();
 
-        // A partir daqui a grade de jogadores está fechada: o RaceBotManager pode contar quantas
-        // vagas sobraram e preenchê-las sem estourar o limite de competidores.
+            if (RaceAuthority.IsServer)
+            {
+                // Só o servidor sabe quem já carregou a cena e quem já tem kart. Antes cada máquina
+                // decidia sozinha quando largar, olhando uma contagem de lobby que ainda estava
+                // defasada — e a corrida começava com gente fora da pista.
+                yield return WaitForEveryPlayerOnTrack();
+                GridReady = true;
+                yield return WaitForBotsToFill();
+                RaceNetworkDirector.Instance?.AnnounceCountdown();
+            }
+            else
+            {
+                yield return WaitForCountdownAnnouncement();
+                GridReady = true;
+            }
+        }
+        else
+        {
+            GridReady = true;
+            yield return WaitForBotsToFill();
+        }
+#else
         GridReady = true;
-
-#if PARTYRACERS_ONLINE
         yield return WaitForBotsToFill();
 #endif
 
@@ -398,6 +458,18 @@ public class RaceManager : MonoBehaviour
     {
         BroadcastPhase(phase);
         yield return new WaitForSeconds(countdownStepDuration);
+    }
+
+    /// <summary>Segura a contagem até os bots entrarem, para todo mundo largar com o grid cheio.</summary>
+    private IEnumerator WaitForBotsToFill()
+    {
+        PartyRacers.AI.RaceBotManager botManager = FindAnyObjectByType<PartyRacers.AI.RaceBotManager>(FindObjectsInactive.Exclude);
+        if (botManager == null || !botManager.WillFillBots)
+            yield break;
+
+        float limite = Time.time + Mathf.Max(0.5f, botFillTimeout);
+        while (!botManager.Filled && Time.time < limite)
+            yield return null;
     }
 
 #if PARTYRACERS_ONLINE
@@ -440,97 +512,92 @@ public class RaceManager : MonoBehaviour
         return raceDirectorPrefab;
     }
 
-    /// <summary>Segura a contagem até os bots entrarem, para todo mundo largar com o grid cheio.</summary>
-    private IEnumerator WaitForBotsToFill()
+    private bool IsOnlineRace()
     {
-        PartyRacers.AI.RaceBotManager botManager = FindAnyObjectByType<PartyRacers.AI.RaceBotManager>(FindObjectsInactive.Exclude);
-        if (botManager == null || !botManager.WillFillBots)
-            yield break;
-
-        float limite = Time.time + Mathf.Max(0.5f, botFillTimeout);
-        while (!botManager.Filled && Time.time < limite)
-            yield return null;
+        return NetworkBootstrap.Instance != null && NetworkBootstrap.Instance.IsOnline && RaceAuthority.IsNetworked;
     }
 
-    private IEnumerator WaitForOnlinePlayersBeforeCountdown()
+    /// <summary>O cliente não pode largar antes de o árbitro existir aqui — é ele que traz o sinal.</summary>
+    private IEnumerator WaitForNetworkDirector()
     {
-        if (!ShouldWaitForOnlinePlayers())
+        float limite = Time.time + Mathf.Max(1f, onlineWaitTimeout);
+        while (RaceNetworkDirector.Instance == null && Time.time < limite)
+        {
+            RaiseCountdownMessage(onlineWaitingText);
+            yield return null;
+        }
+    }
+
+    /// <summary>
+    /// Servidor: segura a largada até (a) a cena ter terminado de carregar em TODOS os clientes e
+    /// (b) cada um deles já ter o seu kart criado na pista.
+    /// </summary>
+    private IEnumerator WaitForEveryPlayerOnTrack()
+    {
+        if (!waitForOnlinePlayersBeforeCountdown)
             yield break;
 
         WaitForSeconds wait = new WaitForSeconds(Mathf.Max(0.05f, onlinePlayerWaitPollInterval));
+        float limite = Time.time + Mathf.Max(1f, onlineWaitTimeout);
 
-        while (!AllExpectedOnlineKartsSpawned())
+        while (Time.time < limite)
         {
-            CollectKarts();
+            int esperados = Mathf.Clamp(NetworkManager.Singleton.ConnectedClientsIds.Count, 1, RaceConstants.MaxPlayers);
+            int presentes = ContarKartsDeJogadoresProntos();
+
+            bool cenaPronta = NetworkBootstrap.Instance == null
+                              || NetworkBootstrap.Instance.IsRaceSceneReadyForCountdown;
+
+            RaiseCountdownMessage($"{onlineWaitingText} {Mathf.Min(presentes, esperados)}/{esperados}");
+
+            if (cenaPronta && presentes >= esperados)
+                yield break;
+
             SetAllControl(true);
             SetAllStartGridLocked(true);
-            UpdateOnlineWaitingText();
             yield return wait;
         }
 
-        CollectKarts();
-        SetAllControl(true);
-        SetAllStartGridLocked(true);
+        Debug.LogWarning("[RaceManager] Tempo esgotado esperando os jogadores entrarem na pista — largando assim mesmo.");
     }
 
-    private bool ShouldWaitForOnlinePlayers()
-    {
-        if (!waitForOnlinePlayersBeforeCountdown)
-            return false;
-
-        if (NetworkBootstrap.Instance != null && NetworkBootstrap.Instance.IsOnline)
-            return true;
-
-        NetworkManager networkManager = NetworkManager.Singleton;
-        return networkManager != null && networkManager.IsListening;
-    }
-
-    private bool AllExpectedOnlineKartsSpawned()
-    {
-        if (NetworkBootstrap.Instance != null && !NetworkBootstrap.Instance.IsRaceSceneReadyForCountdown)
-            return false;
-
-        int expectedPlayers = ResolveExpectedOnlinePlayerCount();
-        int spawnedKarts = CountSpawnedOnlineKarts();
-        return spawnedKarts >= expectedPlayers;
-    }
-
-    private int ResolveExpectedOnlinePlayerCount()
-    {
-        int expectedPlayers = 1;
-
-        RacePlayerRegistry registry = RacePlayerRegistry.Instance;
-        if (registry != null && registry.Count > 0)
-            expectedPlayers = registry.Count;
-
-        NetworkManager networkManager = NetworkManager.Singleton;
-        if (networkManager != null && networkManager.IsServer)
-            expectedPlayers = Mathf.Max(expectedPlayers, networkManager.ConnectedClientsIds.Count);
-
-        return Mathf.Clamp(expectedPlayers, 1, RaceConstants.MaxPlayers);
-    }
-
-    private int CountSpawnedOnlineKarts()
+    /// <summary>
+    /// Conta os karts de JOGADORES já ativos na pista. Bots ficam de fora de propósito: eles também
+    /// têm KartNetworkSync, e contá-los faria a espera passar com a pista ainda vazia de gente.
+    /// </summary>
+    private int ContarKartsDeJogadoresProntos()
     {
         int count = 0;
         KartNetworkSync[] networkKarts = FindObjectsByType<KartNetworkSync>(FindObjectsInactive.Exclude);
 
         foreach (KartNetworkSync networkKart in networkKarts)
         {
-            if (networkKart != null && networkKart.IsSpawned)
+            if (networkKart != null && networkKart.IsSpawned && !networkKart.IsBot)
                 count++;
         }
 
         return count;
     }
 
-    private void UpdateOnlineWaitingText()
+    /// <summary>Cliente: espera o servidor liberar a largada. Não decide nada sozinho.</summary>
+    private IEnumerator WaitForCountdownAnnouncement()
     {
-        int expectedPlayers = ResolveExpectedOnlinePlayerCount();
-        int spawnedKarts = CountSpawnedOnlineKarts();
-        string message = $"{onlineWaitingText} {Mathf.Min(spawnedKarts, expectedPlayers)}/{expectedPlayers}";
+        WaitForSeconds wait = new WaitForSeconds(Mathf.Max(0.05f, onlinePlayerWaitPollInterval));
+        float limite = Time.time + Mathf.Max(1f, onlineWaitTimeout);
 
-        RaiseCountdownMessage(message);
+        while (Time.time < limite)
+        {
+            RaceNetworkDirector director = RaceNetworkDirector.Instance;
+            if (director != null && director.CountdownAnnounced)
+                yield break;
+
+            RaiseCountdownMessage(onlineWaitingText);
+            SetAllControl(true);
+            SetAllStartGridLocked(true);
+            yield return wait;
+        }
+
+        Debug.LogWarning("[RaceManager] Tempo esgotado esperando a largada do servidor — largando assim mesmo.");
     }
 #endif
 }

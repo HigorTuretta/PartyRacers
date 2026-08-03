@@ -48,6 +48,12 @@ namespace PartyRacers.UI.Frontend
         [SerializeField] private LoadingScreenUI telaDeCarregamento;
         [SerializeField] private int vagasDaSala = 16;
 
+        [Header("Largada automática")]
+        [Tooltip("Com todos prontos, a corrida começa sozinha depois desta contagem. 0 desliga.")]
+        [SerializeField, Min(0f)] private float segundosParaLargadaAutomatica = 5f;
+        [Tooltip("Mínimo de jogadores na sala para a largada automática valer.")]
+        [SerializeField, Min(1)] private int minimoParaLargadaAutomatica = 2;
+
         [Header("Carteira (PlayerPrefs)")]
         [SerializeField] private int moedasIniciais = 12480;
         [SerializeField] private int fichasIniciais = 340;
@@ -60,6 +66,8 @@ namespace PartyRacers.UI.Frontend
         private string telaDoPalco;
         private RacePlayerRegistry registry;
         private NetworkBootstrap bootstrap;
+        private bool contagemDeLargadaAtiva;
+        private float fimDaContagemDeLargada;
 
         private void Awake()
         {
@@ -137,12 +145,62 @@ namespace PartyRacers.UI.Frontend
         private void Update()
         {
             AcompanharTela();
+            AtualizarLargadaAutomatica();
 
             if (loja == null || Time.unscaledTime < proximoTick)
                 return;
 
             proximoTick = Time.unscaledTime + 1f;
             AtualizarRotacao();
+        }
+
+        // ---------- largada automática ----------
+        /// <summary>
+        /// Com a sala inteira pronta, a corrida larga sozinha depois de uma contagem. Ninguém
+        /// precisa ficar esperando o dono lembrar de clicar. Se alguém desmarcar "pronto" ou entrar
+        /// mais gente que ainda não confirmou, a contagem é cancelada.
+        /// </summary>
+        private void AtualizarLargadaAutomatica()
+        {
+            if (segundosParaLargadaAutomatica <= 0f || bootstrap == null || registry == null)
+                return;
+
+            bool elegivel = bootstrap.IsOnline
+                            && !bootstrap.IsBusy
+                            && registry.Count >= minimoParaLargadaAutomatica
+                            && registry.AllReady();
+
+            if (!elegivel)
+            {
+                if (contagemDeLargadaAtiva)
+                {
+                    contagemDeLargadaAtiva = false;
+                    AtualizarLobby();
+                }
+
+                return;
+            }
+
+            if (!contagemDeLargadaAtiva)
+            {
+                contagemDeLargadaAtiva = true;
+                fimDaContagemDeLargada = Time.unscaledTime + segundosParaLargadaAutomatica;
+            }
+
+            float restante = fimDaContagemDeLargada - Time.unscaledTime;
+            if (restante > 0f)
+            {
+                lobby?.DefinirAviso($"TODOS PRONTOS — LARGADA EM {Mathf.CeilToInt(restante)}...");
+                return;
+            }
+
+            contagemDeLargadaAtiva = false;
+
+            // Só o dono da sala dispara a troca de cena; os convidados são levados pelo Netcode.
+            if (bootstrap.Mode == NetworkBootstrap.SessionMode.Host)
+                Correr();
+            else
+                lobby?.DefinirAviso("LARGANDO...");
         }
 
         private void GarantirSistemasDeRede()

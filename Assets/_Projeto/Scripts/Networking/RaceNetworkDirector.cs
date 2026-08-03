@@ -28,22 +28,105 @@ namespace PartyRacers.Networking
         [Tooltip("Com que frequência o servidor varre os karts em busca de quem terminou.")]
         [SerializeField, Min(0.02f)] private float finishPollInterval = 0.1f;
 
+        // Largada anunciada pelo servidor. É NetworkVariable (e não só um RPC) para que um cliente
+        // que termine de carregar a cena depois do anúncio ainda receba o estado ao sincronizar.
+        private readonly NetworkVariable<bool> countdownAnnounced = new NetworkVariable<bool>(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+
         private readonly List<ItemBox> orderedBoxes = new List<ItemBox>();
         private readonly HashSet<ulong> announcedFinishes = new HashSet<ulong>();
+        private readonly Dictionary<ulong, NetworkObject> spawnedKarts = new Dictionary<ulong, NetworkObject>();
         private RaceManager raceManager;
         private float nextFinishPoll;
         private int nextRank = 1;
+
+        /// <summary>O servidor já liberou a largada para todo mundo.</summary>
+        public bool CountdownAnnounced => IsSpawned && countdownAnnounced.Value;
 
         public override void OnNetworkSpawn()
         {
             Instance = this;
             EnsureBoxIndex();
+
+            if (!IsServer)
+                return;
+
+            SpawnKartsForConnectedClients();
+            NetworkManager.OnClientConnectedCallback += OnClientConnected;
         }
 
         public override void OnNetworkDespawn()
         {
+            if (IsServer && NetworkManager != null)
+                NetworkManager.OnClientConnectedCallback -= OnClientConnected;
+
             if (Instance == this)
                 Instance = null;
+        }
+
+        // ------------------------------------------------------------------ Karts dos jogadores
+
+        /// <summary>
+        /// Cria o kart de cada cliente conectado, aqui na pista. O Netcode não faz mais isso
+        /// sozinho na conexão (ver NetworkBootstrap): assim nenhum carro aparece no menu e a grade
+        /// é destruída junto com a cena quando a sala volta ao lobby.
+        /// </summary>
+        private void SpawnKartsForConnectedClients()
+        {
+            foreach (ulong clientId in NetworkManager.ConnectedClientsIds)
+                SpawnKartFor(clientId);
+        }
+
+        private void OnClientConnected(ulong clientId) => SpawnKartFor(clientId);
+
+        private void SpawnKartFor(ulong clientId)
+        {
+            if (!IsServer || spawnedKarts.ContainsKey(clientId))
+                return;
+
+            NetworkBootstrap bootstrap = NetworkBootstrap.Instance;
+            GameObject prefab = bootstrap != null ? bootstrap.ResolveOnlineKartPrefab() : null;
+            NetworkObject prefabNetObj = prefab != null ? prefab.GetComponent<NetworkObject>() : null;
+
+            if (prefabNetObj == null)
+            {
+                Debug.LogError("[RaceNetworkDirector] Sem prefab de kart online — o jogador " + clientId +
+                               " ficaria sem carro.");
+                return;
+            }
+
+            Pose pose = ResolveSpawnPose((int)clientId);
+            NetworkObject kart = NetworkManager.SpawnManager.InstantiateAndSpawn(
+                prefabNetObj,
+                clientId,
+                destroyWithScene: true,
+                isPlayerObject: true,
+                forceOverride: false,
+                position: pose.position,
+                rotation: pose.rotation);
+
+            if (kart != null)
+                spawnedKarts[clientId] = kart;
+        }
+
+        private static Pose ResolveSpawnPose(int index)
+        {
+            RaceSpawnManager spawns = RaceSpawnManager.Instance;
+            return spawns != null ? spawns.GetSpawnPose(index) : new Pose(Vector3.zero, Quaternion.identity);
+        }
+
+        /// <summary>Quantos clientes já têm o kart criado (usado pela espera da largada).</summary>
+        public int SpawnedPlayerKartCount => spawnedKarts.Count;
+
+        // ------------------------------------------------------------------ Largada
+
+        /// <summary>Servidor: libera a contagem para todos. Idempotente.</summary>
+        public void AnnounceCountdown()
+        {
+            if (IsServer && IsSpawned && !countdownAnnounced.Value)
+                countdownAnnounced.Value = true;
         }
 
         private void Update()

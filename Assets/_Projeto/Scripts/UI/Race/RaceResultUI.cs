@@ -40,6 +40,8 @@ namespace PartyRacers.UI.Race
         [SerializeField] private LoadingScreenUI telaDeCarregamento;
         [Tooltip("Rótulo padrão do botão de revanche (restaurado quando o jogador pode reiniciar).")]
         [SerializeField] private string rotuloRevanche = "JOGAR NOVAMENTE";
+        [Tooltip("Rótulo padrão do botão de voltar ao lobby.")]
+        [SerializeField] private string rotuloVoltar = "VOLTAR AO LOBBY";
 
         private KartRaceTracker rastreadorLocal;
         private bool aberta;
@@ -69,9 +71,10 @@ namespace PartyRacers.UI.Race
         }
 
         /// <summary>
-        /// Sai da pista para o frontend. Online é obrigatório ENCERRAR a sessão antes: com o
-        /// gerenciamento de cenas do Netcode ativo, um cliente que chama LoadScene direto é
-        /// ignorado — era por isso que só o dono da sala conseguia voltar ao lobby.
+        /// Volta ao lobby MANTENDO a sala. Numa sessão online o dono carrega o frontend pelo
+        /// Netcode e todos voltam juntos, ainda conectados — antes este botão chamava LeaveGame e
+        /// derrubava a sala inteira, então o host voltava para um lobby vazio e os convidados eram
+        /// expulsos. Quem quer realmente encerrar usa SAIR DA PARTIDA no menu da corrida.
         /// </summary>
         public void VoltarAoFrontend()
         {
@@ -83,7 +86,14 @@ namespace PartyRacers.UI.Race
 
             NetworkBootstrap rede = NetworkBootstrap.Instance;
             if (rede != null && rede.IsOnline)
-                rede.LeaveGame();
+            {
+                if (!PodeComandarAPartida(rede))
+                    return;
+
+                FecharResultado();
+                rede.ReturnEveryoneToLobby();
+                return;
+            }
 
             LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
             if (loading != null)
@@ -103,15 +113,17 @@ namespace PartyRacers.UI.Race
             NetworkBootstrap rede = NetworkBootstrap.Instance;
             if (rede != null && rede.IsOnline)
             {
-                if (rede.Mode != NetworkBootstrap.SessionMode.Host)
-                {
-                    DefinirAvisoDeRevanche("AGUARDANDO O DONO DA SALA");
+                if (!PodeComandarAPartida(rede))
                     return;
-                }
 
+                // A tela precisa sair de cena ANTES da troca: a cena nova demora alguns frames para
+                // carregar e, sem isto, o resultado da corrida anterior fica pendurado por cima.
+                FecharResultado();
                 rede.RestartRaceScene(atual.name);
                 return;
             }
+
+            FecharResultado();
 
             LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
             if (loading != null && !string.IsNullOrEmpty(atual.name))
@@ -120,29 +132,96 @@ namespace PartyRacers.UI.Race
                 UnityEngine.SceneManagement.SceneManager.LoadScene(atual.buildIndex >= 0 ? atual.buildIndex : 0);
         }
 
-        /// <summary>
-        /// Ajusta o botão de revanche ao papel do jogador: quem não é dono da sala não pode
-        /// recarregar a pista, e um botão que não faz nada é pior do que um botão explicando por quê.
-        /// </summary>
-        private void AtualizarBotaoDeRevanche()
+        /// <summary>Esconde o resultado e devolve a HUD, para a próxima corrida começar limpa.</summary>
+        private void FecharResultado()
         {
-            if (btnJogarNovamente == null)
-                return;
-
-            NetworkBootstrap rede = NetworkBootstrap.Instance;
-            bool online = rede != null && rede.IsOnline;
-            bool podeReiniciar = !online || rede.Mode == NetworkBootstrap.SessionMode.Host;
-
-            btnJogarNovamente.interactable = podeReiniciar;
-            DefinirAvisoDeRevanche(podeReiniciar ? rotuloRevanche : "AGUARDANDO O DONO DA SALA");
+            aberta = false;
+            if (telaResultado != null)
+                telaResultado.SetActive(false);
+            if (hudDaCorrida != null)
+                hudDaCorrida.SetActive(true);
         }
 
-        private void DefinirAvisoDeRevanche(string texto)
+        /// <summary>
+        /// Quem pode decidir o destino da sala. Duas travas: só o dono da sala, e só depois que
+        /// TODOS os jogadores humanos cruzarem a linha — tirar a pista de baixo de quem ainda está
+        /// correndo seria arrancar a corrida do outro pela metade. Bots não contam.
+        /// </summary>
+        private bool PodeComandarAPartida(NetworkBootstrap rede)
         {
-            if (btnJogarNovamente == null || string.IsNullOrWhiteSpace(texto))
+            if (rede.Mode != NetworkBootstrap.SessionMode.Host)
+            {
+                DefinirAvisoDosBotoes("AGUARDANDO O DONO DA SALA");
+                return false;
+            }
+
+            if (!TodosOsHumanosTerminaram())
+            {
+                DefinirAvisoDosBotoes("AGUARDANDO OS OUTROS TERMINAREM");
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>True quando nenhum kart de jogador (não-bot) ainda está correndo.</summary>
+        private bool TodosOsHumanosTerminaram()
+        {
+            KartNetworkSync[] karts = FindObjectsByType<KartNetworkSync>(FindObjectsInactive.Exclude);
+
+            foreach (KartNetworkSync sync in karts)
+            {
+                if (sync == null || !sync.IsSpawned || sync.IsBot)
+                    continue;
+
+                KartRaceTracker tracker = sync.GetComponent<KartRaceTracker>();
+                if (tracker != null && !tracker.RaceFinished)
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Ajusta os botões ao estado real da sala. Um botão que não faz nada é pior do que um
+        /// botão explicando por que ainda não dá.
+        /// </summary>
+        private void AtualizarBotoesDeSaida()
+        {
+            NetworkBootstrap rede = NetworkBootstrap.Instance;
+            bool online = rede != null && rede.IsOnline;
+
+            bool ehHost = !online || rede.Mode == NetworkBootstrap.SessionMode.Host;
+            bool todosTerminaram = !online || TodosOsHumanosTerminaram();
+            bool liberado = ehHost && todosTerminaram;
+
+            if (btnJogarNovamente != null)
+                btnJogarNovamente.interactable = liberado;
+            if (btnVoltarGaragem != null)
+                btnVoltarGaragem.interactable = liberado;
+
+            if (liberado)
+            {
+                DefinirRotulo(btnJogarNovamente, rotuloRevanche);
+                DefinirRotulo(btnVoltarGaragem, rotuloVoltar);
+                return;
+            }
+
+            DefinirAvisoDosBotoes(ehHost ? "AGUARDANDO OS OUTROS TERMINAREM" : "AGUARDANDO O DONO DA SALA");
+        }
+
+        private void DefinirAvisoDosBotoes(string texto)
+        {
+            DefinirRotulo(btnJogarNovamente, texto);
+            DefinirRotulo(btnVoltarGaragem, texto);
+        }
+
+        private static void DefinirRotulo(UnityEngine.UI.Button botao, string texto)
+        {
+            if (botao == null || string.IsNullOrWhiteSpace(texto))
                 return;
 
-            TMPro.TextMeshProUGUI label = btnJogarNovamente.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+            TMPro.TextMeshProUGUI label = botao.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
             if (label != null)
                 label.text = texto;
         }
@@ -165,6 +244,9 @@ namespace PartyRacers.UI.Race
                 return;
 
             proximaAtualizacao = Time.unscaledTime + Mathf.Max(0.1f, intervaloAtualizacao);
+            // Os botões reavaliam junto com a lista: assim que o último humano cruza a linha eles
+            // liberam sozinhos, sem o host precisar reabrir a tela.
+            AtualizarBotoesDeSaida();
             Preencher();
         }
 
@@ -216,7 +298,7 @@ namespace PartyRacers.UI.Race
             if (hudDaCorrida != null)
                 hudDaCorrida.SetActive(false);
 
-            AtualizarBotaoDeRevanche();
+            AtualizarBotoesDeSaida();
             AtualizarAlvoEspectador();
             AplicarCameraEspectador();
 

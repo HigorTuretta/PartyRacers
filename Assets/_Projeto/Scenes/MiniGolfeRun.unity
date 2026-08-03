@@ -60740,7 +60740,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RaceManager
   playerKart: {fileID: 0}
-  playerKartPrefab: {fileID: 0}
+  playerKartPrefab: {fileID: 2611403489893210895, guid: 6a90cd2ae9d96b744b102bbbae581b43, type: 3}
   spawnPlayerKartIfMissing: 1
   autoCollectKarts: 1
   spawnManager: {fileID: 1651615091}
@@ -60751,8 +60751,9 @@ MonoBehaviour:
   waitForOnlinePlayersBeforeCountdown: 1
   onlinePlayerWaitPollInterval: 0.1
   onlineWaitingText: AGUARDANDO
-  botFillTimeout: 5
+  onlineWaitTimeout: 30
   raceDirectorPrefab: {fileID: 0}
+  botFillTimeout: 5
   raceStarted: 0
 --- !u!4 &881398963
 Transform:
@@ -113573,6 +113574,7 @@ MonoBehaviour:
   cenaDoFrontend: Frontend
   telaDeCarregamento: {fileID: 616116607}
   rotuloRevanche: JOGAR NOVAMENTE
+  rotuloVoltar: VOLTAR AO LOBBY
 --- !u!114 &1617132597
 MonoBehaviour:
   m_ObjectHideFlags: 0

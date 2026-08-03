@@ -231,6 +231,52 @@ namespace PartyRacers.Networking
         }
 
         /// <summary>
+        /// Leva TODA a sala de volta ao frontend mantendo a sessão viva — é o "voltar ao lobby"
+        /// depois de uma corrida, não um "sair". Antes este botão chamava LeaveGame e derrubava a
+        /// sala inteira: o host voltava para um lobby vazio e os convidados eram expulsos.
+        ///
+        /// Só o dono da sala pode disparar; os convidados são levados pelo Netcode.
+        /// Retorna false quando não havia sessão online (o chamador faz a troca de cena local).
+        /// </summary>
+        public bool ReturnEveryoneToLobby()
+        {
+#if PARTYRACERS_ONLINE
+            if (!IsOnline)
+                return false;
+
+            if (Mode != SessionMode.Host)
+            {
+                SetStatus("Aguardando o dono da sala voltar para o lobby.");
+                return true;
+            }
+
+            if (networkManager == null || !networkManager.IsListening || networkManager.SceneManager == null)
+                return false;
+
+            string destino = string.IsNullOrWhiteSpace(frontendSceneName) ? "Frontend" : frontendSceneName;
+            SceneEventProgressStatus status = networkManager.SceneManager.LoadScene(destino, LoadSceneMode.Single);
+
+            SetStatus(status == SceneEventProgressStatus.Started
+                ? "Voltando ao lobby com a sala..."
+                : $"Falha ao voltar ao lobby: {status}");
+
+            return status == SceneEventProgressStatus.Started;
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>Prefab de kart online resolvido (usado pelo árbitro para criar os karts).</summary>
+        public GameObject ResolveOnlineKartPrefab()
+        {
+#if PARTYRACERS_ONLINE
+            return ResolvePlayerPrefab(ResolveNetworkConfig());
+#else
+            return null;
+#endif
+        }
+
+        /// <summary>
         /// Republica a customização do jogador no lobby. Chamado quando ele confirma a estilização
         /// na garagem, para que os outros vejam o carro certo antes da largada.
         /// </summary>
@@ -715,7 +761,12 @@ namespace PartyRacers.Networking
             if (playerPrefab.GetComponent<NetworkObject>() == null)
                 throw new InvalidOperationException($"{playerPrefab.name} precisa de NetworkObject.");
 
-            config.PlayerPrefab = playerPrefab;
+            // PlayerPrefab fica VAZIO de propósito: com ele preenchido o Netcode cria o kart no
+            // instante em que o cliente conecta — ou seja, ainda no lobby. O carro nascia no meio do
+            // menu, caía no vazio e depois era arrastado para a pista pela troca de cena.
+            // Quem cria os karts agora é o RaceNetworkDirector, já dentro da cena de corrida e com
+            // destroyWithScene ligado, para que voltar ao lobby limpe a grade.
+            config.PlayerPrefab = null;
 
             NetworkPrefabsList prefabsList = resolvedConfig != null ? resolvedConfig.NetworkPrefabs : null;
             if (prefabsList != null && !config.Prefabs.NetworkPrefabsLists.Contains(prefabsList))
