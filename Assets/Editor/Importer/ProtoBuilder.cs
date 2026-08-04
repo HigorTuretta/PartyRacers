@@ -35,15 +35,37 @@ namespace PartyRacers.UI.Importer
 
         private const string Menu = "Party Racers/UI v2/";
 
-        /// <summary>Arquivo do dump → nome do prefab de tela. Só desktop: o alvo é PC.</summary>
-        private static readonly (string dump, string prefab)[] Telas =
+        /// <summary>
+        /// Arquivo do dump → nome do prefab de tela. Só desktop: o alvo é PC.
+        ///
+        /// As cinco primeiras vêm do protótipo v2, que já nasce com painel de vidro. As sete
+        /// últimas só existem desenhadas no documento PLACA (v1) — nelas o <c>vidro</c> aplica a
+        /// mudança de direção do handoff §4: painel opaco com contorno preto grosso vira vidro com
+        /// fio fino, e o contorno grosso fica reservado a botão, placa de HUD e marca.
+        /// </summary>
+        private static readonly (string dump, string prefab, bool vidro)[] Telas =
         {
-            ("Lobby",             "Screen_Lobby"),
-            ("Matchmaking",       "Screen_Matchmaking"),
-            ("CustomMatch",       "Screen_CustomMatch"),
-            ("Garage",            "Screen_Garage"),
-            ("RaceHUD_PC_normal", "Screen_RaceHUD_PC"),
+            ("Lobby",             "Screen_Lobby",       false),
+            ("Matchmaking",       "Screen_Matchmaking", false),
+            ("CustomMatch",       "Screen_CustomMatch", false),
+            ("Garage",            "Screen_Garage",      false),
+            ("RaceHUD_PC_normal", "Screen_RaceHUD_PC",  false),
+
+            ("Store",             "Screen_Store",       true),
+            ("BattlePass",        "Screen_BattlePass",  true),
+            ("Settings",          "Screen_Settings",    true),
+            ("Result",            "Screen_Result",      true),
+            ("JoinCode",          "Screen_JoinCode",    true),
+            ("Loading",           "Screen_Loading",     true),
+            ("RaceMenu",          "Screen_RaceMenu",    true),
         };
+
+        /// <summary>Tela desta passada pede a conversão para vidro.</summary>
+        private static bool vidro;
+
+        // Vidro do v2 (tokens-v2 → superficie.painel) e o fio que substitui o contorno grosso.
+        private static readonly Color Vidro = new Color(10 / 255f, 12 / 255f, 34 / 255f, 0.82f);
+        private static readonly Color Fio = new Color(155 / 255f, 165 / 255f, 215 / 255f, 0.20f);
 
         private static readonly List<string> Avisos = new List<string>();
         private static int nosCriados;
@@ -58,11 +80,14 @@ namespace PartyRacers.UI.Importer
             GarantirPasta(DestinoRoot);
 
             var feitas = new List<string>();
-            foreach ((string dump, string prefab) in Telas)
+            foreach ((string dump, string prefab, bool paraVidro) in Telas)
             {
+                vidro = paraVidro;
                 if (Construir(dump, prefab))
                     feitas.Add(prefab);
             }
+
+            vidro = false;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -177,6 +202,16 @@ namespace PartyRacers.UI.Importer
                 nos.Where(x => Mathf.Abs(x.W - w) <= tol && Mathf.Abs(x.H - h) <= tol)
                    .OrderBy(x => Mathf.Round(x.Y / 12f)).ThenBy(x => x.X)
                    .Select(x => x.Rect).ToArray();
+
+            /// <summary>
+            /// Nós de PRIMEIRO nível inteiramente dentro da faixa do topo.
+            ///
+            /// O documento PLACA não desenha o cabeçalho como uma barra: são grupos soltos (marca,
+            /// abas, carteira). Para trocar o cabeçalho inteiro é preciso pegá-los pela POSIÇÃO.
+            /// </summary>
+            public RectTransform[] NoTopo(float altura) =>
+                nos.Where(n => n.Rect != null && n.Pai < 0 && n.H < altura && n.Y + n.H <= altura)
+                   .Select(n => n.Rect).ToArray();
 
             public RectTransform Caixa(float x, float y, float w, float h, float tol = 3f) =>
                 nos.FirstOrDefault(n => Mathf.Abs(n.X - x) <= tol && Mathf.Abs(n.Y - y) <= tol
@@ -302,6 +337,19 @@ namespace PartyRacers.UI.Importer
                             && n.EstiloDoContorno != "none" && n.EstiloDoContorno != "hidden";
             bool tracejado = n.EstiloDoContorno == "dashed";
 
+            // §4 do handoff: o painel deixa de ser placa opaca com moldura preta e vira vidro.
+            // A regra é de TAMANHO, não de nome: o que é grande o bastante para o olho ler como
+            // superfície é painel; o que é pequeno é botão, chip ou placa, e mantém a moldura —
+            // é isso que passa a separar "onde eu leio" de "onde eu ajo".
+            if (vidro && n.W >= 300f && n.H >= 170f && temContorno && contorno >= 3f
+                && corDoContorno.a > 0.5f && Luminancia(corDoContorno) < 0.25f)
+            {
+                fundo = Vidro;
+                temFundo = true;
+                corDoContorno = Fio;
+                contorno = 1f;
+            }
+
             float rx = Mathf.Min(Raio(n), n.W * 0.5f);
             float ry = Mathf.Min(n.RaioY > 0f ? n.RaioY : Raio(n), n.H * 0.5f);
 
@@ -345,6 +393,23 @@ namespace PartyRacers.UI.Importer
             }
 
             Transform host = container ? CssKit.Esticar(CssKit.No(r, "Shape")) : (Transform)r;
+
+            // O documento PLACA usa listras diagonais como papel de parede da PÁGINA, atrás dos
+            // mockups. Isso é apresentação do documento, não da tela: no jogo o fundo é o degradê
+            // profundo do v2, o mesmo do lobby.
+            if (vidro && img != null && img.Tipo == TipoDeFundo.Listras
+                && n.W >= 1900f && n.H >= 900f)
+            {
+                img = new Fundo
+                {
+                    Tipo = TipoDeFundo.Gradiente,
+                    Vertical = true,
+                    Topo = new Color(21 / 255f, 26 / 255f, 68 / 255f, 1f),
+                    Base = new Color(10 / 255f, 12 / 255f, 34 / 255f, 1f),
+                };
+                fundo = Color.clear;
+                temFundo = false;
+            }
 
             // Fundos que não são forma: luz ambiente e listras diagonais têm sprite próprio.
             if (img != null && img.Tipo == TipoDeFundo.Luz)
@@ -401,6 +466,15 @@ namespace PartyRacers.UI.Importer
 
             if (n.Overflow == "hidden" || n.Overflow == "auto" || n.Overflow == "scroll")
                 r.gameObject.AddComponent<RectMask2D>();
+
+            // Anotação do documento de design não é elemento de tela. O PLACA explica o layout na
+            // própria arte ("No celular a lista da esquerda vira abas", "[ render do kit ]") e
+            // isso não pode nascer ligado no jogo.
+            if (vidro && Anotacao(n.Texto))
+            {
+                r.gameObject.SetActive(false);
+                return;
+            }
 
             if (!string.IsNullOrEmpty(n.Texto))
             {
@@ -751,6 +825,30 @@ namespace PartyRacers.UI.Importer
                 .Select(s => float.Parse(s.Trim(), CultureInfo.InvariantCulture)).ToArray();
             return v.Length >= 6 ? v : null;
         }
+
+        private static readonly string[] MarcasDeDocumento =
+        {
+            "no celular", "no computador", "estados de erro", "pop-up de", "a corrida segue",
+            "exporta", "arte vetorial", "render d", "desfocada ao fundo", "ao fundo ]",
+        };
+
+        private static bool Anotacao(string texto)
+        {
+            if (string.IsNullOrEmpty(texto))
+                return false;
+
+            string t = texto.Trim().ToLowerInvariant();
+            if (t.StartsWith("[") && t.EndsWith("]"))
+                return true;
+
+            foreach (string marca in MarcasDeDocumento)
+                if (t.Contains(marca))
+                    return true;
+
+            return false;
+        }
+
+        private static float Luminancia(Color c) => 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
 
         private static float Raio(No n) => n.Raio != null && n.Raio.Length > 0 ? n.Raio[0] : 0f;
 

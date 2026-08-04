@@ -48,10 +48,25 @@ namespace PartyRacers.UI.Importer
 
             // ---- telas antigas ficam desligadas, não apagadas
             foreach ((string antigo, string novo) in new[]
-                     { ("Screen_Lobby", "Screen_Lobby_v1"), ("Screen_Garage_PC", "Screen_Garage_v1") })
+                     {
+                         ("Screen_Lobby", "Screen_Lobby_v1"),
+                         ("Screen_Garage_PC", "Screen_Garage_v1"),
+                         ("Screen_Store", "Screen_Store_v1"),
+                         ("Screen_BattlePass", "Screen_BattlePass_v1"),
+                         ("Screen_Settings", "Screen_Settings_v1"),
+                         ("Screen_Result", "Screen_Result_v1"),
+                         ("Screen_JoinCode", "Screen_JoinCode_v1"),
+                         ("Screen_Loading", "Screen_Loading_v1"),
+                     })
             {
                 Transform t = canvas.Find(antigo);
                 if (t == null)
+                    continue;
+
+                // Reinstalar não pode renomear a tela v2 da rodada anterior: ela viraria mais um
+                // `_v1` desligado, e a cada execução a cena ganhava uma cópia morta. Só a tela do
+                // v1 de verdade — a que não veio do nosso prefab — recebe o sufixo.
+                if (EhV2(t.gameObject))
                     continue;
 
                 t.name = novo;
@@ -59,11 +74,27 @@ namespace PartyRacers.UI.Importer
                 log.AppendLine($"  {antigo} → {novo} (desligada)");
             }
 
+            // Limpa as cópias que as execuções anteriores deixaram para trás.
+            foreach (Transform t in canvas.Cast<Transform>().ToList())
+            {
+                if (t.name.EndsWith("_v1") && EhV2(t.gameObject))
+                {
+                    log.AppendLine($"  - {t.name} (cópia repetida de instalação anterior)");
+                    Object.DestroyImmediate(t.gameObject);
+                }
+            }
+
             // ---- telas novas
             GameObject lobby = Colocar(canvas, "Screen_Lobby", log);
             GameObject garagem = Colocar(canvas, "Screen_Garage", log);
             GameObject sala = Colocar(canvas, "Screen_CustomMatch", log);
             GameObject busca = Colocar(canvas, "Screen_Matchmaking", log);
+            GameObject loja = Colocar(canvas, "Screen_Store", log);
+            GameObject passe = Colocar(canvas, "Screen_BattlePass", log);
+            GameObject ajustes = Colocar(canvas, "Screen_Settings", log);
+            GameObject resultado = Colocar(canvas, "Screen_Result", log);
+            GameObject codigo = Colocar(canvas, "Screen_JoinCode", log);
+            GameObject carregando = Colocar(canvas, "Screen_Loading", log);
 
             // O matchmaking é MODAL sobre o lobby (§3 da proposta): fica por cima e começa
             // desligado. Não é destino do roteador — cancelar é fechar, não é voltar.
@@ -89,7 +120,8 @@ namespace PartyRacers.UI.Importer
             }
 
             // ---- ligações que só a cena conhece
-            foreach (GameObject tela in new[] { lobby, garagem, sala, busca })
+            foreach (GameObject tela in new[]
+                     { lobby, garagem, sala, busca, loja, passe, ajustes, resultado, codigo, carregando })
             {
                 if (tela == null)
                     continue;
@@ -114,12 +146,38 @@ namespace PartyRacers.UI.Importer
             if (garagem != null)
                 LigarGaragem(garagem, raizes, log);
 
+            // O roteador precisa de si mesmo nas telas que navegam sozinhas (voltar, cancelar).
+            foreach (GameObject tela in new[] { ajustes, resultado, codigo })
+            {
+                if (tela == null)
+                    continue;
+
+                foreach (MonoBehaviour c in tela.GetComponents<MonoBehaviour>())
+                    Referencia(c, "roteador", roteador);
+            }
+
+            // A tela de carregamento é a última coisa que fica por cima de tudo.
+            if (carregando != null)
+            {
+                carregando.transform.SetAsLastSibling();
+                carregando.SetActive(false);
+            }
+
+            if (codigo != null)
+                codigo.SetActive(false);
+
             // ---- roteador
             RegistrarTelas(roteador, new[]
             {
                 ("Lobby", lobby),
                 ("Garagem", garagem),
                 ("CustomMatch", sala),
+                ("Loja", loja),
+                ("Passe", passe),
+                ("Config", ajustes),
+                ("Resultado", resultado),
+                ("JoinCode", codigo),
+                ("Loading", carregando),
             }, log);
 
             EditorSceneManager.MarkSceneDirty(cena);
@@ -227,6 +285,13 @@ namespace PartyRacers.UI.Importer
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Veio de um prefab nosso de `Prefabs/UI_v2/Screens`?</summary>
+        private static bool EhV2(GameObject go)
+        {
+            string caminho = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go);
+            return !string.IsNullOrEmpty(caminho) && caminho.StartsWith(PrefabRoot);
         }
 
         private static void Referencia(Object alvo, string campo, Object valor)

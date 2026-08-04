@@ -49,7 +49,271 @@ namespace PartyRacers.UI.Importer
                 case "Screen_Garage": Garagem(raiz, m); break;
                 case "Screen_Matchmaking": Matchmaking(raiz, m); break;
                 case "Screen_CustomMatch": SalaPrivada(raiz, m); break;
+                case "Screen_Store": Loja(raiz, m); break;
+                case "Screen_BattlePass": Passe(raiz, m); break;
+                case "Screen_Settings": Ajustes(raiz, m); break;
+                case "Screen_Result": Resultado(raiz, m); break;
+                case "Screen_JoinCode": Codigo(raiz, m); break;
+                case "Screen_Loading": Carregando(raiz, m); break;
+                case "Screen_RaceMenu": MenuDaPartida(raiz, m); break;
             }
+        }
+
+        // ================================================================== Loja
+
+        private static void Loja(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            BarraDoV2(raiz, m, "Loja");
+
+            var ui = raiz.AddComponent<StoreScreenUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "textoMoedas", Tmp(m.Texto("12.480")));
+            Atribuir(so, "textoFichas", Tmp(m.Texto("340")));
+            Atribuir(so, "textoTimer", Tmp(m.Texto("DIAS", false)));
+
+            // A grade de 4 cards do documento vira UM prefab e um contêiner que cresce. Os cards
+            // "diários" são a fileira menor, com a mesma lógica.
+            Grade(so, m, "containerGrade", "prefabCard",
+                  "Assets/_Projeto/Prefabs/UI_v2/Items/Card_Store_v2.prefab", 264f, 169f, 4f);
+
+            Grade(so, m, "containerDiarios", "prefabDiario",
+                  "Assets/_Projeto/Prefabs/UI_v2/Items/Card_StoreDaily_v2.prefab", 274f, 348f, 6f);
+
+            AbasDeTexto(m, "TODOS", "CARROS", "RODAS", "ADESIVOS", "BUZINAS", "RASTROS");
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ================================================================== Passe
+
+        private static void Passe(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            BarraDoV2(raiz, m, "Passe");
+
+            var ui = raiz.AddComponent<BattlePassScreenUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "textoNivel", Tmp(m.Texto("12")));
+            Atribuir(so, "rotuloProgresso", Tmp(m.Texto("PROGRESSO PARA O NÍVEL", false)));
+            Atribuir(so, "textoProgresso", Tmp(m.Texto("640 / 1.000 XP", false)));
+
+            // As duas faixas de recompensa: a de cima é a premium.
+            RectTransform[] cards = m.Caixas(250f, 232f, 8f);
+            RectTransform[] gratis = m.Caixas(250f, 186f, 8f);
+
+            if (cards.Length > 0)
+            {
+                Atribuir(so, "faixaPremium", cards[0].parent);
+                Prefabizar(cards, "Assets/_Projeto/Prefabs/UI_v2/Items/Card_PassTier_v2.prefab",
+                           out GameObject prefab);
+                Atribuir(so, "prefabTier", prefab);
+            }
+
+            if (gratis.Length > 0)
+            {
+                Atribuir(so, "faixaGratis", gratis[0].parent);
+                // A faixa grátis também é preenchida em runtime: deixar as cópias do documento
+                // faria a fileira de cima nascer vazia e a de baixo cheia, como se uma delas
+                // tivesse quebrado.
+                Prefabizar(gratis, "Assets/_Projeto/Prefabs/UI_v2/Items/Card_PassTierFree_v2.prefab",
+                           out GameObject _);
+            }
+
+            RectTransform[] cabecalho = m.Caixas(250f, 56f, 6f);
+            if (cabecalho.Length > 0)
+                Atribuir(so, "cabecalhoNiveis", cabecalho[0].parent);
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ================================================================== Ajustes
+
+        private static void Ajustes(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<SettingsScreenUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "btnVoltar", ClicavelPorTexto(m, "VOLTAR", false));
+            Atribuir(so, "btnRestaurar", ClicavelPorTexto(m, "RESTAURAR", false));
+            Atribuir(so, "btnCancelar", ClicavelPorTexto(m, "CANCELAR", false));
+            Atribuir(so, "btnAplicar", ClicavelPorTexto(m, "APLICAR", false));
+
+            // Os cinco grupos da coluna da esquerda: cada um acende um painel à direita.
+            (string id, string rotulo)[] grupos =
+            {
+                ("audio", "ÁUDIO"), ("video", "VÍDEO"), ("controles", "CONTROLES"),
+                ("jogo", "JOGO"), ("conta", "CONTA"),
+            };
+
+            SerializedProperty lista = so.FindProperty("grupos");
+            lista.arraySize = grupos.Length;
+
+            for (int i = 0; i < grupos.Length; i++)
+            {
+                SerializedProperty item = lista.GetArrayElementAtIndex(i);
+                item.FindPropertyRelative("id").stringValue = grupos[i].id;
+
+                RectTransform botao = m.Dono(grupos[i].rotulo, 1);
+                if (botao == null)
+                    continue;
+
+                Clicavel(botao);
+                item.FindPropertyRelative("botao").objectReferenceValue = botao.gameObject;
+                (GameObject ativo, GameObject ocioso) = DoisEstados(botao, i == 0);
+                item.FindPropertyRelative("botaoAtivo").objectReferenceValue = ativo;
+                item.FindPropertyRelative("botaoIdle").objectReferenceValue = ocioso;
+
+                // O painel do grupo é o bloco grande cujo título repete o nome do grupo. No
+                // documento os cinco aparecem empilhados; aqui viram irmãos exclusivos.
+                RectTransform painel = m.Todos(grupos[i].rotulo).Skip(1).FirstOrDefault();
+                if (painel != null)
+                {
+                    Transform bloco = painel.parent;
+                    item.FindPropertyRelative("painel").objectReferenceValue = bloco.gameObject;
+                    bloco.gameObject.SetActive(i == 0);
+                }
+            }
+
+            // Cada linha de ajuste tem 610×60 no documento: rótulo à esquerda, controle à direita.
+            RectTransform[] linhas = m.Caixas(610f, 60f, 6f);
+            SerializedProperty ajustes = so.FindProperty("ajustes");
+            ajustes.arraySize = linhas.Length;
+
+            for (int i = 0; i < linhas.Length; i++)
+            {
+                SerializedProperty item = ajustes.GetArrayElementAtIndex(i);
+                RectTransform[] textos = m.TextosEm(linhas[i]);
+                string chave = textos.Length > 0 ? Chave(Tmp(textos[0])) : "ajuste" + i;
+                item.FindPropertyRelative("chave").stringValue = chave;
+
+                // Valor numérico à direita quando existe (volume, sensibilidade).
+                TextMeshProUGUI valor = textos.Length > 1 ? Tmp(textos[textos.Length - 1]) : null;
+                if (valor != null && int.TryParse(valor.text.Trim(), out _))
+                    item.FindPropertyRelative("valor").objectReferenceValue = valor;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ================================================================== Resultado
+
+        private static void Resultado(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<ResultScreenUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "textoSuaPosicao", Tmp(m.Texto("4º")));
+            Atribuir(so, "textoTempoTotal", Tmp(m.Texto("03:41.208")));
+            Atribuir(so, "textoMelhorVolta", Tmp(m.Texto("01:11.302")));
+            Atribuir(so, "textoAindaCorrendo", Tmp(m.Texto("ainda correndo", false)));
+
+            RectTransform aviso = m.Dono("ainda correndo", 1, false);
+            if (aviso != null)
+                Atribuir(so, "blocoAindaCorrendo", aviso.gameObject);
+
+            Atribuir(so, "btnVoltarGaragem", ClicavelPorTexto(m, "GARAGEM", false));
+            Atribuir(so, "btnJogarNovamente", ClicavelPorTexto(m, "NOVAMENTE", false));
+
+            // As 16 linhas da tabela: uma vira prefab, o resto some e a lista cresce em runtime.
+            RectTransform[] linhas = m.Caixas(895f, 68f, 6f);
+            if (linhas.Length > 0)
+            {
+                Atribuir(so, "containerTabela", linhas[0].parent);
+                Atribuir(so, "conteudoTabela", linhas[0].parent as RectTransform);
+                Prefabizar(linhas, "Assets/_Projeto/Prefabs/UI_v2/Items/Row_Result_v2.prefab",
+                           out GameObject prefab);
+                Atribuir(so, "prefabLinha", prefab);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ================================================================== Entrar por código
+
+        private static void Codigo(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<JoinCodeUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "btnEntrar", ClicavelPorTexto(m, "ENTRAR"));
+            Atribuir(so, "btnCancelar", ClicavelPorTexto(m, "CANCELAR"));
+
+            // As seis caixas do código, com os três estados de cada uma.
+            RectTransform[] caixas = m.Caixas(114f, 134f, 8f);
+            SerializedProperty lista = so.FindProperty("caixas");
+            lista.arraySize = caixas.Length;
+
+            for (int i = 0; i < caixas.Length; i++)
+            {
+                SerializedProperty item = lista.GetArrayElementAtIndex(i);
+                item.FindPropertyRelative("raiz").objectReferenceValue = caixas[i].gameObject;
+
+                RectTransform[] textos = m.TextosEm(caixas[i]);
+                if (textos.Length > 0)
+                    item.FindPropertyRelative("caractere").objectReferenceValue = Tmp(textos[0]);
+
+                (GameObject foco, GameObject ocioso) = DoisEstados(caixas[i], i == 3);
+                item.FindPropertyRelative("estadoFoco").objectReferenceValue = foco;
+                item.FindPropertyRelative("estadoIdle").objectReferenceValue = ocioso;
+                item.FindPropertyRelative("estadoErro").objectReferenceValue =
+                    Contorno(caixas[i], "State_Error", new Color(1f, 77 / 255f, 109 / 255f, 1f), 3f, 16f);
+            }
+
+            // O documento desenha os três avisos empilhados sob o rótulo "ESTADOS DE ERRO"; na tela
+            // eles são exclusivos, e a etiqueta de documentação sai.
+            Atribuir(so, "estadoCodigoInvalido", Bloco(m, "Código inválido"));
+            Atribuir(so, "estadoSalaCheia", Bloco(m, "Sala cheia"));
+            Atribuir(so, "estadoConectando", Bloco(m, "Conectando"));
+            Esconder(m, "ESTADOS DE ERRO");
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ================================================================== Carregando
+
+        private static void Carregando(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<LoadingScreenUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "grupo", raiz.GetComponent<CanvasGroup>());
+            Atribuir(so, "textoEstado", Tmp(m.Texto("CARREGANDO PISTA", false)));
+            Atribuir(so, "textoDica", Tmp(m.Texto("O escudo bloqueia", false)));
+
+            RectTransform conexao = m.Dono("CONEXÃO", 1, false);
+            if (conexao != null)
+                Atribuir(so, "blocoConexao", conexao.gameObject);
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ================================================================== Menu da partida
+
+        private static void MenuDaPartida(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<PartyRacers.UI.Race.RaceMenuUI>();
+            var so = new SerializedObject(ui);
+
+            Atribuir(so, "btnVoltar", ClicavelPorTexto(m, "VOLTAR À CORRIDA"));
+            Atribuir(so, "btnConfiguracoes", ClicavelPorTexto(m, "CONFIGURAÇÕES"));
+            Atribuir(so, "btnCopiarCodigo", ClicavelPorTexto(m, "COPIAR CÓDIGO DA SALA"));
+            Atribuir(so, "btnSair", ClicavelPorTexto(m, "SAIR DA PARTIDA"));
+            Atribuir(so, "btnSairAgora", ClicavelPorTexto(m, "SAIR AGORA"));
+            Atribuir(so, "btnFicar", ClicavelPorTexto(m, "FICAR NA CORRIDA"));
+
+            RectTransform gaveta = m.Dono("MENU", 2);
+            if (gaveta != null)
+                Atribuir(so, "gaveta", gaveta.gameObject);
+
+            RectTransform popup = m.Dono("SAIR DA PARTIDA?", 2);
+            if (popup != null)
+            {
+                Atribuir(so, "popupSair", popup.gameObject);
+                popup.gameObject.SetActive(false);
+            }
+
+            Esconder(m, "POP-UP DE CONFIRMAÇÃO");
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ================================================================== Lobby
@@ -522,9 +786,78 @@ namespace PartyRacers.UI.Importer
 
         // ================================================================== Barra de topo
 
+        /// <summary>Onde a barra de topo do v2 é guardada para as outras telas reusarem.</summary>
+        private const string CaminhoDaBarra = "Assets/_Projeto/Prefabs/UI_v2/Widgets/TopBar_v2.prefab";
+
+        /// <summary>
+        /// Troca a barra de topo desenhada no documento PLACA pela barra do v2.
+        ///
+        /// O lockup e as abas do v1 são visivelmente outra família — RACERS ao lado de PARTY, aba
+        /// com aresta colorida. Com a loja e o passe ao lado do lobby novo, duas barras diferentes
+        /// leem como dois jogos. Uma barra só, sempre no mesmo lugar, é a decisão estrutural nº 1
+        /// da proposta; aqui ela deixa de ser intenção e vira o mesmo prefab em toda tela.
+        /// </summary>
+        private static void BarraDoV2(GameObject raiz, ProtoBuilder.Mapa m, string idDaTela)
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(CaminhoDaBarra);
+            if (asset == null)
+                return;
+
+            // O cabeçalho do documento sai INTEIRO. Não é uma barra só: são grupos soltos no topo
+            // (marca, abas, carteira), então quem os identifica é a posição, não a hierarquia.
+            RectTransform[] antigos = m.NoTopo(130f);
+            Transform pai = raiz.transform;
+            int ordem = 0;
+
+            if (antigos.Length > 0)
+            {
+                pai = antigos[0].parent != null ? antigos[0].parent : raiz.transform;
+                ordem = antigos[0].GetSiblingIndex();
+
+                foreach (RectTransform a in antigos)
+                    if (a != null)
+                        Object.DestroyImmediate(a.gameObject);
+            }
+
+            var barra = (GameObject)PrefabUtility.InstantiatePrefab(asset, pai);
+            PrefabUtility.UnpackPrefabInstance(barra, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            barra.name = "TopBar";
+            barra.transform.SetSiblingIndex(ordem);
+
+            var r = (RectTransform)barra.transform;
+            r.anchorMin = new Vector2(0f, 1f);
+            r.anchorMax = new Vector2(1f, 1f);
+            r.pivot = new Vector2(0.5f, 1f);
+            r.offsetMin = new Vector2(0f, -104f);
+            r.offsetMax = Vector2.zero;
+
+            var nav = barra.GetComponent<NavBarUI>();
+            if (nav != null)
+            {
+                var so = new SerializedObject(nav);
+                so.FindProperty("idDestaTela").stringValue = idDaTela;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                // O NavBarUI acerta o destaque no OnEnable, mas o PREFAB precisa nascer certo: é
+                // ele que aparece na captura e no editor, e uma aba errada acesa faz duvidar do
+                // resto da tela.
+                SerializedProperty abas = so.FindProperty("abas");
+                for (int i = 0; i < abas.arraySize; i++)
+                {
+                    SerializedProperty item = abas.GetArrayElementAtIndex(i);
+                    bool ativa = item.FindPropertyRelative("id").stringValue == idDaTela;
+                    Ligar(item.FindPropertyRelative("estadoAtivo").objectReferenceValue, ativa);
+                    Ligar(item.FindPropertyRelative("estadoOcioso").objectReferenceValue, !ativa);
+                }
+            }
+        }
+
         private static void BarraDeNavegacao(GameObject raiz, ProtoBuilder.Mapa m, string idDaTela)
         {
-            var nav = raiz.AddComponent<NavBarUI>();
+            RectTransform faixa = m.Caixas(1920f, 104f, 8f).FirstOrDefault();
+            GameObject dono = faixa != null ? faixa.gameObject : raiz;
+
+            var nav = dono.AddComponent<NavBarUI>();
             var so = new SerializedObject(nav);
             so.FindProperty("idDestaTela").stringValue = idDaTela;
 
@@ -552,6 +885,12 @@ namespace PartyRacers.UI.Importer
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            // A barra do LOBBY é a canônica: sai daqui como prefab para as telas do documento PLACA
+            // trocarem a delas. O lobby é a primeira tela construída, então quando as outras
+            // chegarem o prefab já existe.
+            if (idDaTela == "Lobby" && faixa != null && dono != raiz)
+                PrefabUtility.SaveAsPrefabAsset(dono, CaminhoDaBarra);
         }
 
         // ================================================================== Peças
@@ -801,6 +1140,99 @@ namespace PartyRacers.UI.Importer
             return copia.gameObject;
         }
 
+        // ================================================================== Listas do documento
+
+        /// <summary>
+        /// O documento desenha N cópias de um card para mostrar como a grade fica cheia. No jogo a
+        /// lista tem tamanho desconhecido: a primeira cópia vira prefab, as outras somem e o
+        /// contêiner ganha um Grid que as recria em runtime.
+        /// </summary>
+        private static void Grade(SerializedObject so, ProtoBuilder.Mapa m,
+                                  string campoContainer, string campoPrefab, string caminho,
+                                  float w, float h, float tol)
+        {
+            RectTransform[] cards = m.Caixas(w, h, tol);
+            if (cards.Length == 0)
+                return;
+
+            Transform pai = cards[0].parent;
+            Atribuir(so, campoContainer, pai);
+
+            var grade = pai.gameObject.GetComponent<GridLayoutGroup>() ?? pai.gameObject.AddComponent<GridLayoutGroup>();
+            grade.cellSize = new Vector2(w, h);
+            grade.spacing = new Vector2(18f, 18f);
+            grade.childAlignment = TextAnchor.UpperLeft;
+
+            Prefabizar(cards, caminho, out GameObject prefab);
+            Atribuir(so, campoPrefab, prefab);
+        }
+
+        /// <summary>Salva a primeira cópia como prefab e apaga todas da cena.</summary>
+        private static void Prefabizar(RectTransform[] copias, string caminho, out GameObject prefab)
+        {
+            prefab = null;
+            if (copias.Length == 0)
+                return;
+
+            RectTransform modelo = copias[0];
+            float altura = modelo.rect.height > 4f ? modelo.rect.height : 60f;
+
+            var elemento = modelo.gameObject.GetComponent<LayoutElement>() ?? modelo.gameObject.AddComponent<LayoutElement>();
+            elemento.preferredHeight = altura;
+            elemento.minHeight = altura;
+
+            prefab = PrefabUtility.SaveAsPrefabAsset(modelo.gameObject, caminho);
+
+            foreach (RectTransform c in copias)
+                if (c != null)
+                    Object.DestroyImmediate(c.gameObject);
+        }
+
+        /// <summary>Abas de texto puro (LOJA): vira botão com os dois estados, sem binder próprio.</summary>
+        private static void AbasDeTexto(ProtoBuilder.Mapa m, params string[] rotulos)
+        {
+            for (int i = 0; i < rotulos.Length; i++)
+            {
+                RectTransform aba = m.Dono(rotulos[i], 1);
+                if (aba == null)
+                    continue;
+
+                Clicavel(aba);
+                DoisEstados(aba, i == 0);
+            }
+        }
+
+        /// <summary>Bloco que contém um texto — o aviso inteiro, não só a linha.</summary>
+        private static GameObject Bloco(ProtoBuilder.Mapa m, string texto)
+        {
+            RectTransform t = m.Dono(texto, 1, false);
+            if (t == null)
+                return null;
+
+            t.gameObject.SetActive(false);
+            return t.gameObject;
+        }
+
+        /// <summary>Etiqueta que só existe no documento de design ("ESTADOS DE ERRO").</summary>
+        private static void Esconder(ProtoBuilder.Mapa m, string texto)
+        {
+            RectTransform t = m.Texto(texto, false);
+            if (t != null)
+                t.gameObject.SetActive(false);
+        }
+
+        private static string Chave(TextMeshProUGUI t)
+        {
+            if (t == null)
+                return "ajuste";
+
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in t.text.ToLowerInvariant())
+                if (char.IsLetterOrDigit(c)) sb.Append(c);
+
+            return sb.Length > 0 ? sb.ToString() : "ajuste";
+        }
+
         // ================================================================== Utilidades
 
         /// <summary>
@@ -889,6 +1321,12 @@ namespace PartyRacers.UI.Importer
                 return null;
 
             return r.GetComponent<TextMeshProUGUI>() ?? r.GetComponentInChildren<TextMeshProUGUI>(true);
+        }
+
+        private static void Ligar(Object alvo, bool ativo)
+        {
+            if (alvo is GameObject go && go.activeSelf != ativo)
+                go.SetActive(ativo);
         }
 
         private static void Atribuir(SerializedObject so, string campo, Object valor)
