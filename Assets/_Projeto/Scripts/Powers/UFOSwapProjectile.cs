@@ -153,6 +153,10 @@ public class UFOSwapProjectile : MonoBehaviour
         baseY = transform.position.y;
     }
 
+    // Alimenta o arco vermelho da borda do HUD — o único aviso de ataque do design.
+    private void OnEnable() => RaceThreats.Registrar(transform);
+    private void OnDisable() => RaceThreats.Remover(transform);
+
     private void Update()
     {
         switch (state)

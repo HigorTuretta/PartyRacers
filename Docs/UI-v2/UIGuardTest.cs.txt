@@ -1,0 +1,97 @@
+// ============================================================================================
+// GUARDA DE ARQUITETURA DE UI — pronto para instalar, ainda NÃO instalado.
+//
+// Por que está aqui e não em Assets/: o segundo teste exige que os builders do v1 já tenham sido
+// apagados, e eles ainda estão no projeto. Instalar agora deixaria a suíte vermelha por design.
+//
+// Como instalar, depois de apagar os builders (handoff v2 §0):
+//   1. Criar Assets/Editor/Tests/
+//   2. Criar ali um Assembly Definition com "Test Assemblies" marcado
+//      (referências: UnityEngine.TestRunner, UnityEditor.TestRunner; platform: Editor)
+//   3. Copiar este arquivo para lá como UIGuardTest.cs
+//
+// Diferenças em relação à versão do pacote, explicadas em Docs/UI-v2/PROPOSTA.md §15:
+//   • Escopo restrito a Assets/_Projeto/Scripts/UI/ — 'new GameObject' fora da UI é legítimo.
+//   • Segunda pasta isenta: Scripts/UI/Motion/, onde vivem os componentes de ANIMAÇÃO. Animar
+//     anchoredPosition é exatamente o que o handoff pede em toast, número flutuante e varredura
+//     do escudo; a regra existe contra LAYOUT em C#, não contra movimento.
+// ============================================================================================
+
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using NUnit.Framework;
+using UnityEngine;
+
+public class UIGuardTest
+{
+    static readonly (string pattern, string why)[] Forbidden =
+    {
+        (@"new\s+GameObject\s*\(",                  "criar GameObject de UI em runtime"),
+        (@"AddComponent\s*<\s*Image\s*>",            "criar Image por código"),
+        (@"AddComponent\s*<\s*RawImage\s*>",         "criar RawImage por código"),
+        (@"AddComponent\s*<\s*TextMeshProUGUI\s*>",  "criar texto por código"),
+        (@"AddComponent\s*<\s*RectTransform\s*>",    "criar RectTransform por código"),
+        (@"\.sizeDelta\s*=",                          "redimensionar UI por código"),
+        (@"\.anchoredPosition\s*=",                   "reposicionar UI por código"),
+        (@"\.anchorMin\s*=",                          "reancorar UI por código"),
+        (@"\.anchorMax\s*=",                          "reancorar UI por código"),
+        (@"Sprite\.Create\s*\(",                     "gerar sprite por código"),
+    };
+
+    // A regra vale para os binders de UI. Duas isenções, e só duas:
+    const string PastaDeUI = "Assets/_Projeto/Scripts/UI";
+    const string Importador = "Assets/Editor/Importer";   // materializa as telas a partir do JSON
+    const string Movimento = "Scripts/UI/Motion";          // anima o que já existe na cena
+
+    [Test]
+    public void UI_NaoEhConstruidaPorCodigo()
+    {
+        var raiz = Path.Combine(Application.dataPath, "_Projeto/Scripts/UI");
+        if (!Directory.Exists(raiz))
+            Assert.Pass("Pasta de UI não encontrada — nada a verificar.");
+
+        var arquivos = Directory.GetFiles(raiz, "*.cs", SearchOption.AllDirectories)
+            .Select(f => f.Replace('\\', '/'))
+            .Where(f => !f.Contains(Importador))
+            .Where(f => !f.Contains(Movimento))
+            .ToArray();
+
+        var violacoes = arquivos
+            .SelectMany(arquivo =>
+            {
+                var linhas = File.ReadAllLines(arquivo);
+                return linhas.SelectMany((linha, i) => Forbidden
+                    .Where(f => Regex.IsMatch(linha, f.pattern))
+                    .Select(f => $"{Path.GetFileName(arquivo)}:{i + 1} — {f.why}\n    {linha.Trim()}"));
+            })
+            .ToArray();
+
+        Assert.IsEmpty(violacoes,
+            "A UI voltou a ser construída por código. Mova isso para a cena / prefab e binde com "
+            + "[SerializeField].\n\n" + string.Join("\n", violacoes));
+    }
+
+    [Test]
+    public void BuildersDeEditorForamRemovidos()
+    {
+        string[] proibidos =
+        {
+            "BuildScreensFrontend.cs",
+            "BuildScenes.cs",
+            "BuildWidgets.cs",
+            "UIKitPlaca.cs",
+            "GarageController.cs",
+        };
+
+        var encontrados = Directory
+            .GetFiles(Application.dataPath, "*.cs", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Where(n => proibidos.Contains(n))
+            .ToArray();
+
+        Assert.IsEmpty(encontrados,
+            "Arquivos do pipeline antigo ainda presentes — ver handoff v2 §0: "
+            + string.Join(", ", encontrados));
+    }
+}

@@ -320,6 +320,33 @@ namespace PartyRacers.UI.Frontend
             }
         }
 
+        /// <summary>
+        /// Carrega uma pista escolhida por FORA do seletor. É por aqui que o matchmaking público
+        /// entra: lá o mapa é sorteado pelo jogo, então perguntar ao seletor de pista devolveria a
+        /// escolha antiga do jogador em vez do resultado do sorteio.
+        /// </summary>
+        public void CorrerEm(string cena)
+        {
+            if (string.IsNullOrWhiteSpace(cena))
+            {
+                Correr();
+                return;
+            }
+
+            if (!ValidarCena(cena))
+                return;
+
+            if (carro != null)
+                KartGarageSelection.Save();
+            registry?.SetLocalPlayerVisual(KartGarageSelection.Capture());
+
+            LoadingScreenUI loading = LoadingScreenUI.Resolver(telaDeCarregamento);
+            if (loading != null)
+                loading.CarregarCena(cena, "CARREGANDO " + cena.ToUpperInvariant());
+            else
+                SceneManager.LoadScene(cena);
+        }
+
         private string ObterCenaSelecionada()
         {
             return seletorDePista != null && seletorDePista.Atual != null

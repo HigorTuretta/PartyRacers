@@ -1,0 +1,218 @@
+{
+  "nome": "Party Racers — PLACA v2",
+  "versao": "2.0",
+  "mudancasDesde_1_0": [
+    "Painéis passam a ser VIDRO (rgba(10,12,34,.82) + blur 16) em vez de placas opacas — a cena 3D respira.",
+    "Contorno preto grosso fica reservado a botões, placas e marca. Painéis usam stroke fino rgba(155,165,215,.20).",
+    "Novo sistema de vida: HP verde segmentado, escudo azul-céu, cura verde com cruz, reparo âmbar listrado.",
+    "Escudo sai da ItemBox e vira habilidade fixa com recarga radial."
+  ],
+  "cores": {
+    "ink": "#0A0C22",
+    "night": "#12163A",
+    "deep": "#101334",
+    "blue": "#1B2050",
+    "royal": "#2A3480",
+    "amber": "#FFB020",
+    "amberL": "#FFC24D",
+    "cream": "#FFF7E8",
+    "green": "#3DDC97",
+    "red": "#FF4D6D",
+    "sky": "#35A7FF",
+    "skyL": "#5AC8F5",
+    "violet": "#8C7BFF",
+    "muted": "#9AA2D8",
+    "dim": "#7C86C8",
+    "faint": "#5C63A8",
+    "glass": "rgba(10,12,34,0.82)",
+    "glassHi": "rgba(10,12,34,0.90)",
+    "panelStroke": "rgba(155,165,215,0.20)",
+    "hp": "#3DDC97",
+    "hpHurt": "#E09410",
+    "hpEmpty": "rgba(155,165,215,0.10)",
+    "shield": "#35A7FF",
+    "shieldLight": "#9BE0FF",
+    "heal": "#3DDC97",
+    "repair": "#FFB020",
+    "damage": "#FF4D6D",
+    "bot": "#8C7BFF"
+  },
+  "raridade": {
+    "comum": "#9AA2D8",
+    "raro": "#35A7FF",
+    "epico": "#8C7BFF",
+    "lendario": "#FFB020"
+  },
+  "contorno": {
+    "painel": 0,
+    "card": 2,
+    "botao": 3,
+    "placa": 4,
+    "modal": 4
+  },
+  "sombraDura": {
+    "chip": 4,
+    "botao": 5,
+    "botaoGrande": 6,
+    "painel": 0,
+    "modal": 16,
+    "cor": "#0A0C22",
+    "offsetX": 0
+  },
+  "raio": {
+    "chip": 11,
+    "card": 15,
+    "botao": 16,
+    "painel": 26,
+    "modal": 36
+  },
+  "vidro": {
+    "fundo": "rgba(10,12,34,0.82)",
+    "fundoAlto": "rgba(10,12,34,0.90)",
+    "blur": 16,
+    "stroke": "rgba(155,165,215,0.20)",
+    "strokeWidth": 2
+  },
+  "tipografia": {
+    "display": {
+      "familia": "Titan One",
+      "peso": 400
+    },
+    "ui": {
+      "familia": "Archivo",
+      "pesos": [
+        600,
+        700,
+        800,
+        900
+      ]
+    },
+    "mono": {
+      "familia": "Space Mono",
+      "peso": 400
+    },
+    "escala1920": {
+      "h1": 46,
+      "h2": 40,
+      "h3": 32,
+      "titulo": 30,
+      "rotulo": 25,
+      "corpo": 22,
+      "meta": 20,
+      "micro": 17
+    },
+    "minimoLegivel": 17
+  },
+  "movimento": {
+    "botaoPressionar": {
+      "duracao": 0.08,
+      "deslocamentoY": 6
+    },
+    "trocaTela": {
+      "duracao": 0.22,
+      "curva": "easeOutQuad"
+    },
+    "cameraGaragem": {
+      "duracao": 0.45,
+      "curva": "easeInOutCubic"
+    },
+    "toast": {
+      "entrada": 0.18,
+      "vida": 2.5,
+      "saida": 0.25,
+      "maxSimultaneos": 3
+    },
+    "arcoPerigo": {
+      "pulsoAproximando": 0.8,
+      "pulsoIminente": 0.25
+    },
+    "radarBusca": {
+      "varredura": 2.6,
+      "curva": "easeInOutSine",
+      "blip": 0.5
+    },
+    "numeroFlutuante": {
+      "subida": 40,
+      "duracao": 0.9
+    },
+    "barraEscudoPronta": {
+      "brilho": 1.8,
+      "varredura": 2.4,
+      "curva": "easeInOutSine"
+    },
+    "barraEscudoAtiva": {
+      "varredura": 1,
+      "curva": "linear"
+    }
+  },
+  "gameplay": {
+    "hpMax": 100,
+    "danoParede": [
+      [
+        0,
+        74,
+        0
+      ],
+      [
+        75,
+        110,
+        4
+      ],
+      [
+        111,
+        150,
+        6
+      ],
+      [
+        151,
+        200,
+        8
+      ]
+    ],
+    "danoArmadilha": 10,
+    "danoItem": 15,
+    "cooldownContato": 0.75,
+    "estadoDanificado": {
+      "duracao": 2.5,
+      "penalidadeVelocidade": -0.35,
+      "penalidadeAceleracao": -0.5,
+      "penalidadeControle": -0.25
+    },
+    "escudo": {
+      "recarga": 22,
+      "duracaoAtivo": 3,
+      "tecla": "Q"
+    },
+    "cura": {
+      "valor": 40
+    },
+    "matchmaking": {
+      "limiteBuscaSegundos": 40,
+      "exibirLimiteNaTela": false,
+      "jogadoresPorSala": 16,
+      "preencherComBots": true,
+      "mapaAleatorio": true
+    },
+    "personalizada": {
+      "maxJogadores": 16,
+      "mapaManual": true
+    },
+    "itemTecla": "E"
+  },
+  "hud": {
+    "semMira": true,
+    "semVelocimetro": true,
+    "semMinimapa": true,
+    "alertaCentral": false,
+    "alvoAutomatico": "carro imediatamente à frente ou atrás",
+    "hpDeOutrosJogadores": false,
+    "promptEscolhaItemCura": false,
+    "ancoraClusterVital": "canto inferior esquerdo [36,34], 486px",
+    "ancoraToasts": "coluna esquerda, acima das barras [36,172]",
+    "iconeEscudo": false,
+    "sinalDisponibilidadeEscudo": "a própria barra: brilho pulsante 1.8s + varredura de luz 2.4s. Em recarga: sem brilho, sem varredura.",
+    "botaoEscudo": false,
+    "ancoraPoder": "canto inferior direito [-36,34], 124x124",
+    "centroDaTela": "livre de UI — linha de condução"
+  }
+}

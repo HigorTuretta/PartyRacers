@@ -24,6 +24,10 @@ namespace PartyRacers.UI.Race
             public CanvasGroup grupo;
             public TextMeshProUGUI texto;
             public Image icone;
+            [Tooltip("Contorno do card, quando ele é um objeto IRMÃO em vez de fazer parte do " +
+                     "sprite. Irmão não acompanha o SetActive da raiz — sem ligá-lo junto, sobra " +
+                     "a moldura de um aviso que não existe.")]
+            public GameObject moldura;
         }
 
         [Header("Slots já montados (do mais recente ao mais antigo)")]
@@ -39,6 +43,9 @@ namespace PartyRacers.UI.Race
         [SerializeField] private Sprite iconeTroca;
         [SerializeField] private Sprite iconePoder;
         [SerializeField] private Sprite iconeTurbo;
+        [Tooltip("Cruz de cura. Forma diferente do escudo e da barra de vida de propósito.")]
+        [SerializeField] private Sprite iconeCura;
+        [SerializeField] private Sprite iconeDanificado;
 
         [Header("Dados")]
         [Tooltip("Usado só para saber qual kart é o do jogador e filtrar os avisos dos outros.")]
@@ -48,6 +55,8 @@ namespace PartyRacers.UI.Race
         [SerializeField] private Color corAcerto = new Color(0.24f, 0.86f, 0.59f);
         [SerializeField] private Color corDefesa = new Color(0.21f, 0.65f, 1f);
         [SerializeField] private Color corNeutra = new Color(0.55f, 0.48f, 1f);
+        [SerializeField] private Color corCura = new Color(0.24f, 0.86f, 0.59f);
+        [SerializeField] private Color corDano = new Color(1f, 0.30f, 0.43f);
 
         private readonly List<Aviso> fila = new List<Aviso>();
 
@@ -96,6 +105,24 @@ namespace PartyRacers.UI.Race
                     break;
                 case RaceHudEventKind.Nitro:
                     Enfileirar("Turbo!", iconeTurbo, corAcerto);
+                    break;
+
+                // Dano NÃO vira toast: o número flutuante e o arco vermelho já contam a história,
+                // e uma terceira mensagem no canto competiria com eles a cada raspão de parede.
+                case RaceHudEventKind.Healed:
+                    Enfileirar($"+{Mathf.RoundToInt(e.Amount)} de vida", iconeCura, corCura);
+                    break;
+                case RaceHudEventKind.Broken:
+                    Enfileirar("Carro danificado!", iconeDanificado, corDano);
+                    break;
+                case RaceHudEventKind.Repaired:
+                    Enfileirar("Carro reparado", iconeCura, corCura);
+                    break;
+                case RaceHudEventKind.ShieldReady:
+                    Enfileirar("Escudo pronto", iconeEscudo, corDefesa);
+                    break;
+                case RaceHudEventKind.ShieldBlocked:
+                    Enfileirar("Escudo bloqueou", iconeEscudo, corDefesa);
                     break;
             }
         }
@@ -156,6 +183,8 @@ namespace PartyRacers.UI.Race
                 bool usado = i < fila.Count;
                 if (slot.raiz.activeSelf != usado)
                     slot.raiz.SetActive(usado);
+                if (slot.moldura != null && slot.moldura.activeSelf != usado)
+                    slot.moldura.SetActive(usado);
                 if (!usado)
                     continue;
 

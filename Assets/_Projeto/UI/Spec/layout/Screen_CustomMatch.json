@@ -1,0 +1,1198 @@
+{
+  "screen": "Screen_CustomMatch",
+  "scene": "Frontend",
+  "canvas": {
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "screenMatchMode": "MatchWidthOrHeight",
+    "match": 0.5,
+    "note": "Telas de celular usam o MESMO canvas em 2340x1080 paisagem + Safe Area."
+  },
+  "intent": "Administração da sala vem antes do carro. O palco 3D fica desfocado ao fundo, sem protagonismo.",
+  "camera3D": {
+    "rig": "LobbyCameraRig",
+    "pose": "wide_static",
+    "dof": 0.8,
+    "note": "carro desfocado, sem rotação"
+  },
+  "nodes": [
+    {
+      "name": "Backdrop3D",
+      "type": "RawImage",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        0,
+        0
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "source": "RenderTexture_Lobby",
+      "blur": 8
+    },
+    {
+      "name": "TopBar_Frontend",
+      "type": "Rect",
+      "anchorMin": [
+        0,
+        1
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "pivot": [
+        0.5,
+        1
+      ],
+      "offsetMin": [
+        0,
+        -104
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "children": [
+        {
+          "name": "Scrim",
+          "type": "Image",
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "offsetMin": [
+            0,
+            0
+          ],
+          "offsetMax": [
+            0,
+            0
+          ],
+          "gradient": [
+            "rgba(10,12,34,0.88)",
+            "rgba(10,12,34,0)"
+          ],
+          "direction": "Vertical",
+          "raycastTarget": false
+        },
+        {
+          "name": "Logo",
+          "type": "Prefab",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            44,
+            -26
+          ],
+          "sizeDelta": [
+            250,
+            72
+          ],
+          "prefab": "Widgets/Brand_Logo",
+          "rotationZ": -2,
+          "children": [
+            {
+              "name": "Party",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                140,
+                34
+              ],
+              "text": {
+                "value": "PARTY",
+                "font": "Titan One",
+                "size": 27,
+                "color": "#FFF7E8",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "Placa",
+              "type": "Image",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -34
+              ],
+              "sizeDelta": [
+                150,
+                38
+              ],
+              "sprite": "Frames/UI_Badge_R14_Amber",
+              "borders": [
+                14,
+                14,
+                14,
+                14
+              ],
+              "shadow": 4,
+              "children": [
+                {
+                  "name": "Racers",
+                  "type": "Text",
+                  "anchorMin": [
+                    0,
+                    0
+                  ],
+                  "anchorMax": [
+                    1,
+                    1
+                  ],
+                  "offsetMin": [
+                    0,
+                    0
+                  ],
+                  "offsetMax": [
+                    0,
+                    0
+                  ],
+                  "text": {
+                    "value": "RACERS",
+                    "font": "Titan One",
+                    "size": 19,
+                    "color": "#15161C",
+                    "align": "Center"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Nav",
+          "type": "HLayout",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            318,
+            -20
+          ],
+          "sizeDelta": [
+            900,
+            64
+          ],
+          "spacing": 8,
+          "childAlignment": "MiddleLeft",
+          "children": [
+            {
+              "name": "Tab_LOBBY",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Tab",
+              "sizeDelta": [
+                200,
+                64
+              ],
+              "states": {
+                "State_Active": {
+                  "sprite": "Frames/UI_Button_R22_Amber",
+                  "shadow": 5,
+                  "text": {
+                    "color": "#15161C"
+                  }
+                },
+                "State_Idle": {
+                  "sprite": "Frames/UI_Card_R18_Deep",
+                  "shadow": 0,
+                  "text": {
+                    "color": "#9AA2D8"
+                  }
+                }
+              },
+              "text": {
+                "value": "LOBBY",
+                "font": "Titan One",
+                "size": 22,
+                "color": "#15161C",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Tab_GARAGEM",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Tab",
+              "sizeDelta": [
+                200,
+                64
+              ],
+              "states": {
+                "State_Active": {
+                  "sprite": "Frames/UI_Button_R22_Amber",
+                  "shadow": 5,
+                  "text": {
+                    "color": "#15161C"
+                  }
+                },
+                "State_Idle": {
+                  "sprite": "Frames/UI_Card_R18_Deep",
+                  "shadow": 0,
+                  "text": {
+                    "color": "#9AA2D8"
+                  }
+                }
+              },
+              "text": {
+                "value": "GARAGEM",
+                "font": "Titan One",
+                "size": 22,
+                "color": "#15161C",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Tab_LOJA",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Tab",
+              "sizeDelta": [
+                200,
+                64
+              ],
+              "states": {
+                "State_Active": {
+                  "sprite": "Frames/UI_Button_R22_Amber",
+                  "shadow": 5,
+                  "text": {
+                    "color": "#15161C"
+                  }
+                },
+                "State_Idle": {
+                  "sprite": "Frames/UI_Card_R18_Deep",
+                  "shadow": 0,
+                  "text": {
+                    "color": "#9AA2D8"
+                  }
+                }
+              },
+              "text": {
+                "value": "LOJA",
+                "font": "Titan One",
+                "size": 22,
+                "color": "#15161C",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Tab_PASSE",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Tab",
+              "sizeDelta": [
+                200,
+                64
+              ],
+              "states": {
+                "State_Active": {
+                  "sprite": "Frames/UI_Button_R22_Amber",
+                  "shadow": 5,
+                  "text": {
+                    "color": "#15161C"
+                  }
+                },
+                "State_Idle": {
+                  "sprite": "Frames/UI_Card_R18_Deep",
+                  "shadow": 0,
+                  "text": {
+                    "color": "#9AA2D8"
+                  }
+                }
+              },
+              "text": {
+                "value": "PASSE",
+                "font": "Titan One",
+                "size": 22,
+                "color": "#15161C",
+                "align": "Center"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wallet",
+          "type": "HLayout",
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -300,
+            -20
+          ],
+          "sizeDelta": [
+            660,
+            64
+          ],
+          "spacing": 10,
+          "childAlignment": "MiddleRight",
+          "children": [
+            {
+              "name": "Coins",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Currency",
+              "sizeDelta": [
+                168,
+                64
+              ],
+              "sprite": "Frames/UI_Card_R18_Ink",
+              "icon": "Icons/Icon_Coin",
+              "iconColor": "#FFB020",
+              "text": {
+                "value": "12.480",
+                "font": "Archivo Black",
+                "size": 21,
+                "color": "#FFF7E8",
+                "align": "Right",
+                "tabularNums": true
+              }
+            },
+            {
+              "name": "Tokens",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Currency",
+              "sizeDelta": [
+                142,
+                64
+              ],
+              "sprite": "Frames/UI_Card_R18_Ink",
+              "icon": "Icons/Icon_Diamond",
+              "iconColor": "#8C7BFF",
+              "text": {
+                "value": "340",
+                "font": "Archivo Black",
+                "size": 21,
+                "color": "#FFF7E8",
+                "align": "Right",
+                "tabularNums": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "type": "Prefab",
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -44,
+            -20
+          ],
+          "sizeDelta": [
+            236,
+            64
+          ],
+          "prefab": "Widgets/Chip_Profile",
+          "sprite": "Frames/UI_Card_R18_Ink",
+          "children": [
+            {
+              "name": "Avatar",
+              "type": "Image",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                9,
+                -13
+              ],
+              "sizeDelta": [
+                38,
+                38
+              ],
+              "sprite": "Frames/UI_Badge_R14_Cream",
+              "borders": [
+                14,
+                14,
+                14,
+                14
+              ]
+            },
+            {
+              "name": "Name",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                57,
+                -12
+              ],
+              "sizeDelta": [
+                150,
+                18
+              ],
+              "text": {
+                "value": "HIGOR",
+                "font": "Archivo Black",
+                "size": 15,
+                "color": "#FFF7E8",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "Status",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                57,
+                -34
+              ],
+              "sizeDelta": [
+                150,
+                14
+              ],
+              "text": {
+                "value": "ONLINE",
+                "font": "Space Mono",
+                "size": 11,
+                "color": "#3DDC97",
+                "align": "Left"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Panel_Roster",
+      "type": "Image",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        44,
+        36
+      ],
+      "offsetMax": [
+        -532,
+        -128
+      ],
+      "sprite": "Frames/UI_Panel_R26_Deep",
+      "borders": [
+        26,
+        26,
+        26,
+        26
+      ],
+      "color": "rgba(10,12,34,0.88)",
+      "stroke": "rgba(155,165,215,0.20)",
+      "children": [
+        {
+          "name": "Header",
+          "type": "Rect",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -22
+          ],
+          "sizeDelta": [
+            1300,
+            44
+          ],
+          "children": [
+            {
+              "name": "Title",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -8
+              ],
+              "sizeDelta": [
+                300,
+                30
+              ],
+              "text": {
+                "value": "SALA PRIVADA",
+                "font": "Titan One",
+                "size": 27,
+                "color": "#FFF7E8",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "CodeChip",
+              "type": "Prefab",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                300,
+                0
+              ],
+              "sizeDelta": [
+                220,
+                44
+              ],
+              "prefab": "Widgets/Chip_RoomCode",
+              "sprite": "Frames/UI_Badge_R14_Amber",
+              "text": {
+                "value": "7KQ2XM",
+                "font": "Space Mono",
+                "size": 22,
+                "color": "#15161C",
+                "align": "Center",
+                "spacing": 0.28
+              },
+              "icon": "Icons/Icon_Copy"
+            },
+            {
+              "name": "Count",
+              "type": "Text",
+              "anchorMin": [
+                1,
+                1
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "pivot": [
+                1,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -10
+              ],
+              "sizeDelta": [
+                140,
+                24
+              ],
+              "text": {
+                "value": "9 / 16",
+                "font": "Archivo Black",
+                "size": 14,
+                "color": "#3DDC97",
+                "align": "Right",
+                "tabularNums": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "SlotGrid",
+          "type": "Grid",
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "offsetMin": [
+            22,
+            22
+          ],
+          "offsetMax": [
+            -22,
+            -80
+          ],
+          "cellSize": [
+            648,
+            54
+          ],
+          "spacing": [
+            8,
+            8
+          ],
+          "columns": 2,
+          "itemPrefab": "Items/Row_CustomSlot",
+          "count": 16,
+          "states": [
+            "State_Player",
+            "State_Bot",
+            "State_Empty"
+          ],
+          "rowChildren": [
+            "Index",
+            "Avatar",
+            "Name",
+            "Badge_Host",
+            "State_Ready",
+            "State_Waiting",
+            "Btn_Kick"
+          ],
+          "note": "16 linhas fixas na cena, 2 colunas de 8. Nunca há rolagem — a sala inteira cabe."
+        }
+      ]
+    },
+    {
+      "name": "Panel_Map",
+      "type": "Image",
+      "anchorMin": [
+        1,
+        1
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "pivot": [
+        1,
+        1
+      ],
+      "anchoredPosition": [
+        -44,
+        -128
+      ],
+      "sizeDelta": [
+        472,
+        436
+      ],
+      "sprite": "Frames/UI_Panel_R26_Deep",
+      "borders": [
+        26,
+        26,
+        26,
+        26
+      ],
+      "color": "rgba(10,12,34,0.88)",
+      "stroke": "rgba(155,165,215,0.20)",
+      "children": [
+        {
+          "name": "Label",
+          "type": "Text",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -20
+          ],
+          "sizeDelta": [
+            200,
+            14
+          ],
+          "text": {
+            "value": "MAPA",
+            "font": "Space Mono",
+            "size": 12,
+            "color": "#9AA2D8",
+            "align": "Left"
+          }
+        },
+        {
+          "name": "Badge_Manual",
+          "type": "Prefab",
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -22,
+            -16
+          ],
+          "sizeDelta": [
+            150,
+            24
+          ],
+          "prefab": "Widgets/Chip_Tab",
+          "text": {
+            "value": "ESCOLHA MANUAL",
+            "font": "Archivo Black",
+            "size": 10,
+            "color": "#FFB020",
+            "align": "Center"
+          }
+        },
+        {
+          "name": "Preview",
+          "type": "RawImage",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -50
+          ],
+          "sizeDelta": [
+            428,
+            228
+          ],
+          "source": "TrackDefinition.previewTexture",
+          "borders": [
+            14,
+            14,
+            14,
+            14
+          ],
+          "children": [
+            {
+              "name": "Chip_Info",
+              "type": "Prefab",
+              "anchorMin": [
+                0,
+                0
+              ],
+              "anchorMax": [
+                0,
+                0
+              ],
+              "pivot": [
+                0,
+                0
+              ],
+              "anchoredPosition": [
+                14,
+                14
+              ],
+              "sizeDelta": [
+                180,
+                28
+              ],
+              "prefab": "Widgets/Chip_Tab",
+              "text": {
+                "value": "3 VOLTAS · MÉDIA",
+                "font": "Space Mono",
+                "size": 11,
+                "color": "#3DDC97",
+                "align": "Center"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Name",
+          "type": "Text",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -292
+          ],
+          "sizeDelta": [
+            428,
+            28
+          ],
+          "text": {
+            "value": "MINI GOLFE RUN",
+            "font": "Titan One",
+            "size": 25,
+            "color": "#FFF7E8",
+            "align": "Left"
+          }
+        },
+        {
+          "name": "Desc",
+          "type": "Text",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -328
+          ],
+          "sizeDelta": [
+            428,
+            44
+          ],
+          "text": {
+            "value": "Dois níveis, dois saltos e atalhos no gramado.",
+            "font": "Archivo",
+            "size": 14,
+            "color": "#9AA2D8",
+            "align": "Left",
+            "wrap": true
+          }
+        },
+        {
+          "name": "Dots",
+          "type": "HLayout",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -384
+          ],
+          "sizeDelta": [
+            428,
+            6
+          ],
+          "spacing": 7,
+          "childForceExpandWidth": true,
+          "count": 5,
+          "activeColor": "#FFB020",
+          "idleColor": "rgba(155,165,215,0.20)"
+        }
+      ]
+    },
+    {
+      "name": "Panel_Rules",
+      "type": "Image",
+      "anchorMin": [
+        1,
+        1
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "pivot": [
+        1,
+        1
+      ],
+      "anchoredPosition": [
+        -44,
+        -578
+      ],
+      "sizeDelta": [
+        472,
+        224
+      ],
+      "sprite": "Frames/UI_Panel_R26_Deep",
+      "borders": [
+        26,
+        26,
+        26,
+        26
+      ],
+      "color": "rgba(10,12,34,0.88)",
+      "stroke": "rgba(155,165,215,0.20)",
+      "children": [
+        {
+          "name": "Label",
+          "type": "Text",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -20
+          ],
+          "sizeDelta": [
+            200,
+            14
+          ],
+          "text": {
+            "value": "REGRAS",
+            "font": "Space Mono",
+            "size": 12,
+            "color": "#9AA2D8",
+            "align": "Left"
+          }
+        },
+        {
+          "name": "List",
+          "type": "VLayout",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            22,
+            -48
+          ],
+          "sizeDelta": [
+            428,
+            156
+          ],
+          "spacing": 10,
+          "itemPrefab": "Widgets/Selector_Option",
+          "items": [
+            [
+              "Voltas",
+              "3"
+            ],
+            [
+              "Itens",
+              "TODOS"
+            ],
+            [
+              "Bots preenchem",
+              "SIM"
+            ],
+            [
+              "Dano por colisão",
+              "LIGADO"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Btn_AddBots",
+      "type": "Prefab",
+      "anchorMin": [
+        1,
+        0
+      ],
+      "anchorMax": [
+        1,
+        0
+      ],
+      "pivot": [
+        1,
+        0
+      ],
+      "anchoredPosition": [
+        -276,
+        36
+      ],
+      "sizeDelta": [
+        160,
+        68
+      ],
+      "prefab": "Widgets/Btn_Secondary",
+      "text": {
+        "value": "+ BOTS",
+        "font": "Titan One",
+        "size": 20,
+        "color": "#9AA2D8",
+        "align": "Center"
+      }
+    },
+    {
+      "name": "Btn_Start",
+      "type": "Prefab",
+      "anchorMin": [
+        1,
+        0
+      ],
+      "anchorMax": [
+        1,
+        0
+      ],
+      "pivot": [
+        1,
+        0
+      ],
+      "anchoredPosition": [
+        -44,
+        36
+      ],
+      "sizeDelta": [
+        220,
+        68
+      ],
+      "prefab": "Widgets/Btn_Primary",
+      "text": {
+        "value": "INICIAR",
+        "font": "Titan One",
+        "size": 28,
+        "color": "#0A0C22",
+        "align": "Center"
+      },
+      "states": {
+        "Enabled": {},
+        "Disabled": {
+          "sprite": "Frames/UI_Dashed_R18",
+          "reason": "aguardando prontos"
+        }
+      }
+    }
+  ]
+}

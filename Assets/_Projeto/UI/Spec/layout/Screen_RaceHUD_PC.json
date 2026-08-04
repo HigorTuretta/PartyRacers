@@ -1,0 +1,772 @@
+{
+  "screen": "Screen_RaceHUD_PC",
+  "scene": "Race",
+  "canvas": {
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "screenMatchMode": "MatchWidthOrHeight",
+    "match": 0.5,
+    "note": "Telas de celular usam o MESMO canvas em 2340x1080 paisagem + Safe Area."
+  },
+  "intent": "Vida e escudo como barras no CANTO INFERIOR ESQUERDO; o PODER no CANTO INFERIOR DIREITO. O centro da tela fica LIMPO — nenhuma UI na linha de condução. Sem mira, sem velocímetro, sem minimapa, sem prompt de escolha item/cura.",
+  "hpSystem": {
+    "max": 100,
+    "wallDamage": [
+      {
+        "from": 0,
+        "to": 74,
+        "dmg": 0
+      },
+      {
+        "from": 75,
+        "to": 110,
+        "dmg": 4
+      },
+      {
+        "from": 111,
+        "to": 150,
+        "dmg": 6
+      },
+      {
+        "from": 151,
+        "to": 200,
+        "dmg": 8
+      }
+    ],
+    "trapDamage": 10,
+    "itemDamage": 15,
+    "contactCooldownSeconds": 0.75,
+    "brokenState": {
+      "trigger": "hp <= 0",
+      "durationSeconds": 2.5,
+      "penalty": {
+        "topSpeed": -0.35,
+        "acceleration": -0.5,
+        "steerResponse": -0.25
+      },
+      "recovery": "hp volta a 100 automaticamente ao fim do estado"
+    },
+    "shield": {
+      "cooldownSeconds": 22,
+      "activeSeconds": 3,
+      "blocks": [
+        "itens",
+        "armadilhas",
+        "obstáculos"
+      ],
+      "input": {
+        "pc": "Q",
+        "gamepad": "LB",
+        "mobile": "botão azul"
+      }
+    },
+    "heal": {
+      "source": "pickup de cura na bifurcação",
+      "amount": 40,
+      "vfx": "flash verde + número flutuante +40"
+    }
+  },
+  "colorLanguage": {
+    "HP": "#3DDC97 (barra segmentada horizontal, base-centro)",
+    "ESCUDO": "#35A7FF (barra segmentada ACIMA da vida). Sem botão e sem ícone: brilho pulsante + varredura = disponível; barra opaca sem brilho = em recarga.",
+    "CURA": "#3DDC97 (cruz + número flutuante, nunca barra)",
+    "DANO": "#FF4D6D (arco de borda + número negativo)",
+    "REPARO": "#FFB020 (listras diagonais na barra, só no estado danificado)"
+  },
+  "nodes": [
+    {
+      "name": "InfoLayer",
+      "type": "Rect",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        0,
+        0
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "children": [
+        {
+          "name": "LapPlate",
+          "type": "HLayout",
+          "anchorMin": [
+            0.5,
+            1
+          ],
+          "anchorMax": [
+            0.5,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -32
+          ],
+          "sizeDelta": [
+            520,
+            62
+          ],
+          "spacing": 10,
+          "childAlignment": "MiddleCenter",
+          "children": [
+            {
+              "name": "Lap",
+              "type": "Prefab",
+              "prefab": "Widgets/Plate_Amber",
+              "sizeDelta": [
+                214,
+                62
+              ],
+              "text": {
+                "value": "VOLTA 2/3",
+                "font": "Titan One",
+                "size": 30,
+                "color": "#15161C",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Time",
+              "type": "Prefab",
+              "prefab": "Widgets/Plate_Ink",
+              "sizeDelta": [
+                296,
+                62
+              ],
+              "text": {
+                "value": "01:12.480",
+                "font": "Titan One",
+                "size": 40,
+                "color": "#FFF7E8",
+                "align": "Center",
+                "tabularNums": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "TimeChips",
+          "type": "HLayout",
+          "anchorMin": [
+            0.5,
+            1
+          ],
+          "anchorMax": [
+            0.5,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -103
+          ],
+          "sizeDelta": [
+            420,
+            30
+          ],
+          "spacing": 8,
+          "childAlignment": "MiddleCenter",
+          "children": [
+            {
+              "name": "Chip_Last",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Tab",
+              "sizeDelta": [
+                196,
+                30
+              ],
+              "text": {
+                "value": "ÚLT 01:14.902",
+                "font": "Space Mono",
+                "size": 15,
+                "color": "#C3CEDD",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Chip_Best",
+              "type": "Prefab",
+              "prefab": "Widgets/Chip_Tab",
+              "sizeDelta": [
+                210,
+                30
+              ],
+              "sprite": "Frames/UI_Badge_R14_Cream",
+              "color": "#3DDC97",
+              "text": {
+                "value": "MELH 01:11.302",
+                "font": "Space Mono",
+                "size": 15,
+                "color": "#0A0C22",
+                "align": "Center"
+              }
+            }
+          ]
+        },
+        {
+          "name": "PositionBlock",
+          "type": "Rect",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            36,
+            -32
+          ],
+          "sizeDelta": [
+            320,
+            86
+          ],
+          "children": [
+            {
+              "name": "Plate",
+              "type": "Image",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                116,
+                86
+              ],
+              "sprite": "Frames/UI_Badge_R14_Cream",
+              "borders": [
+                14,
+                14,
+                14,
+                14
+              ],
+              "shadow": 6,
+              "rotationZ": -2,
+              "children": [
+                {
+                  "name": "Value",
+                  "type": "Text",
+                  "anchorMin": [
+                    0,
+                    0
+                  ],
+                  "anchorMax": [
+                    1,
+                    1
+                  ],
+                  "offsetMin": [
+                    0,
+                    0
+                  ],
+                  "offsetMax": [
+                    0,
+                    0
+                  ],
+                  "text": {
+                    "value": "4",
+                    "font": "Titan One",
+                    "size": 54,
+                    "color": "#15161C",
+                    "align": "Center"
+                  }
+                },
+                {
+                  "name": "Ord",
+                  "type": "Text",
+                  "anchorMin": [
+                    1,
+                    1
+                  ],
+                  "anchorMax": [
+                    1,
+                    1
+                  ],
+                  "pivot": [
+                    1,
+                    1
+                  ],
+                  "anchoredPosition": [
+                    -10,
+                    -14
+                  ],
+                  "sizeDelta": [
+                    24,
+                    26
+                  ],
+                  "text": {
+                    "value": "º",
+                    "font": "Titan One",
+                    "size": 22,
+                    "color": "#15161C",
+                    "align": "Left"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Of",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                130,
+                -10
+              ],
+              "sizeDelta": [
+                180,
+                16
+              ],
+              "text": {
+                "value": "DE 12",
+                "font": "Space Mono",
+                "size": 13,
+                "color": "rgba(10,12,34,0.62)",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "Delta",
+              "type": "Prefab",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                130,
+                -36
+              ],
+              "sizeDelta": [
+                164,
+                28
+              ],
+              "prefab": "Widgets/Chip_Tab",
+              "text": {
+                "value": "+2 POSIÇÕES",
+                "font": "Archivo Black",
+                "size": 13,
+                "color": "#3DDC97",
+                "align": "Center"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Standings",
+          "type": "VLayout",
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -36,
+            -32
+          ],
+          "sizeDelta": [
+            328,
+            340
+          ],
+          "spacing": 5,
+          "itemPrefab": "Items/Row_Standing",
+          "maxRows": 6,
+          "rowHeight": [
+            46,
+            54
+          ],
+          "states": {
+            "IsLocal": {
+              "sprite": "Frames/UI_Button_R22_Amber",
+              "shadow": 4,
+              "height": 54,
+              "textColor": "#15161C"
+            },
+            "Other": {
+              "sprite": "Frames/UI_Card_R18_Ink",
+              "shadow": 0,
+              "height": 46,
+              "textColor": "#E6E9F2"
+            }
+          },
+          "rule": "a linha local está SEMPRE visível — se o jogador estiver fora do top 5, a lista mostra 4 acima + a linha local com separador"
+        },
+        {
+          "name": "ToastStack",
+          "type": "VLayout",
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            36,
+            172
+          ],
+          "sizeDelta": [
+            340,
+            180
+          ],
+          "spacing": 7,
+          "reverseArrangement": true,
+          "itemPrefab": "Items/Toast_Item",
+          "maxVisible": 3,
+          "lifetime": 2.5,
+          "fadeIn": 0.18,
+          "fadeOut": 0.25,
+          "rule": "toda notificação vem para cá; nada de alerta no centro da tela",
+          "note": "Acima das barras vitais, mesma coluna esquerda. Máx 3, vida 2.5s. Não competem com o poder no lado oposto."
+        }
+      ]
+    },
+    {
+      "name": "VitalCluster",
+      "type": "VLayout",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        0,
+        0
+      ],
+      "pivot": [
+        0,
+        0
+      ],
+      "anchoredPosition": [
+        36,
+        34
+      ],
+      "sizeDelta": [
+        486,
+        110
+      ],
+      "spacing": 9,
+      "childAlignment": "LowerLeft",
+      "note": "Só barras de estado. O botão de escudo foi REMOVIDO do design — a barra assume a função de indicador.",
+      "children": [
+        {
+          "name": "ShieldBar",
+          "type": "Rect",
+          "sizeDelta": [
+            486,
+            24
+          ],
+          "children": [
+            "Label (ESCUDO, Archivo Black 11)",
+            "Track (Bars/Bar_Track, 3 segmentos, gap 3)",
+            "ShineSweep (Mask + Image)",
+            "KeyChip"
+          ],
+          "states": {
+            "Ready": {
+              "segments": "gradient(#DFF6FF,#35A7FF), 3 cheios",
+              "glow": "pulsa 16px→34px rgba(90,200,245,.45→.85) em 1.8s — É O SINAL DE DISPONÍVEL",
+              "shine": "faixa de 70px varre a barra em 2.4s easeInOutSine",
+              "keyChip": "chapinha #DFF6FF com a letra Q + PRONTO"
+            },
+            "Active": {
+              "segments": "gradient(#FFFFFF,#9BE0FF)",
+              "stroke": "#9BE0FF",
+              "glow": "40px rgba(90,200,245,.95) + inner glow 18px",
+              "shine": "faixa de 90px em 1s linear (mais rápida que Ready)",
+              "keyChip": "ATIVO 2.1s sobre #35A7FF"
+            },
+            "Cooling": {
+              "fill": "barra contínua, preenchimento proporcional rgba(53,167,255,.5), sem segmentos",
+              "glow": "NENHUM — a ausência de brilho e da varredura é o sinal de indisponível",
+              "edgeTick": "linha de 2px rgba(155,230,255,.8) na ponta do preenchimento, pisca em 0.9s",
+              "keyChip": "timer em Space Mono 12, cor #5AC8F5"
+            },
+            "Broken": {
+              "segments": "rgba(155,165,215,.08), tudo apagado"
+            }
+          },
+          "note": "ÚNICO indicador de disponibilidade do escudo. Nenhum ícone, nenhum botão."
+        },
+        {
+          "name": "HealthBar",
+          "type": "Rect",
+          "sizeDelta": [
+            486,
+            46
+          ],
+          "children": [
+            "Label (VIDA)",
+            "Track (5 segmentos de 20 HP, gap 3, sombra 5)",
+            "Value (Titan One 24, direita)"
+          ],
+          "segmentStates": {
+            "Full": "gradient(#6BF2BC,#2FBB7E)",
+            "Hurt": "gradient(#FFD066,#E09410)",
+            "Gone": "rgba(155,165,215,0.10)"
+          },
+          "note": "Segmento parcialmente drenado usa Image Filled Horizontal — nunca redimensione o RectTransform."
+        },
+        {
+          "name": "ImmunityTick",
+          "type": "Rect",
+          "sizeDelta": [
+            486,
+            12
+          ],
+          "activeWhen": "contactCooldown > 0",
+          "children": [
+            "Bar (âmbar, drena em 0.75s)",
+            "Label IMUNE (Space Mono 10)"
+          ],
+          "note": "Comunica o cooldown de dano por contato contínuo sem número grande."
+        },
+        {
+          "name": "RepairBar",
+          "type": "Rect",
+          "sizeDelta": [
+            486,
+            46
+          ],
+          "activeWhen": "state == Broken",
+          "sprite": "Bars/Bar_Track",
+          "stroke": "#FF4D6D",
+          "strokeWidth": 4,
+          "glow": 28,
+          "fill": "listras diagonais #FFB020 animadas, drenando em 2.5s",
+          "children": [
+            "Label DANIFICADO (Titan One 20)",
+            "Countdown (Titan One 24, direita)"
+          ],
+          "note": "Substitui HealthBar e ShieldBar (ambas apagadas) durante o estado danificado."
+        }
+      ]
+    },
+    {
+      "name": "AlertLayer",
+      "type": "Rect",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        0,
+        0
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "raycastTarget": false,
+      "children": [
+        {
+          "name": "DangerArc",
+          "type": "Image",
+          "sprite": "Race/Overlay_DangerArc",
+          "stretch": true,
+          "states": {
+            "Approaching": {
+              "sprite": "Race/Overlay_DangerArc",
+              "pulse": 0.8
+            },
+            "Imminent": {
+              "sprite": "Race/Overlay_DangerArc_Strong",
+              "pulse": 0.25
+            }
+          },
+          "note": "ÚNICO aviso de ataque. Sem texto, sem seta, sem ícone."
+        },
+        {
+          "name": "DangerPulse",
+          "type": "Image",
+          "sprite": "Race/Overlay_DangerPulse",
+          "anchor": "bottom",
+          "activeWhen": "ameaça vem de trás"
+        },
+        {
+          "name": "HealFlash",
+          "type": "Image",
+          "color": "rgba(61,220,151,0.50)",
+          "blendMode": "inner glow",
+          "duration": 0.4
+        },
+        {
+          "name": "ShieldFlash",
+          "type": "Image",
+          "color": "rgba(53,167,255,0.42)",
+          "blendMode": "inner glow",
+          "whileActive": true
+        },
+        {
+          "name": "FloatNumber",
+          "type": "Text",
+          "anchorMin": [
+            0.5,
+            0
+          ],
+          "anchorMax": [
+            0.5,
+            0
+          ],
+          "pivot": [
+            0.5,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            190
+          ],
+          "sizeDelta": [
+            400,
+            70
+          ],
+          "text": {
+            "value": "−15",
+            "font": "Titan One",
+            "size": 62,
+            "color": "#FF4D6D",
+            "align": "Center"
+          },
+          "animation": "sobe 40px + fade em 0.9s",
+          "variants": {
+            "Damage": {
+              "prefix": "−",
+              "color": "#FF4D6D"
+            },
+            "Heal": {
+              "prefix": "+",
+              "color": "#3DDC97",
+              "icon": "cruz"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "PowerSlot",
+      "type": "Prefab",
+      "prefab": "Widgets/Slot_Power",
+      "anchorMin": [
+        1,
+        0
+      ],
+      "anchorMax": [
+        1,
+        0
+      ],
+      "pivot": [
+        1,
+        0
+      ],
+      "anchoredPosition": [
+        -36,
+        34
+      ],
+      "sizeDelta": [
+        124,
+        160
+      ],
+      "children": [
+        "Bg",
+        "ShineSweep",
+        "Icon_Power",
+        "KeyChip"
+      ],
+      "states": {
+        "Filled": {
+          "sprite": "Frames/UI_Button_R28_Amber",
+          "shadow": 7,
+          "glow": "46px rgba(255,176,32,.42)",
+          "shine": "faixa de 60px em 3s easeInOutSine",
+          "icon": "Powers/Power_*_Color",
+          "keyChip": "letra E + nome do poder"
+        },
+        "Empty": {
+          "sprite": "Frames/UI_Dashed_R28",
+          "glyph": "?",
+          "keyChip": "SEM ITEM"
+        }
+      },
+      "note": "Canto inferior DIREITO. O centro da tela é a linha de condução e fica livre de UI — o slot no meio polui a leitura da pista."
+    }
+  ],
+  "inputMap": {
+    "pc": {
+      "usarPoder": "E",
+      "usarEscudo": "Q"
+    },
+    "gamepad": {
+      "usarPoder": "RB",
+      "usarEscudo": "LB"
+    },
+    "mobile": {
+      "usarPoder": "botão âmbar",
+      "usarEscudo": "botão azul (rótulo ESCUDO, sem glifo)"
+    },
+    "rule": "A chapinha mostra a letra real: E no poder, Q no escudo. O escudo não tem botão na tela — só a barra."
+  }
+}

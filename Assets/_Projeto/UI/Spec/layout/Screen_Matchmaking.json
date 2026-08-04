@@ -1,0 +1,956 @@
+{
+  "screen": "Screen_Matchmaking",
+  "scene": "Frontend",
+  "canvas": {
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "screenMatchMode": "MatchWidthOrHeight",
+    "match": 0.5,
+    "note": "Telas de celular usam o MESMO canvas em 2340x1080 paisagem + Safe Area."
+  },
+  "intent": "Overlay sobre a cena 3D do lobby (backdrop 3D + TopBar continuam visíveis atrás do scrim; os painéis do lobby são escondidos). Metáfora: sintonizar um canal de rádio da oficina. Nunca um spinner.",
+  "camera3D": {
+    "rig": "LobbyCameraRig",
+    "pose": "orbit_slow_far",
+    "blur": "DepthOfField 0.6 + Vignette 0.4 durante a busca",
+    "note": "A câmera do lobby continua rodando atrás do overlay — o Scrim (blur 10) é o que separa as camadas."
+  },
+  "timing": {
+    "maxSearchSeconds": 40,
+    "playersPerRoom": 16,
+    "showLimitLabel": false,
+    "stageOrder": [
+      "PRONTOS",
+      "PROCURANDO",
+      "ENCONTRADOS",
+      "PREENCHENDO",
+      "CARREGANDO"
+    ],
+    "rule": "aos 40s: fecha a lista de humanos, cria a sala, preenche com bots, sorteia mapa",
+    "note": "O limite de 40s NÃO é exibido ao jogador — só o tempo decorrido. É regra interna."
+  },
+  "nodes": [
+    {
+      "name": "Scrim",
+      "type": "Image",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        0,
+        0
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "color": "rgba(6,8,24,0.70)",
+      "blur": 10,
+      "note": "Fica ACIMA do backdrop 3D e da TopBar. Os painéis do lobby (Panel_Mode, Panel_Group, Panel_Friends, ActionBar) são desativados ao entrar nesta tela."
+    },
+    {
+      "name": "Modal",
+      "type": "Image",
+      "anchorMin": [
+        0.5,
+        0.5
+      ],
+      "anchorMax": [
+        0.5,
+        0.5
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "anchoredPosition": [
+        0,
+        0
+      ],
+      "sizeDelta": [
+        1420,
+        860
+      ],
+      "sprite": "Frames/UI_Modal_R36",
+      "borders": [
+        36,
+        36,
+        36,
+        36
+      ],
+      "shadow": 16,
+      "children": [
+        {
+          "name": "HazardStripe",
+          "type": "Image",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "offsetMin": [
+            0,
+            -10
+          ],
+          "offsetMax": [
+            0,
+            0
+          ],
+          "sprite": "Brand/Brand_Stripes",
+          "tiled": true,
+          "color": "#FFB020"
+        },
+        {
+          "name": "Header",
+          "type": "Rect",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            40,
+            -34
+          ],
+          "sizeDelta": [
+            1340,
+            120
+          ],
+          "children": [
+            {
+              "name": "Channel",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                700,
+                14
+              ],
+              "text": {
+                "value": "CANAL DE CORRIDA · 88.4 FM",
+                "font": "Space Mono",
+                "size": 12,
+                "color": "#FFB020",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "Title",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -24
+              ],
+              "sizeDelta": [
+                900,
+                44
+              ],
+              "text": {
+                "value": "SINTONIZANDO CANAL",
+                "font": "Titan One",
+                "size": 40,
+                "color": "#FFF7E8",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "Sub",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -76
+              ],
+              "sizeDelta": [
+                900,
+                22
+              ],
+              "text": {
+                "value": "Varrendo a frequência atrás de outros pilotos.",
+                "font": "Archivo",
+                "size": 16,
+                "color": "#9AA2D8",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "TimerLabel",
+              "type": "Text",
+              "anchorMin": [
+                1,
+                1
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "pivot": [
+                1,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                240,
+                14
+              ],
+              "text": {
+                "value": "TEMPO DE BUSCA",
+                "font": "Space Mono",
+                "size": 11,
+                "color": "#7C86C8",
+                "align": "Right"
+              }
+            },
+            {
+              "name": "Timer",
+              "type": "Text",
+              "anchorMin": [
+                1,
+                1
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "pivot": [
+                1,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -20
+              ],
+              "sizeDelta": [
+                240,
+                56
+              ],
+              "text": {
+                "value": "26s",
+                "font": "Titan One",
+                "size": 56,
+                "color": "#FFB020",
+                "align": "Right",
+                "tabularNums": true
+              },
+              "states": {
+                "Normal": {
+                  "color": "#FFF7E8"
+                },
+                "Warning": {
+                  "color": "#FFB020",
+                  "fromSecond": 25
+                },
+                "Critical": {
+                  "color": "#FF4D6D",
+                  "fromSecond": 35
+                }
+              }
+            },
+            {
+              "name": "Limit",
+              "type": "Text",
+              "anchorMin": [
+                1,
+                1
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "pivot": [
+                1,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -80
+              ],
+              "sizeDelta": [
+                240,
+                14
+              ],
+              "text": {
+                "value": "limite 40s",
+                "font": "Space Mono",
+                "size": 12,
+                "color": "#5C63A8",
+                "align": "Right"
+              }
+            }
+          ]
+        },
+        {
+          "name": "RadioDial",
+          "type": "Image",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            40,
+            -180
+          ],
+          "sizeDelta": [
+            1340,
+            216
+          ],
+          "sprite": "Frames/UI_Card_R18_Ink",
+          "borders": [
+            18,
+            18,
+            18,
+            18
+          ],
+          "children": [
+            {
+              "name": "GridLines",
+              "type": "Image",
+              "anchorMin": [
+                0,
+                0
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "offsetMin": [
+                0,
+                0
+              ],
+              "offsetMax": [
+                0,
+                0
+              ],
+              "tiledSprite": "Race/Dial_Grid",
+              "color": "rgba(155,165,215,0.09)"
+            },
+            {
+              "name": "Axis",
+              "type": "Image",
+              "anchorMin": [
+                0.5,
+                0.5
+              ],
+              "anchorMax": [
+                0.5,
+                0.5
+              ],
+              "pivot": [
+                0.5,
+                0.5
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                1340,
+                2
+              ],
+              "color": "rgba(155,165,215,0.20)"
+            },
+            {
+              "name": "TickLabels",
+              "type": "HLayout",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                22,
+                -14
+              ],
+              "sizeDelta": [
+                1296,
+                14
+              ],
+              "spacing": 0,
+              "childForceExpandWidth": true,
+              "items": [
+                "84",
+                "86",
+                "88",
+                "90",
+                "92",
+                "94",
+                "96",
+                "98",
+                "100"
+              ],
+              "font": "Space Mono",
+              "size": 11,
+              "color": "#4B5182"
+            },
+            {
+              "name": "BlipContainer",
+              "type": "Rect",
+              "anchorMin": [
+                0,
+                0
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "offsetMin": [
+                0,
+                0
+              ],
+              "offsetMax": [
+                0,
+                0
+              ],
+              "itemPrefab": "Items/Blip_Player",
+              "note": "Um Blip_Player instanciado por piloto encontrado; posição x = hash(steamId) mapeado no dial."
+            },
+            {
+              "name": "Needle",
+              "type": "Image",
+              "anchorMin": [
+                0,
+                0
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0.5,
+                0.5
+              ],
+              "sizeDelta": [
+                3,
+                0
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "color": "#FFB020",
+              "glow": 26,
+              "animation": {
+                "type": "PingPong",
+                "property": "anchorMin.x",
+                "from": 0.02,
+                "to": 0.98,
+                "duration": 2.6,
+                "ease": "InOutSine",
+                "driver": "Animator na cena"
+              },
+              "states": {
+                "Scanning": {
+                  "color": "#FFB020",
+                  "animate": true
+                },
+                "Locked": {
+                  "color": "#3DDC97",
+                  "animate": false,
+                  "x": 0.66
+                }
+              },
+              "children": [
+                {
+                  "name": "Head",
+                  "type": "Image",
+                  "anchorMin": [
+                    0.5,
+                    1
+                  ],
+                  "anchorMax": [
+                    0.5,
+                    1
+                  ],
+                  "pivot": [
+                    0.5,
+                    1
+                  ],
+                  "sizeDelta": [
+                    19,
+                    15
+                  ],
+                  "sprite": "Icons/Icon_Triangle"
+                }
+              ]
+            },
+            {
+              "name": "SignalBars",
+              "type": "HLayout",
+              "anchorMin": [
+                1,
+                0
+              ],
+              "anchorMax": [
+                1,
+                0
+              ],
+              "pivot": [
+                1,
+                0
+              ],
+              "anchoredPosition": [
+                -26,
+                20
+              ],
+              "sizeDelta": [
+                74,
+                38
+              ],
+              "spacing": 4,
+              "childAlignment": "LowerCenter",
+              "bars": 7,
+              "heights": [
+                14,
+                26,
+                34,
+                22,
+                38,
+                18,
+                28
+              ],
+              "states": {
+                "Scanning": {
+                  "colors": [
+                    "#3DDC97",
+                    "#FFB020"
+                  ],
+                  "animate": "prPulse"
+                },
+                "Idle": {
+                  "color": "#3B4180",
+                  "animate": false
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "RoomSection",
+          "type": "Rect",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            40,
+            -422
+          ],
+          "sizeDelta": [
+            1340,
+            210
+          ],
+          "children": [
+            {
+              "name": "Header",
+              "type": "Rect",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                1340,
+                16
+              ],
+              "children": [
+                {
+                  "name": "Label",
+                  "type": "Text",
+                  "anchorMin": [
+                    0,
+                    0
+                  ],
+                  "anchorMax": [
+                    0,
+                    1
+                  ],
+                  "pivot": [
+                    0,
+                    0.5
+                  ],
+                  "sizeDelta": [
+                    80,
+                    0
+                  ],
+                  "text": {
+                    "value": "SALA",
+                    "font": "Space Mono",
+                    "size": 12,
+                    "color": "#9AA2D8",
+                    "align": "Left"
+                  }
+                },
+                {
+                  "name": "Count",
+                  "type": "Text",
+                  "anchorMin": [
+                    1,
+                    0
+                  ],
+                  "anchorMax": [
+                    1,
+                    1
+                  ],
+                  "pivot": [
+                    1,
+                    0.5
+                  ],
+                  "sizeDelta": [
+                    220,
+                    0
+                  ],
+                  "text": {
+                    "value": "12 / 12",
+                    "font": "Archivo Black",
+                    "size": 15,
+                    "color": "#FFF7E8",
+                    "align": "Right",
+                    "tabularNums": true
+                  }
+                }
+              ]
+            },
+            {
+              "name": "SlotGrid",
+              "type": "Grid",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -34
+              ],
+              "sizeDelta": [
+                1340,
+                176
+              ],
+              "cellSize": [
+                213,
+                110
+              ],
+              "spacing": [
+                10,
+                10
+              ],
+              "columns": 8,
+              "itemPrefab": "Items/Card_MatchSlot",
+              "states": [
+                "State_Mate",
+                "State_Human",
+                "State_Bot",
+                "State_Empty"
+              ],
+              "note": "16 cards fixos montados na cena, 8 colunas x 2 linhas. O script só troca o filho de estado ativo e preenche nome/avatar."
+            }
+          ]
+        },
+        {
+          "name": "StageStrip",
+          "type": "HLayout",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            40,
+            -656
+          ],
+          "sizeDelta": [
+            1340,
+            48
+          ],
+          "spacing": 0,
+          "childForceExpandWidth": true,
+          "itemPrefab": "Items/Chip_Stage",
+          "items": [
+            "PRONTOS",
+            "PROCURANDO",
+            "ENCONTRADOS",
+            "PREENCHENDO",
+            "CARREGANDO"
+          ],
+          "states": {
+            "Done": {
+              "bg": "rgba(61,220,151,0.18)",
+              "color": "#3DDC97",
+              "icon": "Icons/Icon_Check"
+            },
+            "Now": {
+              "bg": "#FFB020",
+              "color": "#15161C",
+              "icon": "Icons/Icon_Circle",
+              "pulse": 1
+            },
+            "Todo": {
+              "bg": "rgba(16,19,52,0.70)",
+              "color": "#5C63A8",
+              "icon": "Icons/Icon_Circle"
+            }
+          }
+        },
+        {
+          "name": "Footer",
+          "type": "Rect",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            40,
+            -728
+          ],
+          "sizeDelta": [
+            1340,
+            80
+          ],
+          "children": [
+            {
+              "name": "Progress",
+              "type": "Prefab",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                1020,
+                14
+              ],
+              "prefab": "Widgets/Bar_Progress",
+              "sprite": "Bars/Bar_Track",
+              "fill": "Bars/Bar_Fill",
+              "fillColor": "#FFB020"
+            },
+            {
+              "name": "Hint",
+              "type": "Text",
+              "anchorMin": [
+                0,
+                1
+              ],
+              "anchorMax": [
+                0,
+                1
+              ],
+              "pivot": [
+                0,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                -26
+              ],
+              "sizeDelta": [
+                1020,
+                14
+              ],
+              "text": {
+                "value": "8 pilotos captados · faltam 4 vagas",
+                "font": "Space Mono",
+                "size": 12,
+                "color": "#7C86C8",
+                "align": "Left"
+              }
+            },
+            {
+              "name": "Btn_Cancel",
+              "type": "Prefab",
+              "anchorMin": [
+                1,
+                1
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "pivot": [
+                1,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                262,
+                56
+              ],
+              "prefab": "Widgets/Btn_Danger",
+              "text": {
+                "value": "CANCELAR BUSCA",
+                "font": "Titan One",
+                "size": 20,
+                "color": "#FF4D6D",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Btn_Enter",
+              "type": "Prefab",
+              "anchorMin": [
+                1,
+                1
+              ],
+              "anchorMax": [
+                1,
+                1
+              ],
+              "pivot": [
+                1,
+                1
+              ],
+              "anchoredPosition": [
+                0,
+                0
+              ],
+              "sizeDelta": [
+                262,
+                56
+              ],
+              "prefab": "Widgets/Btn_Primary",
+              "text": {
+                "value": "ENTRAR NA PISTA",
+                "font": "Titan One",
+                "size": 24,
+                "color": "#0A0C22",
+                "align": "Center"
+              },
+              "activeOnStage": "CARREGANDO"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

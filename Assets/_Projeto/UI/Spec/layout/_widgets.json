@@ -1,0 +1,327 @@
+{
+  "note": "Todo prefab abaixo é montado À MÃO na cena. Nenhum script cria, dimensiona ou colore estes objetos.",
+  "widgets": {
+    "Btn_Primary": {
+      "sprite": "Frames/UI_Button_R22_Green",
+      "height": 68,
+      "font": "Titan One",
+      "size": 30,
+      "color": "#0A0C22",
+      "shadow": 6,
+      "pressed": {
+        "sprite": "Frames/UI_Button_R22_Pressed_Green",
+        "shadow": 0,
+        "offsetY": 6
+      }
+    },
+    "Btn_Amber": {
+      "sprite": "Frames/UI_Button_R22_Amber",
+      "height": 68,
+      "font": "Titan One",
+      "size": 24,
+      "color": "#15161C",
+      "shadow": 6,
+      "pressed": {
+        "sprite": "Frames/UI_Button_R22_Pressed_Amber",
+        "shadow": 0,
+        "offsetY": 6
+      }
+    },
+    "Btn_Secondary": {
+      "sprite": "Frames/UI_Card_R18_Deep",
+      "height": 64,
+      "font": "Titan One",
+      "size": 19,
+      "color": "#9AA2D8",
+      "shadow": 6
+    },
+    "Btn_Danger": {
+      "sprite": "Frames/UI_Card_R18_Deep",
+      "height": 56,
+      "font": "Titan One",
+      "size": 20,
+      "color": "#FF4D6D",
+      "shadow": 5
+    },
+    "Btn_Icon": {
+      "sprite": "Frames/UI_Card_R18_Deep",
+      "size": [
+        64,
+        64
+      ],
+      "iconSize": 28
+    },
+    "Btn_Touch": {
+      "sprite": "Frames/UI_Card_R18_Ink",
+      "minSize": [
+        88,
+        88
+      ],
+      "note": "alvo de toque nunca abaixo de 88px"
+    },
+    "Chip_Tab": {
+      "sprite": "Frames/UI_Card_R18_Deep",
+      "states": [
+        "State_Active",
+        "State_Idle"
+      ],
+      "height": 64
+    },
+    "Chip_SubTab": {
+      "height": 44,
+      "states": [
+        "State_Active",
+        "State_Idle"
+      ],
+      "activeBg": "#2A3480"
+    },
+    "Chip_Currency": {
+      "sprite": "Frames/UI_Card_R18_Ink",
+      "height": 64,
+      "iconSize": 30
+    },
+    "Chip_RoomCode": {
+      "sprite": "Frames/UI_Badge_R14_Amber",
+      "height": 44,
+      "font": "Space Mono",
+      "spacing": 0.28
+    },
+    "Chip_Profile": {
+      "sprite": "Frames/UI_Card_R18_Ink",
+      "height": 64
+    },
+    "Chip_Stage": {
+      "states": [
+        "Done",
+        "Now",
+        "Todo"
+      ],
+      "height": 48
+    },
+    "Plate_Amber": {
+      "sprite": "Frames/UI_Button_R22_Amber",
+      "stroke": 4,
+      "shadow": 6
+    },
+    "Plate_Ink": {
+      "sprite": "Frames/UI_Card_R18_Ink",
+      "stroke": 4,
+      "shadow": 6
+    },
+    "Plate_Cream": {
+      "sprite": "Frames/UI_Badge_R14_Cream",
+      "stroke": 4,
+      "shadow": 6
+    },
+    "Bar_Progress": {
+      "track": "Bars/Bar_Track",
+      "fill": "Bars/Bar_Fill",
+      "height": 14
+    },
+    "Selector_Option": {
+      "sprite": "Frames/UI_Card_R18_Royal",
+      "height": 38,
+      "children": [
+        "Btn_Prev",
+        "Value",
+        "Btn_Next"
+      ]
+    },
+    "Slot_Shield": {
+      "size": [
+        104,
+        104
+      ],
+      "states": [
+        "Ready",
+        "Active",
+        "Cooling"
+      ],
+      "radial": "Image Filled Radial360"
+    },
+    "Slot_Power": {
+      "size": [
+        130,
+        130
+      ],
+      "states": [
+        "Filled",
+        "Empty",
+        "Recharging",
+        "Locked"
+      ]
+    },
+    "Card_Mode": {
+      "size": [
+        116,
+        88
+      ],
+      "states": [
+        "State_Active",
+        "State_Idle"
+      ],
+      "children": [
+        "Pips",
+        "Label",
+        "Cap"
+      ]
+    },
+    "Card_Choice": {
+      "size": [
+        190,
+        150
+      ],
+      "stroke": 4,
+      "shadow": 7
+    },
+    "Toast_Item": {
+      "sprite": "Race/Toast_Card",
+      "height": 56,
+      "iconSize": 26,
+      "font": "Archivo",
+      "size": 14
+    }
+  },
+  "items": {
+    "Row_GroupSlot": {
+      "size": [
+        364,
+        64
+      ],
+      "states": [
+        "State_Player",
+        "State_Empty",
+        "State_Locked"
+      ],
+      "playerChildren": [
+        "Avatar",
+        "Name",
+        "Badge_Leader",
+        "Meta",
+        "State_Ready",
+        "State_Waiting",
+        "Destaque_IsLocal"
+      ]
+    },
+    "Row_Friend": {
+      "size": [
+        352,
+        58
+      ],
+      "children": [
+        "Avatar",
+        "StatusDot",
+        "Name",
+        "State",
+        "Btn_Invite",
+        "Label_Unavailable"
+      ]
+    },
+    "Row_CustomSlot": {
+      "size": [
+        648,
+        54
+      ],
+      "states": [
+        "State_Player",
+        "State_Bot",
+        "State_Empty"
+      ],
+      "playerChildren": [
+        "Index",
+        "Avatar",
+        "Name",
+        "Badge_Host",
+        "State_Ready",
+        "State_Waiting",
+        "Btn_Kick"
+      ]
+    },
+    "Row_Standing": {
+      "size": [
+        328,
+        46
+      ],
+      "states": [
+        "IsLocal",
+        "Other"
+      ]
+    },
+    "Row_Standing_Compact": {
+      "size": [
+        250,
+        34
+      ]
+    },
+    "Card_MatchSlot": {
+      "size": [
+        213,
+        110
+      ],
+      "states": [
+        "State_Mate",
+        "State_Human",
+        "State_Bot",
+        "State_Empty"
+      ]
+    },
+    "Card_CosmeticItem": {
+      "size": [
+        159,
+        190
+      ],
+      "states": [
+        "Equipped",
+        "Selected",
+        "Free",
+        "Locked"
+      ],
+      "children": [
+        "Preview",
+        "Name",
+        "Rarity",
+        "Badge_New",
+        "Icon_Lock",
+        "UnlockText",
+        "Focus_Ring"
+      ]
+    },
+    "Blip_Player": {
+      "size": [
+        80,
+        40
+      ],
+      "children": [
+        "Dot",
+        "NameTag"
+      ],
+      "animation": "prBlip 0.5s easeOut"
+    },
+    "Chip_Stage": {
+      "size": [
+        268,
+        48
+      ]
+    }
+  },
+  "spriteBorders": {
+    "Frames/UI_Panel_R26_Deep": 34,
+    "Frames/UI_Panel_R26_DeepHi": 34,
+    "Frames/UI_Modal_R36": 46,
+    "Frames/UI_Card_R18_Ink": 26,
+    "Frames/UI_Card_R18_Deep": 27,
+    "Frames/UI_Card_R18_Royal": 26,
+    "Frames/UI_Button_R22_Amber": 31,
+    "Frames/UI_Button_R22_Green": 31,
+    "Frames/UI_Button_R28_Amber": 38,
+    "Frames/UI_Dashed_R18": 27,
+    "Frames/UI_Dashed_R28": 38,
+    "Frames/UI_Badge_R14_Amber": 23,
+    "Frames/UI_Badge_R14_Cream": 23,
+    "Frames/UI_Badge_R11_Chip": 19,
+    "Race/Toast_Card": 19,
+    "Brand/Brand_Plate_Racers": 18
+  },
+  "spriteSource": "pacote-v2/ (molduras, overlays, marca) + pacote-party-racers/ (ícones, poderes, barras). Ver pacote-v2/README.md.",
+  "brandLockup": "Sem PNG do lockup: TMP \"PARTY\" (Titan One 27, #FFF7E8) + TMP \"RACERS\" (Titan One 19, #15161C) sobre Brand/Brand_Plate_Racers, grupo rotacionado -2°."
+}

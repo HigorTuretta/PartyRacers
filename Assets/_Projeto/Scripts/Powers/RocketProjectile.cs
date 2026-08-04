@@ -119,6 +119,10 @@ public class RocketProjectile : MonoBehaviour
             direction = Normalize(transform.forward);
     }
 
+    // Alimenta o arco vermelho da borda do HUD — o único aviso de ataque do design.
+    private void OnEnable() => RaceThreats.Registrar(transform);
+    private void OnDisable() => RaceThreats.Remover(transform);
+
     private void Update()
     {
         if (finished)
@@ -420,6 +424,13 @@ public class RocketProjectile : MonoBehaviour
 
         RaceHudEvents.Raise(owner, kart.gameObject, RaceHudEventKind.HitOpponent, KartPowerType.Rocket);
         RaceHudEvents.Raise(kart.gameObject, owner, RaceHudEventKind.GotHit, KartPowerType.Rocket);
+
+        // Dano de ITEM (15). Vem depois do teste de escudo acima: se a bolha estava no ar o
+        // método já retornou e nada disto roda.
+        KartHealth health = kart.GetComponent<KartHealth>();
+        if (health != null)
+            health.ApplyItemDamage(hit.Point, owner);
+
         KartSpinOutEffect.ApplyTo(kart.gameObject, spinOutDuration, direction, knockbackForce, knockbackTorque);
 
         // Estado ghost: o atingido fica brevemente intangível para outros karts (não para a pista),

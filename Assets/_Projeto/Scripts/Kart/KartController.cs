@@ -192,6 +192,14 @@ public class KartController : MonoBehaviour
     /// <summary>True enquanto o kart está sendo arremessado por um obstáculo (sem controle/grip/clamps).</summary>
     public bool IsInKnockback => knockbackTimer > 0f;
 
+    /// <summary>
+    /// Batida contra PAREDE/cenário — nunca contra rampa, outro kart ou obstáculo que resolve o
+    /// próprio impacto. Argumentos: velocidade em km/h imediatamente antes do contato e
+    /// frontalidade 0..1 (0 = raspão paralelo, 1 = de cara na parede).
+    /// Quem assina é o <c>KartHealth</c>; o controlador não conhece o sistema de vida.
+    /// </summary>
+    public event System.Action<float, float> WallImpact;
+
     [Header("Boost")]
     [SerializeField] private float boostSpeedMultiplier = 1f;
     [SerializeField] private float boostAccelerationMultiplier = 1f;
@@ -570,6 +578,70 @@ public class KartController : MonoBehaviour
             return;
 
         RecalculateSpeedLimitMultiplier();
+    }
+
+    // ------------------------------------------------------------------ Penalidade de pilotagem
+    // Irmã do limite de velocidade acima, mas para FORÇA DE MOTOR e RESPOSTA DE ESTERÇO. O estado
+    // danificado (KartHealth) precisa dos três: um kart que só perde velocidade máxima continua
+    // acelerando e virando igual, e a penalidade não se sente. Como no limite de velocidade, a
+    // penalidade mais forte entre as fontes é a que vale — reaplicar a mesma fonte substitui o
+    // valor dela, então um efeito que se renova por frame não acumula.
+
+    private struct HandlingPenalty
+    {
+        public float Acceleration;
+        public float Steer;
+    }
+
+    private Dictionary<UnityEngine.Object, HandlingPenalty> handlingModifiers;
+    private float accelerationPenaltyMultiplier = 1f;
+    private float steerPenaltyMultiplier = 1f;
+
+    /// <summary>Fração da aceleração vigente após as penalidades ativas (1 = sem penalidade).</summary>
+    public float AccelerationPenaltyMultiplier => accelerationPenaltyMultiplier;
+
+    /// <summary>Fração da resposta de esterço vigente após as penalidades ativas.</summary>
+    public float SteerPenaltyMultiplier => steerPenaltyMultiplier;
+
+    public void SetHandlingPenalty(UnityEngine.Object source, float accelerationScale, float steerScale)
+    {
+        if (source == null)
+            return;
+
+        handlingModifiers ??= new Dictionary<UnityEngine.Object, HandlingPenalty>();
+        handlingModifiers[source] = new HandlingPenalty
+        {
+            Acceleration = Mathf.Clamp(accelerationScale, 0.05f, 1f),
+            Steer = Mathf.Clamp(steerScale, 0.05f, 1f),
+        };
+
+        RecalculateHandlingPenalty();
+    }
+
+    public void RemoveHandlingPenalty(UnityEngine.Object source)
+    {
+        if (source == null || handlingModifiers == null || !handlingModifiers.Remove(source))
+            return;
+
+        RecalculateHandlingPenalty();
+    }
+
+    private void RecalculateHandlingPenalty()
+    {
+        float acceleration = 1f;
+        float steer = 1f;
+
+        if (handlingModifiers != null)
+        {
+            foreach (HandlingPenalty penalty in handlingModifiers.Values)
+            {
+                acceleration = Mathf.Min(acceleration, penalty.Acceleration);
+                steer = Mathf.Min(steer, penalty.Steer);
+            }
+        }
+
+        accelerationPenaltyMultiplier = acceleration;
+        steerPenaltyMultiplier = steer;
     }
 
     private void RecalculateSpeedLimitMultiplier()
@@ -1145,7 +1217,8 @@ public class KartController : MonoBehaviour
                 : 1f - Mathf.Pow((speedFactor - 0.7f) / 0.3f, 1.5f);
             float accelerationCurve = launchRamp * topEndDropoff;
 
-            float finalAcceleration = acceleration * boostAccelerationMultiplier * accelerationCurve;
+            float finalAcceleration = acceleration * boostAccelerationMultiplier * accelerationCurve
+                                    * accelerationPenaltyMultiplier;
 
             rb.AddForce(driveDir * finalAcceleration, ForceMode.Acceleration);
 
@@ -1294,7 +1367,7 @@ public class KartController : MonoBehaviour
         float baseTurnRate = Mathf.Lerp(lowSpeedTurnRate, highSpeedTurnRate, speedFactor);
         float highSpeedPenalty = Mathf.Lerp(1f, highSpeedSteerReduction, speedFactor);
 
-        float finalTurnRate = baseTurnRate * highSpeedPenalty * steerRamp;
+        float finalTurnRate = baseTurnRate * highSpeedPenalty * steerRamp * steerPenaltyMultiplier;
 
         float driftTurnBonus = Mathf.Lerp(1f, driftTurnMultiplier, driftBlend);
         finalTurnRate *= driftTurnBonus;
@@ -1626,6 +1699,12 @@ public class KartController : MonoBehaviour
             // Parede: raspão quase não custa velocidade; só o impacto frontal freia.
             float retencao = Mathf.Lerp(1f, wallSlideRetention, frontalidade);
             rb.linearVelocity = along * retencao;
+
+            // Dano por batida no cenário (KartHealth). A velocidade que interessa é a de ANTES do
+            // contato: quando este método roda o solver já comeu parte dela, e usar a velocidade
+            // atual faria uma pancada de 150 km/h ser cobrada como se fosse de 60. A frontalidade
+            // vai junto para que quem decide o dano possa ignorar raspão de lataria.
+            WallImpact?.Invoke(PreviousVelocity.magnitude * 3.6f, frontalidade);
         }
 
         // Sinaliza o impacto para a câmera (forte quanto mais perpendicular for a batida).

@@ -490,6 +490,12 @@ public sealed class ElectricTrapPower : MonoBehaviour
 
         RaceHudEvents.Raise(owner, targetKart.gameObject, RaceHudEventKind.HitOpponent, KartPowerType.ElectricTrap);
         RaceHudEvents.Raise(targetKart.gameObject, owner, RaceHudEventKind.GotHit, KartPowerType.ElectricTrap);
+
+        // Dano de ITEM (15). O teste de escudo acima já devolveu quando a bolha estava no ar.
+        KartHealth targetHealth = targetKart.GetComponent<KartHealth>();
+        if (targetHealth != null)
+            targetHealth.ApplyItemDamage(impactPoint, owner);
+
         KartElectricShockEffect.ApplyTo(
             targetKart.gameObject,
             shockDuration,

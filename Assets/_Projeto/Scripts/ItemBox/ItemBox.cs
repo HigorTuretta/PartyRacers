@@ -5,11 +5,13 @@ using UnityEngine;
 
 public class ItemBox : MonoBehaviour
 {
+    // O ESCUDO SAIU DAQUI (handoff v2 §5): virou habilidade fixa de todo kart, com recarga
+    // automática (KartShieldAbility). A caixa só sorteia o que é ofensivo/estratégico — quem quer
+    // recuperar vida passa pela caixa de cura da bifurcação (HealPickup).
     private static readonly KartPowerType[] DefaultPowerPool =
     {
         KartPowerType.SwapPosition,
         KartPowerType.Rocket,
-        KartPowerType.Shield,
         KartPowerType.ElectricTrap
     };
 
@@ -26,7 +28,6 @@ public class ItemBox : MonoBehaviour
     {
         KartPowerType.SwapPosition,
         KartPowerType.Rocket,
-        KartPowerType.Shield,
         KartPowerType.ElectricTrap
     };
 
@@ -104,7 +105,7 @@ public class ItemBox : MonoBehaviour
         if (inventory == null)
             return;
 
-        KartPowerType randomPower = GetRandomPower();
+        KartPowerType randomPower = GetRandomPower(inventory);
 
         bool receivedPower = inventory.TryGivePower(randomPower);
 
@@ -172,14 +173,39 @@ public class ItemBox : MonoBehaviour
             breakVfxScale);
     }
 
-    private KartPowerType GetRandomPower()
+    private KartPowerType GetRandomPower(KartPowerInventory inventory)
     {
         KartPowerType[] pool = availablePowers != null && availablePowers.Length > 0
             ? availablePowers
             : DefaultPowerPool;
 
-        return pool[Random.Range(0, pool.Length)];
+        // O escudo só sai do sorteio quando o kart JÁ TEM a habilidade fixa. Tirar dos dois
+        // lugares ao mesmo tempo deixaria a corrida sem escudo nenhum até o componente novo ser
+        // anexado ao prefab — um meio-termo pior que qualquer um dos dois estados finais.
+        // Além disso as caixas já salvas nas pistas têm Shield na lista serializada, então o
+        // filtro precisa ser em runtime: mudar o valor padrão do campo não altera instância
+        // nenhuma que já esteja na cena.
+        bool temEscudoFixo = inventory != null && inventory.GetComponent<KartShieldAbility>() != null;
+
+        filteredPool.Clear();
+        for (int i = 0; i < pool.Length; i++)
+        {
+            KartPowerType power = pool[i];
+            if (power == KartPowerType.None)
+                continue;
+            if (power == KartPowerType.Shield && temEscudoFixo)
+                continue;
+
+            filteredPool.Add(power);
+        }
+
+        if (filteredPool.Count == 0)
+            return DefaultPowerPool[Random.Range(0, DefaultPowerPool.Length)];
+
+        return filteredPool[Random.Range(0, filteredPool.Count)];
     }
+
+    private static readonly List<KartPowerType> filteredPool = new List<KartPowerType>();
 
     private IEnumerator RespawnRoutine()
     {

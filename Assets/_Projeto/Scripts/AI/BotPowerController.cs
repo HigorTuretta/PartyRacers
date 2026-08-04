@@ -15,6 +15,8 @@ namespace PartyRacers.AI
         [Header("Shield")]
         [SerializeField] private float shieldThreatRadius = 9f;
         [SerializeField] private float shieldMaxHoldSeconds = 4f;
+        [Tooltip("Fração de vida abaixo da qual o bot levanta o escudo mesmo sem ninguém por perto.")]
+        [SerializeField, Range(0f, 1f)] private float shieldLowHpThreshold = 0.25f;
 
         [Header("Rocket")]
         [SerializeField] private float rocketMinDistance = 7f;
@@ -35,6 +37,8 @@ namespace PartyRacers.AI
         private KartController kart;
         private KartPowerInventory inventory;
         private KartPowerUser powerUser;
+        private KartShieldAbility shieldAbility;
+        private KartHealth health;
         private RaceManager raceManager;
         private KartRaceTracker tracker;
         private KartPowerType observedPower = KartPowerType.None;
@@ -88,6 +92,11 @@ namespace PartyRacers.AI
             if (Time.time - controlEnabledTime < launchPowerDelay)
                 return;
 
+            // O escudo não vem mais da caixa: é habilidade fixa e recarrega sozinha, então o bot
+            // decide usá-la à parte do inventário — senão ele só se defenderia quando por acaso
+            // estivesse sem item na mão.
+            TryUseShieldAbility();
+
             if (!inventory.HasPower)
             {
                 ResetObservedPower();
@@ -112,8 +121,30 @@ namespace PartyRacers.AI
             }
         }
 
+        /// <summary>
+        /// Aciona o escudo quando há ameaça por perto ou quando a vida já está baixa o bastante
+        /// para uma pancada quebrar o carro. Sem gasto de item — a habilidade é sempre do kart.
+        /// </summary>
+        private void TryUseShieldAbility()
+        {
+            if (shieldAbility == null || !shieldAbility.IsReady)
+                return;
+
+            bool ameaçaPerto = HasNearbyOpponent(shieldThreatRadius);
+            bool vidaCritica = health != null && !health.IsBroken && health.Hp01 <= shieldLowHpThreshold;
+
+            if (ameaçaPerto || vidaCritica)
+                shieldAbility.TryActivate();
+        }
+
         private void ResolveReferences()
         {
+            if (shieldAbility == null)
+                shieldAbility = GetComponent<KartShieldAbility>();
+
+            if (health == null)
+                health = GetComponent<KartHealth>();
+
             if (kart == null)
                 kart = GetComponent<KartController>();
 

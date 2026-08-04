@@ -39,6 +39,14 @@ public class ObstacleKnockback : MonoBehaviour, IKartImpactObstacle
     [Tooltip("Velocidade relativa mínima (m/s) para disparar. 0 = qualquer toque arremessa.")]
     [SerializeField] private float minRelativeSpeed = 0f;
 
+    [Header("Dano")]
+    [Tooltip("Aplicar o dano de ARMADILHA do KartHealth (10 por padrão) ao arremessar. " +
+             "Desligue em obstáculos que só devem empurrar, sem machucar.")]
+    [SerializeField] private bool dealsTrapDamage = true;
+    [Tooltip("Com o escudo ativo o kart também NÃO é arremessado — o escudo protege contra " +
+             "obstáculos e armadilhas, e ser jogado longe é a parte que mais custa a corrida.")]
+    [SerializeField] private bool shieldBlocksLaunch = true;
+
     [Header("Debug")]
     [SerializeField] private bool debugMode;
 
@@ -90,6 +98,23 @@ public class ObstacleKnockback : MonoBehaviour, IKartImpactObstacle
 
         if (lastHitTime.TryGetValue(kart, out float last) && Time.time - last < perKartCooldown)
             return;
+
+        // Escudo no ar: o obstáculo bate na bolha e para por aí. Registra o cooldown mesmo assim,
+        // senão o contato contínuo do moinho chamaria NotifyBlocked dezenas de vezes por segundo.
+        KartShieldAbility shield = kart.GetComponent<KartShieldAbility>();
+        if (shieldBlocksLaunch && shield != null && shield.IsActive)
+        {
+            shield.NotifyBlocked(contactPoint);
+            lastHitTime[kart] = Time.time;
+            return;
+        }
+
+        if (dealsTrapDamage)
+        {
+            KartHealth health = kart.GetComponent<KartHealth>();
+            if (health != null)
+                health.ApplyTrapDamage(contactPoint, gameObject);
+        }
 
         Vector3 obstaclePointVelocity = EstimatePointVelocity(contactPoint);
 

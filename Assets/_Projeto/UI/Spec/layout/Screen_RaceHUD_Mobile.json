@@ -1,0 +1,423 @@
+{
+  "screen": "Screen_RaceHUD_Mobile",
+  "scene": "Race",
+  "canvas": {
+    "referenceResolution": [
+      2340,
+      1080
+    ],
+    "screenMatchMode": "MatchWidthOrHeight",
+    "match": 0.5,
+    "safeArea": true
+  },
+  "intent": "Duas camadas separadas: MobileControlsLayer (touch) e InfoLayer (leitura). Nenhum alvo de toque abaixo de 88px.",
+  "nodes": [
+    {
+      "name": "InfoLayer",
+      "type": "Rect",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        0,
+        0
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "children": [
+        {
+          "name": "LapPlate",
+          "type": "HLayout",
+          "anchorMin": [
+            0.5,
+            1
+          ],
+          "anchorMax": [
+            0.5,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -22
+          ],
+          "sizeDelta": [
+            400,
+            52
+          ],
+          "spacing": 9,
+          "children": [
+            {
+              "name": "Lap",
+              "type": "Prefab",
+              "prefab": "Widgets/Plate_Amber",
+              "sizeDelta": [
+                110,
+                52
+              ],
+              "text": {
+                "value": "2/3",
+                "font": "Titan One",
+                "size": 24,
+                "color": "#15161C",
+                "align": "Center"
+              }
+            },
+            {
+              "name": "Time",
+              "type": "Prefab",
+              "prefab": "Widgets/Plate_Ink",
+              "sizeDelta": [
+                240,
+                52
+              ],
+              "text": {
+                "value": "01:12.480",
+                "font": "Titan One",
+                "size": 30,
+                "color": "#FFF7E8",
+                "align": "Center",
+                "tabularNums": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "Position",
+          "type": "Prefab",
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            28,
+            -22
+          ],
+          "sizeDelta": [
+            96,
+            70
+          ],
+          "prefab": "Widgets/Plate_Cream",
+          "rotationZ": -2,
+          "text": {
+            "value": "4º",
+            "font": "Titan One",
+            "size": 40,
+            "color": "#15161C",
+            "align": "Center"
+          }
+        },
+        {
+          "name": "Standings",
+          "type": "VLayout",
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -100,
+            -22
+          ],
+          "sizeDelta": [
+            250,
+            110
+          ],
+          "spacing": 4,
+          "maxRows": 3,
+          "rowHeight": 34,
+          "itemPrefab": "Items/Row_Standing_Compact",
+          "rule": "3 linhas: um acima, você, um abaixo"
+        },
+        {
+          "name": "Btn_Menu",
+          "type": "Prefab",
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -28,
+            -22
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ],
+          "prefab": "Widgets/Btn_Icon",
+          "icon": "Icons/Icon_Menu"
+        },
+        {
+          "name": "VitalCluster",
+          "type": "VLayout",
+          "anchorMin": [
+            0.5,
+            0
+          ],
+          "anchorMax": [
+            0.5,
+            0
+          ],
+          "pivot": [
+            0.5,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            30
+          ],
+          "sizeDelta": [
+            420,
+            58
+          ],
+          "spacing": 6,
+          "children": [
+            {
+              "name": "ShieldBar",
+              "type": "Image",
+              "sizeDelta": [
+                420,
+                20
+              ],
+              "sprite": "Bars/Bar_Track",
+              "segments": 3
+            },
+            {
+              "name": "HealthBar",
+              "type": "Image",
+              "sizeDelta": [
+                420,
+                32
+              ],
+              "sprite": "Bars/Bar_Track",
+              "segments": 5,
+              "children": [
+                {
+                  "name": "Value",
+                  "type": "Text",
+                  "anchorMin": [
+                    1,
+                    0.5
+                  ],
+                  "anchorMax": [
+                    1,
+                    0.5
+                  ],
+                  "pivot": [
+                    1,
+                    0.5
+                  ],
+                  "anchoredPosition": [
+                    -11,
+                    0
+                  ],
+                  "text": {
+                    "value": "72",
+                    "font": "Titan One",
+                    "size": 20,
+                    "color": "#FFF7E8",
+                    "align": "Right"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MobileControlsLayer",
+      "type": "Rect",
+      "anchorMin": [
+        0,
+        0
+      ],
+      "anchorMax": [
+        1,
+        1
+      ],
+      "offsetMin": [
+        0,
+        0
+      ],
+      "offsetMax": [
+        0,
+        0
+      ],
+      "note": "camada separada — desligada por completo no modo gamepad",
+      "children": [
+        {
+          "name": "Steer_Left",
+          "type": "Prefab",
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            44,
+            44
+          ],
+          "sizeDelta": [
+            112,
+            112
+          ],
+          "prefab": "Widgets/Btn_Touch",
+          "icon": "Icons/Icon_ArrowLeft"
+        },
+        {
+          "name": "Steer_Right",
+          "type": "Prefab",
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            170,
+            44
+          ],
+          "sizeDelta": [
+            112,
+            112
+          ],
+          "prefab": "Widgets/Btn_Touch",
+          "icon": "Icons/Icon_ArrowRight"
+        },
+        {
+          "name": "Btn_Shield",
+          "type": "Prefab",
+          "anchorMin": [
+            1,
+            0
+          ],
+          "anchorMax": [
+            1,
+            0
+          ],
+          "pivot": [
+            1,
+            0
+          ],
+          "anchoredPosition": [
+            -330,
+            44
+          ],
+          "sizeDelta": [
+            96,
+            96
+          ],
+          "prefab": "Widgets/Btn_Touch",
+          "color": "#35A7FF",
+          "icon": "shield"
+        },
+        {
+          "name": "Btn_Item",
+          "type": "Prefab",
+          "anchorMin": [
+            1,
+            0
+          ],
+          "anchorMax": [
+            1,
+            0
+          ],
+          "pivot": [
+            1,
+            0
+          ],
+          "anchoredPosition": [
+            -184,
+            44
+          ],
+          "sizeDelta": [
+            130,
+            130
+          ],
+          "prefab": "Widgets/Slot_Power",
+          "color": "#FFB020"
+        },
+        {
+          "name": "Btn_Gas",
+          "type": "Prefab",
+          "anchorMin": [
+            1,
+            0
+          ],
+          "anchorMax": [
+            1,
+            0
+          ],
+          "pivot": [
+            1,
+            0
+          ],
+          "anchoredPosition": [
+            -44,
+            44
+          ],
+          "sizeDelta": [
+            150,
+            150
+          ],
+          "prefab": "Widgets/Btn_Touch",
+          "color": "#3DDC97",
+          "text": {
+            "value": "GÁS",
+            "font": "Titan One",
+            "size": 30,
+            "color": "#0A0C22",
+            "align": "Center"
+          }
+        }
+      ]
+    }
+  ]
+}

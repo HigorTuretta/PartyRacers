@@ -60,6 +60,29 @@ namespace PartyRacers.UI.HUD
         public bool HasPower { get; private set; }
         public string PowerName { get; private set; } = string.Empty;
 
+        // ---- Vida e escudo (handoff v2 §5) --------------------------------------------------
+        /// <summary>Componente de vida do kart local. Null em cenas antigas sem o sistema.</summary>
+        public KartHealth LocalHealth { get; private set; }
+        /// <summary>Habilidade de escudo do kart local. Null em cenas antigas sem o sistema.</summary>
+        public KartShieldAbility LocalShield { get; private set; }
+
+        public bool HasHealthSystem => LocalHealth != null;
+        public int Hp { get; private set; }
+        public int MaxHp { get; private set; } = 100;
+        public float Hp01 { get; private set; } = 1f;
+        public bool IsBroken { get; private set; }
+        public float BrokenRemaining { get; private set; }
+        public float BrokenRemaining01 { get; private set; }
+        public bool OnDamageCooldown { get; private set; }
+        public float DamageCooldown01 { get; private set; }
+
+        public bool HasShieldSystem => LocalShield != null;
+        public bool ShieldActive { get; private set; }
+        public bool ShieldReady { get; private set; }
+        public float ShieldCooldown01 { get; private set; }
+        public float ShieldCooldownRemaining { get; private set; }
+        public float ShieldActiveRemaining { get; private set; }
+
         public int LocalPosition { get; private set; } = 1;
         public int RacerCount { get; private set; }
         public IReadOnlyList<Standing> Standings => standings;
@@ -118,12 +141,16 @@ namespace PartyRacers.UI.HUD
             localTracker = null;
             localInventory = null;
             localPowerUser = null;
+            LocalHealth = null;
+            LocalShield = null;
 
             if (LocalKart != null)
             {
                 localTracker = LocalKart.GetComponent<KartRaceTracker>();
                 localInventory = LocalKart.GetComponent<KartPowerInventory>();
                 localPowerUser = LocalKart.GetComponent<KartPowerUser>();
+                LocalHealth = LocalKart.GetComponent<KartHealth>();
+                LocalShield = LocalKart.GetComponent<KartShieldAbility>();
                 EnsureTurboEffect(LocalKart);
             }
         }
@@ -224,6 +251,59 @@ namespace PartyRacers.UI.HUD
                 HasPower = false;
                 PowerName = string.Empty;
             }
+
+            ReadVitals();
+        }
+
+        private void ReadVitals()
+        {
+            if (LocalHealth != null)
+            {
+                Hp = LocalHealth.CurrentHp;
+                MaxHp = LocalHealth.MaxHp;
+                Hp01 = LocalHealth.Hp01;
+                IsBroken = LocalHealth.IsBroken;
+                BrokenRemaining = LocalHealth.BrokenRemaining;
+                BrokenRemaining01 = LocalHealth.BrokenRemaining01;
+                OnDamageCooldown = LocalHealth.OnDamageCooldown;
+                DamageCooldown01 = LocalHealth.DamageCooldown01;
+            }
+            else
+            {
+                // Sem o sistema na cena a HUD mostra vida cheia em vez de zerada: uma barra vazia
+                // faria o jogador achar que está prestes a quebrar numa pista que nem tem dano.
+                Hp = MaxHp;
+                Hp01 = 1f;
+                IsBroken = false;
+                BrokenRemaining = 0f;
+                BrokenRemaining01 = 0f;
+                OnDamageCooldown = false;
+                DamageCooldown01 = 0f;
+            }
+
+            if (LocalShield != null)
+            {
+                ShieldActive = LocalShield.IsActive;
+                ShieldReady = LocalShield.IsReady;
+                ShieldCooldown01 = LocalShield.Cooldown01;
+                ShieldCooldownRemaining = LocalShield.CooldownRemaining;
+                ShieldActiveRemaining = LocalShield.ActiveRemaining;
+            }
+            else
+            {
+                ShieldActive = false;
+                ShieldReady = false;
+                ShieldCooldown01 = 0f;
+                ShieldCooldownRemaining = 0f;
+                ShieldActiveRemaining = 0f;
+            }
+        }
+
+        /// <summary>Aciona o escudo do kart local (botão do celular / atalho da HUD).</summary>
+        public void RequestUseShield()
+        {
+            if (LocalShield != null)
+                LocalShield.TryActivate();
         }
 
         // ----------------------------------------------------------------- Standings

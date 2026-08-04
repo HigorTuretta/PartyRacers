@@ -83,8 +83,15 @@ public class KartPowerUser : MonoBehaviour
     private GameObject equippedUfoInstance;
     private GameObject equippedElectricTrapInstance;
     private KartNetworkSync networkSync;
+    private KartShieldAbility shieldAbility;
 
-    public bool IsShieldActive => Time.time < shieldEndTime;
+    /// <summary>
+    /// O escudo virou HABILIDADE FIXA (<see cref="KartShieldAbility"/>) e saiu da ItemBox. Esta
+    /// propriedade continua existindo porque os projéteis e a armadilha perguntam por ela; quando
+    /// a habilidade está presente ela é a fonte da verdade, e o temporizador antigo só sobrevive
+    /// para karts de cenas legadas que ainda não têm o componente novo.
+    /// </summary>
+    public bool IsShieldActive => shieldAbility != null ? shieldAbility.IsActive : Time.time < shieldEndTime;
 
     private void Awake()
     {
@@ -107,6 +114,8 @@ public class KartPowerUser : MonoBehaviour
 
         if (shieldVisual == null)
             shieldVisual = gameObject.AddComponent<KartShieldVisual>();
+
+        shieldAbility = GetComponent<KartShieldAbility>();
 
         EnsureRocketSocket();
     }
@@ -207,9 +216,19 @@ public class KartPowerUser : MonoBehaviour
         return power == KartPowerType.SwapPosition ? FindSwapTarget() : null;
     }
 
-    // ------------------------------------------------------------------ Escudo
+    // ------------------------------------------------------------------ Escudo (legado)
+    // O escudo saiu da ItemBox e virou habilidade fixa. O que sobrou aqui é ponte: quando o kart
+    // tem KartShieldAbility, tudo é delegado a ela. O caminho antigo (shieldEndTime + shieldVisual)
+    // só roda em karts de cenas que ainda não receberam o componente novo.
+
     private void ActivateShield()
     {
+        if (shieldAbility != null)
+        {
+            shieldAbility.TryActivate();
+            return;
+        }
+
         shieldEndTime = Time.time + shieldDuration;
 
         if (shieldVisual != null)
@@ -218,7 +237,8 @@ public class KartPowerUser : MonoBehaviour
 
     private void UpdateShield()
     {
-        if (shieldVisual == null)
+        // Com a habilidade presente, quem manda no visual é ela — dois donos piscavam a bolha.
+        if (shieldAbility != null || shieldVisual == null)
             return;
 
         bool shouldBeActive = IsShieldActive;
@@ -234,6 +254,12 @@ public class KartPowerUser : MonoBehaviour
 
     public void PulseShieldBlock(Vector3 impactPoint, GameObject blockVFXPrefab)
     {
+        if (shieldAbility != null)
+        {
+            shieldAbility.NotifyBlocked(impactPoint);
+            return;
+        }
+
         if (shieldVisual != null)
             shieldVisual.PulseBlock(impactPoint);
 
