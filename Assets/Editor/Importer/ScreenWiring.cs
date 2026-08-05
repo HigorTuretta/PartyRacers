@@ -56,7 +56,229 @@ namespace PartyRacers.UI.Importer
                 case "Screen_JoinCode": Codigo(raiz, m); break;
                 case "Screen_Loading": Carregando(raiz, m); break;
                 case "Screen_RaceMenu": MenuDaPartida(raiz, m); break;
+                case "Screen_RaceHUD_PC": HudDeCorrida(raiz, m); break;
             }
+        }
+
+        // ================================================================== HUD de corrida
+
+        /// <summary>
+        /// Liga a pele fiel do HUD aos binders que já existem.
+        ///
+        /// O centro da tela fica sem nada de propósito (§6 da proposta): informação em cima,
+        /// vitais no canto inferior ESQUERDO e poder no inferior DIREITO, diagonalmente opostos —
+        /// a mesma separação das mãos no controle.
+        /// </summary>
+        private static void HudDeCorrida(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            // O protótipo desenha o gameplay: céu em degradê, faixa verde da pista e o rótulo
+            // "GAMEPLAY 3D". No jogo quem pinta isso é a CÂMERA — deixar os três seria um painel
+            // opaco parado no meio da tela, justo onde o design manda não ter nada.
+            //
+            // Some o DESENHO, não o nó: a raiz da tela e a faixa do céu são pais de metade do HUD,
+            // e destruí-las levaria junto a placa de volta, o cluster vital e o slot de poder.
+            Apagar(m.Texto("GAMEPLAY 3D", false));
+            Despintar(m.Caixas(1920f, 1080f, 4f));
+            Despintar(m.Caixas(1920f, 562f, 6f));
+            Despintar(m.Caixas(640f, 520f, 6f));
+
+            // ---- informação
+            var hud = raiz.AddComponent<PartyRacers.UI.Race.RaceHUDUI>();
+            var so = new SerializedObject(hud);
+            Atribuir(so, "textoVolta", Tmp(m.Texto("VOLTA 2/3")));
+            Atribuir(so, "textoTempo", Tmp(m.Texto("01:12.480")));
+            Atribuir(so, "textoUltimaVolta", Tmp(m.Texto("ÚLT", false)));
+            Atribuir(so, "textoMelhorVolta", Tmp(m.Texto("MELH", false)));
+
+            RectTransform chipUlt = Alvo(m, "ÚLT", false);
+            if (chipUlt != null)
+                Atribuir(so, "chipUltimaVolta", chipUlt.gameObject);
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            Classificacao(raiz, m);
+            ClusterVital(raiz, m);
+            SlotDePoder(raiz, m);
+            Toasts(raiz, m);
+        }
+
+        private static void Classificacao(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<PartyRacers.UI.Race.StandingsV2UI>();
+            var so = new SerializedObject(ui);
+
+            // Cinco linhas comuns (328×31) e a do jogador (340×54), que é mais alta de propósito:
+            // "esta linha é a minha" precisa ser vista sem ler.
+            var linhas = m.Caixas(328f, 31f, 3f).Concat(m.Caixas(340f, 54f, 3f))
+                          .OrderBy(r => -r.anchoredPosition.y).ToList();
+
+            SerializedProperty lista = so.FindProperty("linhas");
+            lista.arraySize = linhas.Count;
+
+            for (int i = 0; i < linhas.Count; i++)
+            {
+                RectTransform linha = linhas[i];
+                SerializedProperty item = lista.GetArrayElementAtIndex(i);
+                item.FindPropertyRelative("raiz").objectReferenceValue = linha.gameObject;
+
+                bool local = linha.rect.height > 40f;
+                GameObject atual = Agrupar(linha, local ? "IsLocal" : "Other");
+
+                RectTransform[] textos = m.TextosEm(linha);
+                string sufixo = local ? "Local" : "Outro";
+                if (textos.Length > 0) item.FindPropertyRelative("posicao" + sufixo).objectReferenceValue = Tmp(textos[0]);
+                if (textos.Length > 1) item.FindPropertyRelative("nome" + sufixo).objectReferenceValue = Tmp(textos[1]);
+                if (textos.Length > 2) item.FindPropertyRelative("tempo" + sufixo).objectReferenceValue = Tmp(textos[2]);
+
+                item.FindPropertyRelative(local ? "estadoLocal" : "estadoOutro").objectReferenceValue = atual;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void ClusterVital(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<PartyRacers.UI.Race.VitalClusterUI>();
+            var so = new SerializedObject(ui);
+
+            // Vida: 5 blocos de 20 HP. Blocos porque são CONTÁVEIS de relance — barra contínua
+            // exige medir, e a 150 km/h ninguém mede.
+            RectTransform[] blocos = m.Caixas(78f, 32f, 4f);
+            SerializedProperty segmentos = so.FindProperty("segmentosDeVida");
+            segmentos.arraySize = blocos.Length;
+
+            for (int i = 0; i < blocos.Length; i++)
+            {
+                SerializedProperty item = segmentos.GetArrayElementAtIndex(i);
+                Graphic cheio = blocos[i].GetComponentInChildren<Graphic>(true);
+                item.FindPropertyRelative("cheio").objectReferenceValue = cheio as Image;
+
+                // Ferido e vazio não existem no protótipo: são o mesmo bloco em outra cor.
+                GameObject ferido = Preenchido(blocos[i], "Ferido", new Color(1f, 176 / 255f, 32 / 255f, 1f));
+                GameObject vazio = Preenchido(blocos[i], "Vazio", new Color(1f, 1f, 1f, 0.10f));
+                item.FindPropertyRelative("ferido").objectReferenceValue = ferido.GetComponent<Graphic>() as Image;
+                item.FindPropertyRelative("vazio").objectReferenceValue = vazio;
+                ferido.SetActive(false);
+                vazio.SetActive(false);
+            }
+
+            Atribuir(so, "valorDeVida", Tmp(m.Texto("100")));
+
+            RectTransform rotuloVida = m.Texto("VIDA");
+            if (rotuloVida != null && rotuloVida.parent != null)
+                Atribuir(so, "raizVida", rotuloVida.parent.gameObject);
+
+            // Escudo: a barra É o indicador. Sem botão e sem ícone — a ausência de brilho é o
+            // sinal de indisponível, e ausência de movimento se percebe pela visão periférica.
+            RectTransform rotuloEscudo = m.Texto("ESCUDO");
+            if (rotuloEscudo != null && rotuloEscudo.parent != null)
+            {
+                var barra = (RectTransform)rotuloEscudo.parent;
+                Atribuir(so, "raizEscudo", barra.gameObject);
+
+                GameObject pronto = Agrupar(barra, "Ready");
+                GameObject ativo = Object.Instantiate(pronto, barra);
+                ativo.name = "Active";
+                ativo.SetActive(false);
+
+                GameObject recarga = Object.Instantiate(pronto, barra);
+                recarga.name = "Cooling";
+                recarga.SetActive(false);
+
+                Atribuir(so, "estadoPronto", pronto);
+                Atribuir(so, "estadoAtivo", ativo);
+                Atribuir(so, "estadoRecarga", recarga);
+
+                Atribuir(so, "textoDaChapinhaAtivo", Tmp(m.Texto("PRONTO")));
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SlotDePoder(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<PartyRacers.UI.Race.PowerSlotUI>();
+            var so = new SerializedObject(ui);
+
+            RectTransform nome = m.Texto("FOGUETE");
+            if (nome != null)
+            {
+                Atribuir(so, "nomeDoPoder", Tmp(nome));
+                if (nome.parent != null)
+                    Atribuir(so, "cartaoDoNome", nome.parent.gameObject);
+            }
+
+            RectTransform tecla = m.Texto("E");
+            if (tecla != null)
+                Atribuir(so, "dicaDeTecla", tecla.gameObject);
+
+            // O slot: 124×124 no canto inferior direito.
+            RectTransform slot = m.Caixas(124f, 124f, 10f).FirstOrDefault();
+            if (slot != null)
+            {
+                GameObject cheio = Agrupar(slot, "Filled");
+                Atribuir(so, "estadoCheio", cheio);
+                Atribuir(so, "iconeCheio", cheio.GetComponentsInChildren<Image>(true)
+                                                .FirstOrDefault(i => i.sprite != null));
+
+                GameObject vazio = Tracejado(slot, "Empty");
+                Atribuir(so, "estadoVazio", vazio);
+                vazio.SetActive(false);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void Toasts(GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            var ui = raiz.AddComponent<PartyRacers.UI.Race.ToastNotificationUI>();
+            var so = new SerializedObject(ui);
+
+            // O cartão do toast está DOIS níveis acima do rótulo (texto → linha → cartão), e nem
+            // sempre a mesma quantidade. Subir até o ancestral que tem a caixa inteira é o único
+            // critério estável: parar antes leva só o texto, e o toast nasce sem fundo nem ícone.
+            RectTransform modelo = Envolve(m.Texto("pegou um foguete", false), 300f, 40f);
+            if (modelo == null)
+                return;
+
+            // Máximo 3 simultâneos (§8): as outras duas pilhas nascem acima da primeira.
+            SerializedProperty slots = so.FindProperty("slots");
+            slots.arraySize = 3;
+            float altura = modelo.rect.height + 8f;
+
+            // O CanvasGroup entra no MODELO antes das cópias: `AddComponent` seguido de
+            // `GetComponent` no mesmo passe do editor não enxerga o componente recém-criado, então
+            // adicionar em cada cópia deixava as duas últimas sem grupo.
+            var grupoModelo = modelo.GetComponent<CanvasGroup>();
+            if (grupoModelo == null)
+                grupoModelo = modelo.gameObject.AddComponent<CanvasGroup>();
+
+            grupoModelo.blocksRaycasts = false;
+
+            for (int i = 0; i < 3; i++)
+            {
+                RectTransform alvo = i == 0 ? modelo : Copiar(modelo, modelo.parent);
+                if (alvo == null)
+                    continue;
+
+                alvo.name = "Toast_" + (i + 1);
+                if (i > 0)
+                    alvo.anchoredPosition += new Vector2(0f, altura * i);
+
+                CanvasGroup grupo = alvo.GetComponent<CanvasGroup>();
+
+                SerializedProperty item = slots.GetArrayElementAtIndex(i);
+                item.FindPropertyRelative("raiz").objectReferenceValue = alvo.gameObject;
+                item.FindPropertyRelative("grupo").objectReferenceValue = grupo;
+                item.FindPropertyRelative("texto").objectReferenceValue =
+                    alvo.GetComponentsInChildren<TextMeshProUGUI>(true).FirstOrDefault();
+                item.FindPropertyRelative("icone").objectReferenceValue =
+                    alvo.GetComponentsInChildren<Image>(true).FirstOrDefault();
+
+                alvo.gameObject.SetActive(false);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ================================================================== Loja
@@ -153,7 +375,7 @@ namespace PartyRacers.UI.Importer
                 SerializedProperty item = lista.GetArrayElementAtIndex(i);
                 item.FindPropertyRelative("id").stringValue = grupos[i].id;
 
-                RectTransform botao = m.Dono(grupos[i].rotulo, 1);
+                RectTransform botao = Alvo(m, grupos[i].rotulo);
                 if (botao == null)
                     continue;
 
@@ -207,7 +429,7 @@ namespace PartyRacers.UI.Importer
             Atribuir(so, "textoMelhorVolta", Tmp(m.Texto("01:11.302")));
             Atribuir(so, "textoAindaCorrendo", Tmp(m.Texto("ainda correndo", false)));
 
-            RectTransform aviso = m.Dono("ainda correndo", 1, false);
+            RectTransform aviso = Alvo(m, "ainda correndo", false);
             if (aviso != null)
                 Atribuir(so, "blocoAindaCorrendo", aviso.gameObject);
 
@@ -280,7 +502,7 @@ namespace PartyRacers.UI.Importer
             Atribuir(so, "textoEstado", Tmp(m.Texto("CARREGANDO PISTA", false)));
             Atribuir(so, "textoDica", Tmp(m.Texto("O escudo bloqueia", false)));
 
-            RectTransform conexao = m.Dono("CONEXÃO", 1, false);
+            RectTransform conexao = Alvo(m, "CONEXÃO", false);
             if (conexao != null)
                 Atribuir(so, "blocoConexao", conexao.gameObject);
 
@@ -332,7 +554,7 @@ namespace PartyRacers.UI.Importer
 
             for (int i = 0; i < 3; i++)
             {
-                RectTransform card = m.Dono(rotulos[i], 2);
+                RectTransform card = Alvo(m, rotulos[i], true)?.parent as RectTransform;
                 if (card == null)
                     continue;
 
@@ -347,7 +569,7 @@ namespace PartyRacers.UI.Importer
 
             // ---- vagas do grupo
             RectTransform[] linhas = m.Caixas(360f, 68f);
-            RectTransform chipPronto = m.Dono("PRONTO", 1);
+            RectTransform chipPronto = Alvo(m, "PRONTO");
             RectTransform chipAguarda = m.Texto("AGUARDA");
             RectTransform selo = m.Texto("LÍDER");
 
@@ -427,8 +649,8 @@ namespace PartyRacers.UI.Importer
                     Object.DestroyImmediate(linha.gameObject);
             }
 
-            RectTransform abaJogo = m.Dono("NO JOGO", 1);
-            RectTransform abaSteam = m.Dono("STEAM", 1);
+            RectTransform abaJogo = Alvo(m, "NO JOGO");
+            RectTransform abaSteam = Alvo(m, "STEAM");
 
             if (abaJogo != null && abaSteam != null)
             {
@@ -445,7 +667,7 @@ namespace PartyRacers.UI.Importer
 
             // ---- barra de ação
             RectTransform cancelar = m.Texto("CANCELAR");
-            RectTransform buscar = m.Dono("BUSCAR PARTIDA", 1);
+            RectTransform buscar = Alvo(m, "BUSCAR PARTIDA");
 
             if (cancelar != null)
                 so.FindProperty("btnPronto").objectReferenceValue = Clicavel(cancelar);
@@ -499,7 +721,7 @@ namespace PartyRacers.UI.Importer
             // O botão CONVIDAR e a chapinha de indisponível moram em linhas diferentes do
             // protótipo; aqui os dois viram irmãos e o binder liga um de cada vez.
             RectTransform convidar = m.Texto("CONVIDAR");
-            RectTransform indisponivel = m.Dono("NO GRUPO", 1);
+            RectTransform indisponivel = Alvo(m, "NO GRUPO");
 
             if (convidar != null)
             {
@@ -578,7 +800,7 @@ namespace PartyRacers.UI.Importer
                 item.FindPropertyRelative("fonte").enumValueIndex = categorias[i].fonte;
                 item.FindPropertyRelative("elemento").intValue = categorias[i].elemento;
 
-                RectTransform aba = m.Dono(categorias[i].rotulo, 1);
+                RectTransform aba = Alvo(m, categorias[i].rotulo);
                 if (aba == null)
                     continue;
 
@@ -625,6 +847,12 @@ namespace PartyRacers.UI.Importer
                 selecionado.SetActive(false);
                 bloqueado.SetActive(false);
             }
+
+            // A grade tem 12 células e o catálogo de modelos tem 15: sem paginação os três últimos
+            // ficam inalcançáveis. O protótipo não desenhou esse controle, então ele é montado aqui
+            // com os mesmos tokens — é a única peça da garagem que não vem do design.
+            if (cards.Length > 0)
+                Paginacao(so, (RectTransform)cards[0].parent);
 
             Atribuir(so, "contagemDaCategoria", Tmp(m.Texto("ITENS", false)));
             Atribuir(so, "btnEquipar", ClicavelPorTexto(m, "EQUIPAR"));
@@ -717,7 +945,7 @@ namespace PartyRacers.UI.Importer
                 SerializedProperty item = chapinhas.GetArrayElementAtIndex(i);
                 item.FindPropertyRelative("etapa").enumValueIndex = i;
 
-                RectTransform chip = m.Dono(etapas[i], 1);
+                RectTransform chip = Alvo(m, etapas[i]);
                 if (chip == null)
                     continue;
 
@@ -785,6 +1013,25 @@ namespace PartyRacers.UI.Importer
         }
 
         // ================================================================== Barra de topo
+
+        /// <summary>
+        /// O ELEMENTO ao qual um rótulo pertence — o botão, a aba, o chip.
+        ///
+        /// `Dono(texto, 1)` sobe um nível sempre, e isso erra quando o rótulo JÁ É o elemento. Em
+        /// Configurações cada botão de grupo é um nó só, com texto e fundo: subir um nível devolvia
+        /// a COLUNA inteira, e o passe de estados engolia os cinco botões de uma vez.
+        ///
+        /// O teste é exato: o construtor põe o TextMeshPro no próprio nó apenas quando ele não tem
+        /// fundo. Texto no nó = rótulo solto, sobe; texto num filho `Label` = o nó é a caixa.
+        /// </summary>
+        private static RectTransform Alvo(ProtoBuilder.Mapa m, string rotulo, bool exato = true)
+        {
+            RectTransform t = m.Texto(rotulo, exato);
+            if (t == null)
+                return null;
+
+            return t.GetComponent<TextMeshProUGUI>() != null ? t.parent as RectTransform : t;
+        }
 
         /// <summary>Onde a barra de topo do v2 é guardada para as outras telas reusarem.</summary>
         private const string CaminhoDaBarra = "Assets/_Projeto/Prefabs/UI_v2/Widgets/TopBar_v2.prefab";
@@ -871,7 +1118,7 @@ namespace PartyRacers.UI.Importer
 
             for (int i = 0; i < destinos.Length; i++)
             {
-                RectTransform aba = m.Dono(destinos[i].rotulo, 1);
+                RectTransform aba = Alvo(m, destinos[i].rotulo);
                 SerializedProperty item = abas.GetArrayElementAtIndex(i);
                 item.FindPropertyRelative("id").stringValue = destinos[i].id;
 
@@ -1140,6 +1387,80 @@ namespace PartyRacers.UI.Importer
             return copia.gameObject;
         }
 
+        /// <summary>Anterior · "1 / 2" · próxima, logo abaixo da grade de cards.</summary>
+        private static void Paginacao(SerializedObject so, RectTransform grade)
+        {
+            Transform pai = grade.parent != null ? grade.parent : grade;
+
+            var bloco = new GameObject("Paginacao", typeof(RectTransform));
+            bloco.transform.SetParent(pai, false);
+
+            var r = (RectTransform)bloco.transform;
+            r.anchorMin = new Vector2(0f, 0f);
+            r.anchorMax = new Vector2(1f, 0f);
+            r.pivot = new Vector2(0.5f, 0f);
+            r.offsetMin = new Vector2(24f, 20f);
+            r.offsetMax = new Vector2(-24f, 20f + 52f);
+
+            Button anterior = SetaDePagina(r, "Btn_Anterior", "‹", 0f);
+            Button proxima = SetaDePagina(r, "Btn_Proxima", "›", 1f);
+
+            var indicador = new GameObject("Indicador", typeof(RectTransform));
+            indicador.transform.SetParent(r, false);
+            Esticar((RectTransform)indicador.transform);
+
+            var tmp = indicador.AddComponent<TextMeshProUGUI>();
+            tmp.text = "1 / 1";
+            tmp.fontSize = 15f;
+            tmp.color = new Color(0.60f, 0.63f, 0.85f, 1f);
+            tmp.alignment = TextAlignmentOptions.Midline;
+            tmp.raycastTarget = false;
+            tmp.characterSpacing = 12f;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                tmp.font = fonte;
+
+            Atribuir(so, "btnPaginaAnterior", anterior);
+            Atribuir(so, "btnProximaPagina", proxima);
+            Atribuir(so, "indicadorDePagina", tmp);
+            Atribuir(so, "blocoDePaginacao", bloco);
+        }
+
+        private static Button SetaDePagina(RectTransform pai, string nome, string glifo, float lado)
+        {
+            var go = new GameObject(nome, typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = r.anchorMax = new Vector2(lado, 0.5f);
+            r.pivot = new Vector2(lado, 0.5f);
+            r.anchoredPosition = Vector2.zero;
+            r.sizeDelta = new Vector2(52f, 44f);
+
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(Escuro, 16f);
+            f.DefinirContorno(Fio, 2f);
+
+            var rotulo = new GameObject("Label", typeof(RectTransform));
+            rotulo.transform.SetParent(r, false);
+            Esticar((RectTransform)rotulo.transform);
+
+            var tmp = rotulo.AddComponent<TextMeshProUGUI>();
+            tmp.text = glifo;
+            tmp.fontSize = 26f;
+            tmp.color = new Color(0.79f, 0.82f, 0.96f, 1f);
+            tmp.alignment = TextAlignmentOptions.Midline;
+            tmp.raycastTarget = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Archivo", 800);
+            if (fonte != null)
+                tmp.font = fonte;
+
+            return Clicavel(r);
+        }
+
         // ================================================================== Listas do documento
 
         /// <summary>
@@ -1193,7 +1514,7 @@ namespace PartyRacers.UI.Importer
         {
             for (int i = 0; i < rotulos.Length; i++)
             {
-                RectTransform aba = m.Dono(rotulos[i], 1);
+                RectTransform aba = Alvo(m, rotulos[i]);
                 if (aba == null)
                     continue;
 
@@ -1205,7 +1526,7 @@ namespace PartyRacers.UI.Importer
         /// <summary>Bloco que contém um texto — o aviso inteiro, não só a linha.</summary>
         private static GameObject Bloco(ProtoBuilder.Mapa m, string texto)
         {
-            RectTransform t = m.Dono(texto, 1, false);
+            RectTransform t = Alvo(m, texto, false);
             if (t == null)
                 return null;
 
@@ -1277,6 +1598,55 @@ namespace PartyRacers.UI.Importer
                 : t.parent as RectTransform;
 
             return alvo != null ? Clicavel(alvo) : null;
+        }
+
+        /// <summary>Some com um nó de maquete. Nada de desligar: no HUD ele ainda custaria batch.</summary>
+        private static void Apagar(RectTransform alvo)
+        {
+            if (alvo != null)
+                Object.DestroyImmediate(alvo.gameObject);
+        }
+
+        /// <summary>
+        /// Tira o desenho de um nó preservando os filhos.
+        ///
+        /// Serve para o que é FUNDO DE MAQUETE e ao mesmo tempo pai de conteúdo real. Só o Graphic
+        /// do próprio nó sai, e os filhos que são puro desenho (o degradê num nó separado) vão
+        /// junto — texto e qualquer coisa com filhos ficam.
+        /// </summary>
+        private static void Despintar(IEnumerable<RectTransform> alvos)
+        {
+            foreach (RectTransform alvo in alvos.ToList())
+            {
+                if (alvo == null)
+                    continue;
+
+                foreach (Graphic g in alvo.GetComponents<Graphic>())
+                    Object.DestroyImmediate(g);
+
+                foreach (Transform filho in alvo.Cast<Transform>().ToList())
+                {
+                    if (filho.childCount == 0
+                        && filho.GetComponent<TextMeshProUGUI>() == null
+                        && filho.GetComponent<Graphic>() != null)
+                        Object.DestroyImmediate(filho.gameObject);
+                }
+            }
+        }
+
+        /// <summary>Sobe a hierarquia até o primeiro ancestral com pelo menos a caixa pedida.</summary>
+        private static RectTransform Envolve(RectTransform de, float larguraMinima, float alturaMinima)
+        {
+            RectTransform r = de;
+            for (int i = 0; i < 6 && r != null; i++)
+            {
+                if (r.rect.width >= larguraMinima && r.rect.height >= alturaMinima)
+                    return r;
+
+                r = r.parent as RectTransform;
+            }
+
+            return null;
         }
 
         private static GameObject Nó(RectTransform pai, string nome)

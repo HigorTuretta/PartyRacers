@@ -95,6 +95,8 @@ GameObject:
   - component: {fileID: 1966975132838127885}
   - component: {fileID: 1111111111111111102}
   - component: {fileID: 2466167913276942134}
+  - component: {fileID: 3527453068877752550}
+  - component: {fileID: 8978184796027081241}
   m_Layer: 0
   m_Name: PlayerKart_Network
   m_TagString: Player
@@ -184,6 +186,7 @@ MonoBehaviour:
   rb: {fileID: 6424580973894995666}
   suspension: {fileID: 4236779978090343101}
   arcadeCollisionResponse: {fileID: 7112400000000001002}
+  collisionSparks: {fileID: 0}
   maxForwardSpeedKmh: 150
   maxReverseSpeedKmh: 70
   acceleration: 20
@@ -283,6 +286,11 @@ MonoBehaviour:
   rampSpeedRetention: 0.985
   wallSlideRetention: 0.82
   collisionGlideMinSpeed: 2
+  wallScrapeSparkMinSpeed: 4.5
+  wallScrapeSparkFullSpeed: 24
+  wallScrapeMinSideAlignment: 0.25
+  wallScrapeMinIntensity: 0.22
+  wallScrapeMaxIntensity: 0.62
   impactDecaySpeed: 2.6
   collisionRecoveryDuration: 0.45
   collisionGripFloor: 0.35
@@ -293,6 +301,7 @@ MonoBehaviour:
   boostEndTime: 0
   boostDurationWindow: 1
   canControl: 1
+  startGridLocked: 0
   isGrounded: 0
   isDrifting: 0
   isBurningOut: 0
@@ -455,6 +464,7 @@ MonoBehaviour:
   cameraFollowTarget: {fileID: 2064700787931069122}
   cameraLookTarget: {fileID: 8530035772597386739}
   virtualCamera: {fileID: 411047971233040693}
+  localRig: {fileID: 0}
   baseFollowLocalPosition: {x: 0, y: 1.08, z: 0.72}
   baseLookLocalPosition: {x: 0, y: 1.02, z: 3.45}
   speedPullback: -0.85
@@ -790,7 +800,7 @@ MonoBehaviour:
   manualScale: 0
   rootLocalOffset: {x: 0, y: 0, z: 0}
   verticalOffset: 0
-  groundSink: 1
+  prefabSphereCenterY: 1
   prefabEulerOffset: {x: 0, y: 0, z: 0}
   ignoreNameContains:
   - Shield
@@ -945,6 +955,64 @@ MonoBehaviour:
   vfxLifetime: 1.2
   scale: 1
   debugMode: 0
+--- !u!114 &3527453068877752550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bb9cc4e2487ef844bcdeac79802493f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartHealth
+  maxHp: 100
+  wallDamageBands:
+  - minKmh: 0
+    maxKmh: 74
+    damage: 0
+  - minKmh: 75
+    maxKmh: 110
+    damage: 4
+  - minKmh: 111
+    maxKmh: 150
+    damage: 6
+  - minKmh: 151
+    maxKmh: 200
+    damage: 8
+  minWallFrontality: 0.35
+  trapDamage: 10
+  itemDamage: 15
+  contactCooldown: 0.75
+  brokenDuration: 2.5
+  brokenSpeedPenalty: 0.35
+  brokenAccelerationPenalty: 0.5
+  brokenSteerPenalty: 0.25
+  kart: {fileID: 0}
+  shield: {fileID: 0}
+--- !u!114 &8978184796027081241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31d08e161f4068343a82bafac8182ce8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartShieldAbility
+  cooldown: 22
+  activeDuration: 3
+  startCharged: 1
+  activationKey: 31
+  readLocalInput: 1
+  shieldVisual: {fileID: 0}
+  identity: {fileID: 0}
+  localRig: {fileID: 0}
+  blockVFXPrefab: {fileID: 0}
+  blockVFXLifetime: 1.5
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0
