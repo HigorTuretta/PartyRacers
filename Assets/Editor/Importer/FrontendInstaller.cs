@@ -139,6 +139,7 @@ namespace PartyRacers.UI.Importer
             {
                 var ui = lobby.GetComponent<PublicLobbyScreenUI>();
                 Referencia(ui, "controlador", controlador);
+                Referencia(ui, "roteador", roteador);
                 Referencia(ui, "modalDeBusca", busca != null ? busca.GetComponent<MatchmakingModalUI>() : null);
             }
 
@@ -260,6 +261,18 @@ namespace PartyRacers.UI.Importer
             }
 
             Referencia(grid, "camera3D", rig);
+
+            // O estúdio de preview vive ao lado do carro do palco: ele clona esse customizador
+            // para montar as variantes sem tocar no carro que o jogador está vendo.
+            if (carro != null)
+            {
+                var estudio = carro.GetComponent<PreviewStudio>()
+                           ?? carro.gameObject.AddComponent<PreviewStudio>();
+
+                Referencia(estudio, "referencia", carro);
+                Referencia(grid, "estudio", estudio);
+                log.AppendLine("  Garagem → estúdio de preview ligado ao carro do palco");
+            }
             log.AppendLine($"  Garagem → rig de câmera: {(rig != null ? "ligado ao palco e ao carro" : "AUSENTE")}");
             log.AppendLine($"  Garagem → carro: {(carro != null ? carro.name : "NULO")}");
         }

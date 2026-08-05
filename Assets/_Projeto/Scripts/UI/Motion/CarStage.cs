@@ -33,6 +33,31 @@ namespace PartyRacers.UI.Motion
 
         public bool Arrastando { get; private set; }
 
+        /// <summary>
+        /// Liga e desliga o giro automático.
+        ///
+        /// Editar uma peça exige que ela FIQUE onde a câmera a enquadrou. Com o palco girando, a
+        /// câmera ia para a pose das rodas e um segundo depois estava olhando para a porta — o
+        /// movimento certo, na peça errada. Arrastar com o mouse continua valendo: parar o giro
+        /// automático não é travar o carro, é deixar de mexer nele sozinho.
+        /// </summary>
+        public void DefinirGiroAutomatico(bool ligado)
+        {
+            if (giroLigado == ligado)
+                return;
+
+            giroLigado = ligado;
+
+            // Desligar não corta o giro no meio: a velocidade cai até zero pela mesma inércia do
+            // resto, senão o carro para com um solavanco.
+            if (!ligado)
+                ocioso = float.MaxValue;
+            else
+                ocioso = 0f;
+        }
+
+        private bool giroLigado = true;
+
         private float velocidade;
         private float ocioso;
         private Transform alvo;
@@ -58,7 +83,7 @@ namespace PartyRacers.UI.Motion
                 return;
 
             // volta ao giro automático depois de um tempo parado
-            if (ocioso > 0f)
+            if (!giroLigado || ocioso > 0f)
             {
                 ocioso -= Time.unscaledDeltaTime;
                 velocidade = Mathf.MoveTowards(velocidade, 0f, inercia * 12f * Time.unscaledDeltaTime);

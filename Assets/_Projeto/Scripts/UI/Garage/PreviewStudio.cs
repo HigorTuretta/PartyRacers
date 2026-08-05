@@ -1,0 +1,298 @@
+using System.Collections;
+using System.Collections.Generic;
+using ithappy;
+using UnityEngine;
+
+namespace PartyRacers.UI.Garage
+{
+    /// <summary>
+    /// Fotografa as variantes do carro EQUIPADO para os cards da garagem.
+    ///
+    /// Por que em runtime, e não como PNG gerado no Editor: a lista de peças depende do carro.
+    /// `GetVariantCount` pergunta ao rig montado, então as rodas do kart 03 não são as do kart 01 —
+    /// uma foto tirada uma vez, com o carro padrão, mostra a peça errada em 14 dos 15 modelos. Era
+    /// exatamente o que estava acontecendo.
+    ///
+    /// O estúdio é um carro clone escondido numa layer própria, com câmera e luz que só enxergam
+    /// essa layer. Nada disso aparece no palco: a câmera do estúdio renderiza para RenderTexture e
+    /// fica desligada entre uma foto e outra.
+    ///
+    /// As fotos saem UMA POR FRAME. Montar 15 variantes no mesmo frame trava a tela por meio
+    /// segundo bem no clique que deveria ser instantâneo; espalhadas, os cards vão aparecendo e a
+    /// grade parece carregar, que é o comportamento honesto.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public class PreviewStudio : MonoBehaviour
+    {
+        [Tooltip("Prefabs de carro na mesma ordem do KartVisualCustomizer.")]
+        [SerializeField] private KartVisualCustomizer referencia;
+
+        [Tooltip("Layer exclusiva do estúdio. Precisa estar FORA do culling mask da câmera do jogo.")]
+        [SerializeField] private int layerDoEstudio = 31;
+
+        [SerializeField] private int lado = 256;
+        [SerializeField] private Vector3 posicaoDoEstudio = new Vector3(0f, -500f, 0f);
+
+        private readonly Dictionary<string, Texture2D> cache = new Dictionary<string, Texture2D>();
+        private readonly Queue<Pedido> fila = new Queue<Pedido>();
+
+        private KartVisualCustomizer clone;
+        private Camera camera3D;
+        private Light luz;
+        private Coroutine trabalhando;
+        private int carroDoClone = -1;
+
+        private sealed class Pedido
+        {
+            public string Chave;
+            public int Carro;
+            public string Categoria;
+            public CarElementName Elemento;
+            public bool EhModelo;
+            public int Indice;
+            public System.Action<Texture2D> Entregar;
+        }
+
+        /// <summary>
+        /// Pede a foto de uma variante. Entrega na hora se já estiver em cache, senão entra na fila.
+        /// </summary>
+        public void Pedir(int carro, string categoria, CarElementName elemento, bool ehModelo,
+                          int indice, System.Action<Texture2D> aoFicarPronta)
+        {
+            if (referencia == null || aoFicarPronta == null)
+                return;
+
+            // O carro entra na chave porque a MESMA peça de índice 3 é outra coisa em outro modelo.
+            string chave = ehModelo ? $"modelo_{indice}" : $"{carro}_{categoria}_{indice}";
+
+            if (cache.TryGetValue(chave, out Texture2D pronta) && pronta != null)
+            {
+                aoFicarPronta(pronta);
+                return;
+            }
+
+            fila.Enqueue(new Pedido
+            {
+                Chave = chave,
+                Carro = carro,
+                Categoria = categoria,
+                Elemento = elemento,
+                EhModelo = ehModelo,
+                Indice = indice,
+                Entregar = aoFicarPronta,
+            });
+
+            trabalhando ??= StartCoroutine(Trabalhar());
+        }
+
+        /// <summary>Descarta o que dependia do carro que saiu de cena.</summary>
+        public void EsquecerPecas()
+        {
+            var manter = new Dictionary<string, Texture2D>();
+
+            foreach (KeyValuePair<string, Texture2D> par in cache)
+            {
+                if (par.Key.StartsWith("modelo_"))
+                    manter[par.Key] = par.Value;
+                else if (par.Value != null)
+                    Destroy(par.Value);
+            }
+
+            cache.Clear();
+            foreach (KeyValuePair<string, Texture2D> par in manter)
+                cache[par.Key] = par.Value;
+        }
+
+        private IEnumerator Trabalhar()
+        {
+            while (fila.Count > 0)
+            {
+                Pedido p = fila.Dequeue();
+
+                if (cache.TryGetValue(p.Chave, out Texture2D jaFeita) && jaFeita != null)
+                {
+                    p.Entregar?.Invoke(jaFeita);
+                    continue;
+                }
+
+                Montar();
+                if (clone == null)
+                    break;
+
+                // Modelo troca o carro inteiro; peça monta a variante SOBRE o carro equipado.
+                if (p.EhModelo)
+                {
+                    if (carroDoClone != p.Indice)
+                    {
+                        clone.SetCar(p.Indice);
+                        carroDoClone = p.Indice;
+                    }
+                }
+                else
+                {
+                    if (carroDoClone != p.Carro)
+                    {
+                        clone.SetCar(p.Carro);
+                        carroDoClone = p.Carro;
+                    }
+
+                    clone.SetElement(p.Elemento, p.Indice);
+                }
+
+                // A COR equipada tem que ir junto. Sem ela o clone sai na tinta de fábrica e o
+                // card mostra um carro que o jogador não reconhece como sendo o dele — foi o que
+                // fez os previews parecerem de outro veículo.
+                if (referencia != null)
+                    clone.SetColor(referencia.ColorIndex);
+
+                // O rig é montado no mesmo frame: sem esperar, a caixa medida é a do carro anterior.
+                yield return null;
+
+                VestirLayer(clone.transform);
+
+                Texture2D foto = Fotografar(p.Categoria);
+                if (foto != null)
+                {
+                    cache[p.Chave] = foto;
+                    p.Entregar?.Invoke(foto);
+                }
+
+                yield return null;
+            }
+
+            trabalhando = null;
+        }
+
+        // ------------------------------------------------------------------ Estúdio
+
+        private void Montar()
+        {
+            if (clone != null)
+                return;
+
+            if (referencia == null)
+                return;
+
+            var raiz = new GameObject("__PreviewStudio") { hideFlags = HideFlags.DontSave };
+            raiz.transform.position = posicaoDoEstudio;
+
+            // Uma cópia do customizador, não do carro montado: é ela que sabe trocar peça.
+            GameObject copia = Instantiate(referencia.gameObject, raiz.transform);
+            copia.name = "Carro";
+            copia.transform.localPosition = Vector3.zero;
+            copia.transform.localRotation = Quaternion.identity;
+
+            clone = copia.GetComponent<KartVisualCustomizer>();
+
+            // O clone não pode escrever a seleção do jogador: ele troca de peça o tempo todo, e
+            // cada troca salvaria em PlayerPrefs. A garagem inteira viraria o último preview.
+            foreach (MonoBehaviour c in copia.GetComponentsInChildren<MonoBehaviour>(true))
+                if (c != clone && !(c is CarCustomizer))
+                    c.enabled = false;
+
+            var camGo = new GameObject("Camera");
+            camGo.transform.SetParent(raiz.transform, false);
+            camera3D = camGo.AddComponent<Camera>();
+            camera3D.clearFlags = CameraClearFlags.SolidColor;
+            camera3D.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            camera3D.cullingMask = 1 << layerDoEstudio;
+            camera3D.fieldOfView = 32f;
+            camera3D.nearClipPlane = 0.05f;
+            camera3D.farClipPlane = 200f;
+            camera3D.enabled = false;
+
+            var luzGo = new GameObject("Luz");
+            luzGo.transform.SetParent(raiz.transform, false);
+            luz = luzGo.AddComponent<Light>();
+            luz.type = LightType.Directional;
+            luz.intensity = 1.2f;
+            luz.cullingMask = 1 << layerDoEstudio;
+            luz.transform.rotation = Quaternion.Euler(38f, 140f, 0f);
+
+            camGo.layer = layerDoEstudio;
+            luzGo.layer = layerDoEstudio;
+            carroDoClone = referencia.CarIndex;
+            clone.SetCar(carroDoClone);
+        }
+
+        private void VestirLayer(Transform t)
+        {
+            t.gameObject.layer = layerDoEstudio;
+            for (int i = 0; i < t.childCount; i++)
+                VestirLayer(t.GetChild(i));
+        }
+
+        private Texture2D Fotografar(string categoria)
+        {
+            if (clone == null || clone.CurrentRig == null || camera3D == null)
+                return null;
+
+            Renderer[] renderers = clone.CurrentRig.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+                return null;
+
+            Bounds caixa = renderers[0].bounds;
+            foreach (Renderer r in renderers)
+                caixa.Encapsulate(r.bounds);
+
+            if (caixa.extents.magnitude < 0.01f)
+                return null;
+
+            Enquadramento e = Enquadramento.De(categoria);
+            Vector3 centro = caixa.center + new Vector3(e.Alvo.x * caixa.extents.x,
+                                                        e.Alvo.y * caixa.extents.y,
+                                                        e.Alvo.z * caixa.extents.z);
+
+            float raio = caixa.extents.magnitude * e.Zoom;
+            float distancia = raio / Mathf.Tan(camera3D.fieldOfView * 0.5f * Mathf.Deg2Rad) * 1.25f;
+
+            camera3D.transform.position = centro + e.Direcao.normalized * distancia;
+            camera3D.transform.LookAt(centro);
+
+            var rt = RenderTexture.GetTemporary(lado, lado, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, 4);
+            camera3D.targetTexture = rt;
+            camera3D.Render();
+
+            var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false);
+            RenderTexture ativo = RenderTexture.active;
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, lado, lado), 0, 0);
+            tex.Apply();
+            RenderTexture.active = ativo;
+
+            camera3D.targetTexture = null;
+            RenderTexture.ReleaseTemporary(rt);
+            return tex;
+        }
+
+        /// <summary>De onde fotografar cada categoria — os mesmos ângulos da câmera da garagem.</summary>
+        private sealed class Enquadramento
+        {
+            public Vector3 Direcao = new Vector3(1f, 0.45f, 1f);
+            public float Zoom = 1f;
+            public Vector3 Alvo;
+
+            public static Enquadramento De(string categoria) => categoria?.ToUpperInvariant() switch
+            {
+                "RODAS" => new Enquadramento { Direcao = new Vector3(1f, 0.1f, 0.3f), Zoom = 0.34f, Alvo = new Vector3(0.55f, -0.5f, 0.45f) },
+                "FRENTE" => new Enquadramento { Direcao = new Vector3(0.3f, 0.25f, 1f), Zoom = 0.45f, Alvo = new Vector3(0f, -0.2f, 0.6f) },
+                "TRASEIRA" => new Enquadramento { Direcao = new Vector3(0.3f, 0.28f, -1f), Zoom = 0.45f, Alvo = new Vector3(0f, -0.1f, -0.6f) },
+                "TETO" => new Enquadramento { Direcao = new Vector3(0.5f, 0.8f, 0.5f), Zoom = 0.55f, Alvo = new Vector3(0f, 0.4f, 0f) },
+                "ADESIVOS" => new Enquadramento { Direcao = new Vector3(1f, 0.1f, 0.05f), Zoom = 0.6f },
+                _ => new Enquadramento(),
+            };
+        }
+
+        private void OnDestroy()
+        {
+            foreach (KeyValuePair<string, Texture2D> par in cache)
+                if (par.Value != null)
+                    Destroy(par.Value);
+
+            cache.Clear();
+
+            if (clone != null)
+                Destroy(clone.transform.root.gameObject);
+        }
+    }
+}

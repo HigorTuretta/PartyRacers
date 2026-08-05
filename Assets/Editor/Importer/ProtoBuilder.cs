@@ -194,6 +194,52 @@ namespace PartyRacers.UI.Importer
                 return r;
             }
 
+            /// <summary>
+            /// O texto logo ABAIXO de outro, alinhado pela mesma margem esquerda.
+            ///
+            /// Comparação feita em coordenadas do DUMP, não do rect construído: depois do build
+            /// cada nó tem a âncora que a heurística escolheu, e `anchoredPosition.x` de dois nós
+            /// alinhados na tela pode ser completamente diferente.
+            /// </summary>
+            public RectTransform Abaixo(RectTransform referencia, float toleranciaX = 14f)
+            {
+                No r = nos.FirstOrDefault(n => n.Rect == referencia);
+                if (r == null)
+                    return null;
+
+                return nos.Where(n => n.Rect != null && !string.IsNullOrEmpty(n.Texto)
+                                   && n.Y > r.Y + 1f && Mathf.Abs(n.X - r.X) <= toleranciaX)
+                          .OrderBy(n => n.Y)
+                          .Select(n => n.Rect)
+                          .FirstOrDefault();
+            }
+
+            /// <summary>
+            /// Prende um nó ao TOPO do pai, na distância que ele tem no protótipo, com a altura
+            /// pedida.
+            ///
+            /// Serve para blocos que passam a crescer para baixo (uma grade paginada, por exemplo).
+            /// A conta usa só números do dump: no momento do build não existe Canvas, então todo
+            /// rect esticado mede zero e qualquer medida tirada da cena vira lixo — foi assim que a
+            /// grade de cards subiu por cima da segunda fileira de abas.
+            /// </summary>
+            public void AncorarNoTopo(RectTransform alvo, float altura)
+            {
+                No n = nos.FirstOrDefault(x => x.Rect == alvo);
+                if (n == null)
+                    return;
+
+                No pai = n.Pai >= 0 && n.Pai < nos.Count ? nos[n.Pai] : null;
+                float topo = pai != null ? n.Y - pai.Y : n.Y;
+                float esquerda = pai != null ? n.X - pai.X : n.X;
+
+                alvo.anchorMin = new Vector2(0f, 1f);
+                alvo.anchorMax = new Vector2(0f, 1f);
+                alvo.pivot = new Vector2(0f, 1f);
+                alvo.anchoredPosition = new Vector2(esquerda, -topo);
+                alvo.sizeDelta = new Vector2(n.W, altura);
+            }
+
             /// <summary>Todos os nós construídos, para passes que varrem a tela inteira.</summary>
             public RectTransform[] Todas() =>
                 nos.Where(n => n.Rect != null).Select(n => n.Rect).ToArray();

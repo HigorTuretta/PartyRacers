@@ -906,6 +906,24 @@ namespace PartyRacers.UI.Importer
                 habilitado.SetActive(false);
             }
 
+            // A partida personalizada é uma ABA do lobby (§7), mas o protótipo não desenhou o
+            // acesso a ela — sem porta, a tela existia e ninguém chegava lá. O botão nasce ao lado
+            // de CANCELAR, no mesmo peso visual: é ação secundária, não concorre com BUSCAR.
+            RectTransform molde = Alvo(m, "CANCELAR");
+            if (molde != null)
+            {
+                RectTransform sala = Copiar(molde, molde.parent);
+                if (sala != null)
+                {
+                    sala.name = "Btn_SalaPrivada";
+                    sala.anchoredPosition += new Vector2(-(molde.rect.width + 18f), 0f);
+                    Rotular(sala.gameObject, "SALA PRIVADA");
+
+                    Button b = Clicavel(sala);
+                    so.FindProperty("btnSalaPrivada").objectReferenceValue = b;
+                }
+            }
+
             so.FindProperty("etiquetaDoKart").objectReferenceValue = Tmp(m.Texto("SEU KART"));
             so.FindProperty("motivoDoBloqueio").objectReferenceValue = Tmp(m.Texto("FALTA 1 JOGADOR"));
             so.FindProperty("resumoDoGrupo").objectReferenceValue = Tmp(m.Texto("AGUARDANDO CONFIRMAÇÃO", false));
@@ -920,9 +938,16 @@ namespace PartyRacers.UI.Importer
             var ui = modelo.gameObject.AddComponent<FriendRowUI>();
             var so = new SerializedObject(ui);
 
+            // O nome é o texto mais alto e à esquerda; o STATUS é o que fica logo abaixo dele,
+            // alinhado pela mesma margem. Pegar "o segundo em ordem de leitura" trazia a chapinha
+            // "NO GRUPO" — que está à direita e um pouco acima —, e o status real nunca era
+            // preenchido: as sete linhas ficavam com o texto do protótipo, dizendo que todo mundo
+            // estava no grupo.
             RectTransform[] textos = m.TextosEm(modelo);
-            Atribuir(so, "nome", textos.Length > 0 ? Tmp(textos[0]) : null);
-            Atribuir(so, "estado", textos.Length > 1 ? Tmp(textos[1]) : null);
+            RectTransform noNome = textos.FirstOrDefault();
+            Atribuir(so, "nome", Tmp(noNome));
+
+            Atribuir(so, "estado", Tmp(m.Abaixo(noNome)));
 
             // O botão CONVIDAR e a chapinha de indisponível moram em linhas diferentes do
             // protótipo; aqui os dois viram irmãos e o binder liga um de cada vez.
@@ -1033,7 +1058,7 @@ namespace PartyRacers.UI.Importer
             // ---- grade de cards
             RectTransform[] cards = m.Caixas(158f, 168f, 6f);
             if (cards.Length > 0)
-                Gradear(cards, 158f, 168f, 14f, 4);
+                Gradear(m, cards, 158f, 168f, 14f, 4);
 
             SerializedProperty lista = so.FindProperty("cards");
             lista.arraySize = cards.Length;
@@ -1384,6 +1409,11 @@ namespace PartyRacers.UI.Importer
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            // Último irmão: no UGUI quem vem depois desenha por cima. Sem isto o painel da sala
+            // privada — que é largo e alto — passava por cima da barra e cobria as abas.
+            if (faixa != null && dono != raiz)
+                faixa.SetAsLastSibling();
 
             // A barra do LOBBY é a canônica: sai daqui como prefab para as telas do documento PLACA
             // trocarem a delas. O lobby é a primeira tela construída, então quando as outras
@@ -1741,37 +1771,24 @@ namespace PartyRacers.UI.Importer
         /// <summary>
         /// Troca posições absolutas por uma grade de verdade.
         ///
-        /// Os cards vinham com a posição que tinham no protótipo. Assim que o painel passou a
-        /// esticar com a janela, cada card seguiu a própria âncora e as fileiras se atropelaram.
-        /// Com Grid Layout as células são calculadas a partir do contêiner e a grade se comporta
-        /// como grade — inclusive quando a página troca e o número de cards muda.
+        /// Os cards vinham com a posição que tinham no protótipo; qualquer mudança no tamanho do
+        /// painel fazia cada um seguir a própria âncora e as fileiras se atropelavam. Com Grid
+        /// Layout as células saem do contêiner e a grade se comporta como grade, inclusive quando
+        /// a página troca e o número de cards muda.
+        ///
+        /// O contêiner NÃO é reancorado. Tentar recalcular o topo dele deu grade fora da tela: no
+        /// momento do build não existe Canvas, então todo rect esticado mede zero e a conta vira
+        /// lixo. O bloco já vem do design no lugar certo — basta deixá-lo em paz.
         /// </summary>
-        private static void Gradear(RectTransform[] cards, float largura, float altura,
-                                    float espaco, int colunas)
+        private static void Gradear(ProtoBuilder.Mapa m, RectTransform[] cards, float largura,
+                                    float altura, float espaco, int colunas)
         {
             var pai = (RectTransform)cards[0].parent;
 
-            // O contêiner passa a crescer do TOPO para baixo, preservando onde ele já estava.
-            //
-            // Trocar a âncora sem recalcular os offsets move o bloco: os valores são relativos à
-            // âncora, e o mesmo número significa outra posição depois da troca. Medir o topo atual
-            // antes e reaplicá-lo é o que mantém a grade abaixo da segunda linha de abas, onde o
-            // design a colocou.
-            float alturaNecessaria = Mathf.Ceil(cards.Length / (float)colunas) * (altura + espaco);
-
-            var noPai = pai.parent as RectTransform;
-            float topoAtual = noPai != null
-                ? noPai.rect.yMax - (pai.anchoredPosition.y + pai.rect.yMax)
-                : 0f;
-
-            pai.anchorMin = new Vector2(0f, 1f);
-            pai.anchorMax = new Vector2(1f, 1f);
-            pai.pivot = new Vector2(0.5f, 1f);
-            // A altura é medida A PARTIR DO TOPO do bloco, não do topo do painel: somar as duas
-            // referências encolhia a grade em ~170 px e a última fileira ficava cortada pela
-            // metade, parecendo que faltavam cards.
-            pai.offsetMax = new Vector2(pai.offsetMax.x, -topoAtual);
-            pai.offsetMin = new Vector2(pai.offsetMin.x, -topoAtual - alturaNecessaria);
+            // A grade cresce do topo para baixo, a partir de onde o protótipo a colocou — logo
+            // abaixo da última fileira de abas.
+            float linhas = Mathf.Ceil(cards.Length / (float)colunas);
+            m.AncorarNoTopo(pai, linhas * (altura + espaco));
 
             var grade = pai.GetComponent<GridLayoutGroup>() ?? pai.gameObject.AddComponent<GridLayoutGroup>();
             grade.cellSize = new Vector2(largura, altura);
@@ -1779,6 +1796,7 @@ namespace PartyRacers.UI.Importer
             grade.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             grade.constraintCount = colunas;
             grade.childAlignment = TextAnchor.UpperLeft;
+            grade.padding = new RectOffset(0, 0, 0, 0);
 
             foreach (RectTransform c in cards)
                 if (c.GetComponent<LayoutElement>() == null)
@@ -1939,11 +1957,24 @@ namespace PartyRacers.UI.Importer
 
             // Border e Shadow também são opacos e MAIORES que o miolo — ordenar por área pegava a
             // moldura, e o avatar ficava com a borda colorida e o centro branco.
-            return quadro.GetComponentsInChildren<UIRoundedRect>(true)
+            UIRoundedRect miolo = quadro.GetComponentsInChildren<UIRoundedRect>(true)
                 .Where(f => f.CorDoPreenchimento.a > 0.5f
                          && f.name != "Border" && f.name != "Shadow" && f.transform != quadro)
                 .OrderByDescending(f => ((RectTransform)f.transform).rect.width)
-                .FirstOrDefault() ?? quadro.GetComponent<Graphic>();
+                .FirstOrDefault();
+
+            if (miolo == null)
+                return quadro.GetComponent<Graphic>();
+
+            // O degradê do protótipo MULTIPLICA a cor do Graphic. Como ele vai de um azul escuro a
+            // outro mais escuro, tingir de vermelho dava marrom e de verde dava musgo — os avatares
+            // saíam todos numa lama parecida. Neutralizado para branco→cinza claro, ele continua
+            // dando volume e deixa a cor de identidade chegar inteira.
+            var degrade = miolo.GetComponent<PartyRacers.UI.Motion.UIGradient>();
+            if (degrade != null)
+                degrade.Definir(Color.white, new Color(0.74f, 0.74f, 0.74f, 1f));
+
+            return miolo;
         }
 
         /// <summary>Troca o texto de um estado clonado — o par PRONTO/AGUARDANDO é o mesmo botão.</summary>

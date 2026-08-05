@@ -41,6 +41,7 @@ namespace PartyRacers.UI.Motion
         private bool temHover, temPressao, temSelecao;
         private float pressionadoAte;
         private bool repousoLido;
+        private bool layoutVerificado;
         private float progresso;
         private Vector3 escalaAlvo;
         private Vector2 posicaoAlvo;
@@ -76,6 +77,24 @@ namespace PartyRacers.UI.Motion
                 posicaoOriginal = rect.anchoredPosition;
                 posicaoAlvo = posicaoOriginal;
                 repousoLido = true;
+            }
+
+            // Quem está dentro de um Layout Group NÃO pode afundar.
+            //
+            // O layout reescreve a posição a cada rebuild; o afundamento lê essa posição já
+            // deslocada como se fosse a de repouso, e o erro vai somando. Na grade da garagem
+            // bastava passar o mouse pelos cards para eles subirem uns sobre os outros. Onde o
+            // layout manda, a resposta ao toque é só a escala — que ele não controla.
+            if (afundar && !layoutVerificado)
+            {
+                layoutVerificado = true;
+
+                if (rect.parent != null &&
+                    rect.parent.GetComponent<UnityEngine.UI.LayoutGroup>() != null)
+                {
+                    afundar = false;
+                    rect.anchoredPosition = posicaoOriginal;
+                }
             }
 
             bool interagivel = Interagivel();

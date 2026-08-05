@@ -74,6 +74,9 @@ namespace PartyRacers.UI.Garage
         [SerializeField] private KartVisualCustomizer carro;
         [SerializeField] private GarageCameraRig camera3D;
 
+        [Tooltip("Fotografa as variantes do carro EQUIPADO para os cards.")]
+        [SerializeField] private PreviewStudio estudio;
+
         [Tooltip("Cor do card quando a foto do item ainda não foi gerada.")]
         [SerializeField] private Color corSemPreview = new Color(0.16f, 0.19f, 0.36f, 1f);
 
@@ -137,7 +140,23 @@ namespace PartyRacers.UI.Garage
                 btnPaginaAnterior.onClick.AddListener(() => TrocarPagina(-1));
         }
 
-        private void OnEnable() => AbrirAba(abaAtual);
+        private void OnEnable()
+        {
+            // O rig comanda a câmera do frontend, que é compartilhada com o lobby e a loja. Ele só
+            // pode agir enquanto a garagem está aberta — fora dela, sobrescrevia o enquadramento
+            // das outras telas frame a frame e o carro aparecia fora de posição.
+            camera3D?.Ativar(true);
+            AbrirAba(abaAtual);
+        }
+
+        private void OnDisable()
+        {
+            camera3D?.Ativar(false);
+
+            // As fotos de PEÇA valem para o carro que estava equipado; sair da garagem é o momento
+            // certo de soltá-las, porque o jogador pode voltar com outro carro.
+            estudio?.EsquecerPecas();
+        }
 
         // ---------------------------------------------------------------- Abas
 
@@ -345,30 +364,41 @@ namespace PartyRacers.UI.Garage
                 Color[] paleta = carro != null ? carro.PaintPalette : null;
                 card.preview.sprite = null;
                 card.preview.color = paleta != null && item < paleta.Length ? paleta[item] : Color.gray;
+                card.preview.enabled = true;
                 return;
             }
 
-            Sprite foto = Foto(AbaAtual.categoria, item);
-            card.preview.sprite = foto;
+            if (estudio == null || carro == null)
+            {
+                card.preview.sprite = null;
+                card.preview.color = corSemPreview;
+                return;
+            }
 
-            // Sem foto o Image ficaria BRANCO e o card viraria um retângulo claro no meio da grade
-            // — pior que o placeholder que ele veio substituir. Sem sprite, a cor do tema.
-            card.preview.color = foto != null ? Color.white : corSemPreview;
-            card.preview.preserveAspect = foto != null;
+            // Enquanto a foto não chega o card fica com a tinta do tema, não branco: `Image` sem
+            // sprite desenha um retângulo BRANCO, e doze deles piscando é pior que a espera.
+            card.preview.sprite = null;
+            card.preview.color = corSemPreview;
+
+            // O índice é capturado aqui de propósito: quando a foto ficar pronta a página pode ter
+            // mudado, e pintar o card com a peça de outra aba seria mentir sobre o que ele mostra.
+            Card alvo = card;
+            int aba = abaAtual;
+            int indice = item;
+
+            estudio.Pedir(carro.CarIndex, AbaAtual.categoria, AbaAtual.elemento,
+                          AbaAtual.fonte == Fonte.ModeloDeCarro, item,
+                          tex =>
+                          {
+                              if (tex == null || alvo.preview == null || aba != abaAtual)
+                                  return;
+
+                              alvo.preview.sprite = Sprite.Create(
+                                  tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                              alvo.preview.color = Color.white;
+                              _ = indice;
+                          });
         }
-
-        private Sprite Foto(string categoria, int item)
-        {
-            string chave = $"{categoria}_{item:00}";
-            if (fotos.TryGetValue(chave, out Sprite cache))
-                return cache;
-
-            Sprite s = Resources.Load<Sprite>("Previews/" + chave);
-            fotos[chave] = s;
-            return s;
-        }
-
-        private readonly Dictionary<string, Sprite> fotos = new Dictionary<string, Sprite>();
 
         private string NomeDoItem(int item)
         {

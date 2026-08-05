@@ -86,7 +86,11 @@ namespace PartyRacers.UI.Frontend.Party
         [Tooltip("Chapinha sob o kart do jogador. Mostra o nome de quem está no palco.")]
         [SerializeField] private TextMeshProUGUI etiquetaDoKart;
 
+        [Tooltip("Leva à sala privada, onde se cria partida com código de convite.")]
+        [SerializeField] private Button btnSalaPrivada;
+
         [Header("Fluxo")]
+        [SerializeField] private ScreenRouter roteador;
         [SerializeField] private PartyController controlador;
         [SerializeField] private MatchmakingModalUI modalDeBusca;
 
@@ -119,32 +123,44 @@ namespace PartyRacers.UI.Frontend.Party
 
             if (abaSteam != null)
                 abaSteam.onClick.AddListener(() => TrocarAba(FriendSource.Steam));
+
+            if (btnSalaPrivada != null)
+                btnSalaPrivada.onClick.AddListener(AbrirSalaPrivada);
         }
 
-        private void OnEnable()
-        {
-            if (Grupo != null)
-                Grupo.Changed += Redesenhar;
-
-            Redesenhar();
-            RedesenharAbas();
-            RedesenharAmigos();
-        }
+        private void OnEnable() => Assinar();
 
         // O grupo é montado no Awake do PartyController, e a ordem entre Awake de objetos
-        // diferentes não é garantida: no OnEnable a lista de amigos ainda podia estar vazia, e a
-        // coluna da direita nascia em branco. Redesenhar no Start acontece com todo mundo pronto.
-        private void Start()
+        // diferentes não é garantida. No OnEnable o `Grupo` ainda podia ser nulo — e aí não só a
+        // lista nascia vazia como a INSCRIÇÃO no evento se perdia em silêncio: a tela desenhava o
+        // estado inicial e nunca mais era avisada. Trocar de modo mudava o grupo de verdade e a
+        // tela continuava mostrando SOLO. Assinar de novo no Start resolve os dois.
+        private void Start() => Assinar();
+
+        private void Assinar()
         {
+            PartyState grupo = Grupo;
+
+            if (grupo != null && !assinado)
+            {
+                grupo.Changed += Redesenhar;
+                assinado = true;
+            }
+
             Redesenhar();
             RedesenharAbas();
             RedesenharAmigos();
         }
+
+        private bool assinado;
 
         private void OnDisable()
         {
-            if (Grupo != null)
+            if (Grupo != null && assinado)
+            {
                 Grupo.Changed -= Redesenhar;
+                assinado = false;
+            }
         }
 
         // ---------------------------------------------------------------- Ações
@@ -172,6 +188,14 @@ namespace PartyRacers.UI.Frontend.Party
             if (modalDeBusca != null)
                 modalDeBusca.Abrir();
         }
+
+        /// <summary>
+        /// Vai para a sala privada — o mesmo espaço mental do lobby, com outras regras (§4).
+        ///
+        /// É troca de TELA e não modal: lá o jogador administra a sala, e a busca pública fica
+        /// fora do caminho. Voltar é clicar em LOBBY na barra de topo.
+        /// </summary>
+        private void AbrirSalaPrivada() => roteador?.Ir("CustomMatch");
 
         private void TrocarAba(FriendSource fonte)
         {
