@@ -37,6 +37,12 @@ namespace PartyRacers.UI.Importer
         private static readonly Color Escuro = new Color(16 / 255f, 19 / 255f, 52 / 255f, 0.62f);
         private static readonly Color Fio = new Color(155 / 255f, 165 / 255f, 215 / 255f, 0.22f);
 
+        /// <summary>Telas de corrida não animam a entrada: elas já estão lá quando a corrida começa.</summary>
+        private static readonly HashSet<string> SemEntrada = new HashSet<string>
+        {
+            "Screen_RaceHUD_PC", "Screen_RaceMenu", "Screen_Loading",
+        };
+
         public static void Ligar(string tela, GameObject raiz, ProtoBuilder.Mapa m)
         {
             // O CanvasGroup é o que o ScreenRouter usa para o fade de troca de tela.
@@ -58,6 +64,96 @@ namespace PartyRacers.UI.Importer
                 case "Screen_RaceMenu": MenuDaPartida(raiz, m); break;
                 case "Screen_RaceHUD_PC": HudDeCorrida(raiz, m); break;
             }
+
+            Movimento(tela, raiz, m);
+        }
+
+        // ================================================================== Movimento
+
+        /// <summary>
+        /// O passe de animação (§8 da proposta). Roda depois do wiring, quando os estados já
+        /// existem — é a diferença entre animar a barra e animar o estado PRONTO dela.
+        ///
+        /// Regra: animação reforça a ação, nunca a atrasa. Nada acima de 0,45 s no caminho de
+        /// navegação, e nada que se mexa fora do momento em que aquilo importa.
+        /// </summary>
+        private static void Movimento(string tela, GameObject raiz, ProtoBuilder.Mapa m)
+        {
+            if (!SemEntrada.Contains(tela))
+                EntradaDosPaineis(raiz);
+
+            Escudo(raiz);
+        }
+
+        /// <summary>
+        /// Os painéis entram em 0,22 s, escalonados por irmão.
+        ///
+        /// Só os blocos GRANDES: animar cada chip faria a tela inteira tremer na abertura, e o que
+        /// o olho precisa perceber é a chegada das colunas, não de cada peça dentro delas.
+        /// </summary>
+        private static void EntradaDosPaineis(GameObject raiz)
+        {
+            // Os painéis não são filhos diretos da tela: o dump aninha por grupos de layout, e no
+            // lobby a coluna do grupo está três níveis abaixo. O que identifica um painel é ter
+            // FUNDO PRÓPRIO e ser grande — procurar por profundidade fixa achava zero.
+            var painéis = raiz.GetComponentsInChildren<UIRoundedRect>(true)
+                .Select(f => f.transform.parent as RectTransform)
+                .Where(t => t != null && t.rect.width >= 280f && t.rect.height >= 140f
+                                      && t.rect.width < 1900f)
+                .Distinct()
+                .ToList();
+
+            foreach (RectTransform p in painéis)
+            {
+                if (p.GetComponent<UIAppear>() != null)
+                    continue;
+
+                // Um painel dentro de outro já animado entraria duas vezes, e o de dentro
+                // começaria a se mexer antes de o de fora terminar — parece defeito, não animação.
+                if (p.GetComponentsInParent<UIAppear>(true).Any())
+                    continue;
+
+                var a = p.gameObject.AddComponent<UIAppear>();
+                var so = new SerializedObject(a);
+                Definir(so, "duracao", 0.22f);
+                Definir(so, "atrasoPorIrmao", 0.035f);
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// A barra de escudo pronta respira e varre; em recarga, não faz nada.
+        ///
+        /// A AUSÊNCIA de brilho é o sinal de indisponível — um ícone acinzentado exigiria comparar
+        /// com a memória do ícone aceso, e a ausência de movimento se percebe pela visão
+        /// periférica, que é a única disponível a 150 km/h.
+        /// </summary>
+        private static void Escudo(GameObject raiz)
+        {
+            Transform pronto = raiz.GetComponentsInChildren<Transform>(true)
+                                   .FirstOrDefault(t => t.name == "Ready");
+
+            if (pronto == null || pronto.GetComponent<UIGlowPulse>() != null)
+                return;
+
+            var glow = pronto.gameObject.AddComponent<UIGlowPulse>();
+            var soGlow = new SerializedObject(glow);
+            Definir(soGlow, "periodo", 1.8f);
+            Definir(soGlow, "raioMin", 16f);
+            Definir(soGlow, "raioMax", 34f);
+            soGlow.ApplyModifiedPropertiesWithoutUndo();
+
+            var sweep = pronto.gameObject.AddComponent<UIShineSweep>();
+            var soSweep = new SerializedObject(sweep);
+            Definir(soSweep, "periodo", 2.4f);
+            soSweep.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void Definir(SerializedObject so, string campo, float valor)
+        {
+            SerializedProperty p = so.FindProperty(campo);
+            if (p != null && p.propertyType == SerializedPropertyType.Float)
+                p.floatValue = valor;
         }
 
         // ================================================================== HUD de corrida

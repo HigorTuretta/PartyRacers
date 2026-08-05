@@ -25,8 +25,10 @@ namespace PartyRacers.UI.Frontend
         [Tooltip("Tela aberta ao entrar na cena. No Frontend é sempre o Lobby.")]
         [SerializeField] private string telaInicial = "Lobby";
 
-        [Header("Transição (tokens.json)")]
-        [SerializeField] private float duracaoFade = 0.18f;
+        // §8: trocar de tela leva 0,22 s. Acima disso a navegação começa a parecer lenta; abaixo,
+        // a troca vira um corte e o jogador perde a noção de que MUDOU de lugar.
+        [Header("Transição (tokens-v2.json → movimento)")]
+        [SerializeField] private float duracaoFade = 0.22f;
 
         public string TelaAtual { get; private set; }
 
