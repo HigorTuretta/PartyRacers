@@ -68,6 +68,54 @@ namespace PartyRacers.UI.Importer
             Movimento(tela, raiz, m);
         }
 
+        // ================================================================== Palco 3D
+
+        /// <summary>
+        /// Tira da UI a MAQUETE do palco: os retângulos "KART 3D", a plataforma e a luz que o
+        /// protótipo desenha para representar o carro.
+        ///
+        /// Num documento HTML isso é a única forma de mostrar onde o carro vai; no jogo o carro é
+        /// um modelo de verdade (`Turntable/PreviewCar`), enquadrado pelo <c>FrontendFlow</c>. Se
+        /// as duas coisas convivem, a maquete fica NA FRENTE — foi por isso que a tela parecia um
+        /// monte de caixa tracejada em vez de um kart.
+        ///
+        /// A zona franca (§4: nenhuma UI opaca em x=[520,1400] × y=[300,860]) deixa de ser uma
+        /// intenção e passa a ser o que a tela realmente tem.
+        /// </summary>
+        private static void LimparPalco(ProtoBuilder.Mapa m, string marcaDaLegenda,
+                                        float larguraDoChao, float alturaDoChao,
+                                        float larguraDoAnel, float alturaDoAnel)
+        {
+            // O fundo de tela cheia é o que impedia o carro de aparecer.
+            //
+            // O `Canvas_UI` é ScreenSpaceOverlay: ele desenha SEMPRE por cima da cena 3D, então
+            // qualquer pintura de 1920×1080 na tela tapa o palco por inteiro. Quem faz o fundo do
+            // frontend é o `Canvas_Fundo` (ordem −100, atrás do carro) — este aqui é a cópia que o
+            // protótipo precisava ter porque num HTML não existe cena 3D atrás.
+            //
+            // Só o Graphic do PRÓPRIO nó sai: os degradês de topo e base são filhos translúcidos e
+            // continuam valendo, agora sobre o carro, que é onde eles dão profundidade.
+            foreach (RectTransform tela in m.Caixas(1920f, 1080f, 4f))
+                foreach (Graphic g in tela.GetComponents<Graphic>())
+                    Object.DestroyImmediate(g);
+
+            // Cada cartão de kart é o ancestral do rótulo "KART 3D" com a caixa inteira.
+            foreach (RectTransform rotulo in m.Todos("KART 3D", false))
+                Apagar(Envolve(rotulo, 200f, 100f) ?? rotulo);
+
+            Apagar(Alvo(m, marcaDaLegenda, false));
+
+            // Chão e anel: a plataforma do palco tem geometria própria na cena 3D.
+            Despintar(m.Caixas(larguraDoChao, alturaDoChao, 8f));
+
+            if (larguraDoAnel > 0f)
+                Despintar(m.Caixas(larguraDoAnel, alturaDoAnel, 8f));
+
+            // A luz de ambiente é quadrada e enorme (radial-gradient); some junto com o chão.
+            foreach (RectTransform luz in m.Caixas(1180f, 1180f, 12f).Concat(m.Caixas(1000f, 1000f, 12f)))
+                Apagar(luz);
+        }
+
         // ================================================================== Movimento
 
         /// <summary>
@@ -639,6 +687,7 @@ namespace PartyRacers.UI.Importer
         private static void Lobby(GameObject raiz, ProtoBuilder.Mapa m)
         {
             BarraDeNavegacao(raiz, m, "Lobby");
+            LimparPalco(m, "gira 6°/s", 1080f, 250f, 840f, 180f);
 
             var ui = raiz.AddComponent<PublicLobbyScreenUI>();
             var so = new SerializedObject(ui);
@@ -743,6 +792,10 @@ namespace PartyRacers.UI.Importer
 
                 foreach (RectTransform linha in amigos)
                     Object.DestroyImmediate(linha.gameObject);
+
+                // "Nenhum amigo aqui": sem isso a aba STEAM vazia parece a lista ter falhado.
+                so.FindProperty("avisoDeListaVazia").objectReferenceValue =
+                    Aviso(conteudo, "NINGUÉM POR AQUI");
             }
 
             RectTransform abaJogo = Alvo(m, "NO JOGO");
@@ -766,7 +819,20 @@ namespace PartyRacers.UI.Importer
             RectTransform buscar = Alvo(m, "BUSCAR PARTIDA");
 
             if (cancelar != null)
-                so.FindProperty("btnPronto").objectReferenceValue = Clicavel(cancelar);
+            {
+                RectTransform caixa = Alvo(m, "CANCELAR");
+                so.FindProperty("btnPronto").objectReferenceValue = Clicavel(caixa ?? cancelar);
+
+                // "CANCELAR" no protótipo é o botão de desmarcar-se; ele alterna com "ESTOU PRONTO".
+                // Os dois rótulos existem e o binder liga um.
+                if (caixa != null)
+                {
+                    (GameObject pronto, GameObject aguardando) = DoisEstados(caixa, true);
+                    Rotular(aguardando, "ESTOU PRONTO");
+                    so.FindProperty("btnProntoEstadoPronto").objectReferenceValue = pronto;
+                    so.FindProperty("btnProntoEstadoAguardando").objectReferenceValue = aguardando;
+                }
+            }
 
             if (buscar != null)
             {
@@ -869,6 +935,8 @@ namespace PartyRacers.UI.Importer
         private static void Garagem(GameObject raiz, ProtoBuilder.Mapa m)
         {
             BarraDeNavegacao(raiz, m, "Garagem");
+            LimparPalco(m, "lerp 0.45s", 900f, 230f, 0f, 0f);
+            Apagar(Alvo(m, "CÂMERA ·", false));
 
             var ui = raiz.AddComponent<GarageGridUI>();
             var so = new SerializedObject(ui);
@@ -1165,7 +1233,12 @@ namespace PartyRacers.UI.Importer
             var barra = (GameObject)PrefabUtility.InstantiatePrefab(asset, pai);
             PrefabUtility.UnpackPrefabInstance(barra, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
             barra.name = "TopBar";
-            barra.transform.SetSiblingIndex(ordem);
+
+            // Último irmão: no UGUI quem vem depois desenha por cima. Mantida na posição original
+            // do cabeçalho do documento, a grade da garagem passava por cima dela e cortava a
+            // marca ao meio. A barra é o teto da tela — nada pode cobri-la.
+            barra.transform.SetAsLastSibling();
+            _ = ordem;
 
             var r = (RectTransform)barra.transform;
             r.anchorMin = new Vector2(0f, 1f);
@@ -1694,6 +1767,41 @@ namespace PartyRacers.UI.Importer
                 : t.parent as RectTransform;
 
             return alvo != null ? Clicavel(alvo) : null;
+        }
+
+        /// <summary>Troca o texto de um estado clonado — o par PRONTO/AGUARDANDO é o mesmo botão.</summary>
+        private static void Rotular(GameObject estado, string texto)
+        {
+            TextMeshProUGUI t = estado.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (t != null)
+                t.text = texto;
+        }
+
+        /// <summary>Aviso de lista vazia, centrado no contêiner e desligado por padrão.</summary>
+        private static GameObject Aviso(Transform pai, string texto)
+        {
+            var go = new GameObject("Aviso_Vazio", typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+            Esticar((RectTransform)go.transform);
+
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = texto;
+            tmp.fontSize = 14f;
+            tmp.color = Apagado;
+            tmp.alignment = TextAlignmentOptions.Midline;
+            tmp.raycastTarget = false;
+            tmp.characterSpacing = 16f;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                tmp.font = fonte;
+
+            // O Layout Group do pai controlaria a altura deste nó e empurraria a lista.
+            var elemento = go.AddComponent<LayoutElement>();
+            elemento.ignoreLayout = true;
+
+            go.SetActive(false);
+            return go;
         }
 
         /// <summary>Some com um nó de maquete. Nada de desligar: no HUD ele ainda custaria batch.</summary>

@@ -115,9 +115,14 @@ namespace PartyRacers.UI.Importer
                 controlador = go.AddComponent<PartyController>();
                 var mm = go.AddComponent<MatchmakingService>();
                 Referencia(controlador, "matchmaking", mm);
-                Referencia(controlador, "fluxo", fluxo);
                 log.AppendLine("  + Party (PartyController + MatchmakingService)");
             }
+
+            // Sempre, não só ao criar: é este elo que fecha o fluxo da partida — o matchmaking
+            // avisa `MatchReady`, o controlador chama `FrontendFlow.CorrerEm(cena)` e a pista
+            // carrega. Sem ele o BUSCAR PARTIDA enche a sala e não acontece mais nada.
+            Referencia(controlador, "fluxo", fluxo);
+            log.AppendLine($"  Party → FrontendFlow: {(fluxo != null ? "ok" : "FLUXO AUSENTE")}");
 
             // ---- ligações que só a cena conhece
             foreach (GameObject tela in new[]
@@ -145,6 +150,9 @@ namespace PartyRacers.UI.Importer
 
             if (garagem != null)
                 LigarGaragem(garagem, raizes, log);
+
+            EnquadramentoDoV2(fluxo, log);
+            FundoAtrasDoCarro(raizes, log);
 
             // O roteador precisa de si mesmo nas telas que navegam sozinhas (voltar, cancelar).
             foreach (GameObject tela in new[] { ajustes, resultado, codigo })
@@ -230,20 +238,20 @@ namespace PartyRacers.UI.Importer
                               .FirstOrDefault(c => c != null);
             Referencia(grid, "carro", carro);
 
+            // O GarageCameraRig NÃO é criado aqui.
+            //
+            // Ele move a câmera para `palco.TransformPoint(pose.posicao)`, e sem palco nem poses
+            // configurados isso é a origem do mundo — exatamente onde o carro está. A câmera ia
+            // parar DENTRO do kart e a garagem mostrava o cenário sem carro nenhum.
+            //
+            // Quem enquadra o carro é o `FrontendFlow.Enquadrar()`, que mede a caixa do modelo.
+            // O rig só entra quando alguém o configurar à mão com as poses por categoria.
             var rig = raizes.Select(g => g.GetComponentInChildren<GarageCameraRig>(true))
-                            .FirstOrDefault(c => c != null);
-
-            if (rig == null)
-            {
-                Camera cam = raizes.Select(g => g.GetComponent<Camera>()).FirstOrDefault(c => c != null);
-                if (cam != null)
-                {
-                    rig = cam.gameObject.AddComponent<GarageCameraRig>();
-                    log.AppendLine("  + GarageCameraRig na câmera do frontend");
-                }
-            }
+                            .FirstOrDefault(c => c != null && PoseConfigurada(c));
 
             Referencia(grid, "camera3D", rig);
+            log.AppendLine($"  Garagem → rig de câmera: {(rig != null ? rig.name : "nenhum (o FrontendFlow enquadra)")}");
+            log.AppendLine($"  Garagem → carro: {(carro != null ? carro.name : "NULO")}");
         }
 
         private static void RegistrarTelas(ScreenRouter roteador,
@@ -285,6 +293,76 @@ namespace PartyRacers.UI.Importer
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Reenquadra o palco para a composição do v2.
+        ///
+        /// Os valores da cena vinham do v1, onde o lobby tinha painel à direita e o carro era
+        /// empurrado para o lado. No v2 é o contrário do contrário:
+        ///
+        /// • <b>Lobby</b> — o kart do jogador fica SEMPRE centrado (§7). As colunas de UI são
+        ///   laterais e o meio é zona franca, então viés zero: o carro no eixo da tela.
+        /// • <b>Garagem</b> — o kart é centrado em x=1341, o centro do espaço livre à direita do
+        ///   painel de customização, e não o centro da tela (§4). Daí o viés positivo.
+        /// </summary>
+        private static void EnquadramentoDoV2(FrontendFlow fluxo, StringBuilder log)
+        {
+            if (fluxo == null)
+                return;
+
+            var so = new SerializedObject(fluxo);
+            Numero(so, "viesNoLobby", 0f);
+            Numero(so, "viesVerticalNoLobby", -0.29f);
+            Numero(so, "afastamentoNoLobby", 1.35f);
+            Numero(so, "viesNaGaragem", 0.62f);
+            Numero(so, "afastamentoNaGaragem", 1.35f);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            log.AppendLine("  enquadramento: lobby centrado, garagem deslocada para a direita");
+        }
+
+        /// <summary>
+        /// Empurra o Canvas de fundo para trás do carro.
+        ///
+        /// `Canvas_Fundo` é ScreenSpaceCamera com `planeDistance = 1`: a arte da oficina ficava a
+        /// UMA unidade da câmera e o kart a onze, ou seja, o fundo na frente do carro. Como o
+        /// canvas desenha na fila transparente, o que aparecia do kart eram só as peças também
+        /// transparentes — adesivo, vidro, spoiler — soltas no ar. Parecia modelo quebrado e era
+        /// ordem de profundidade.
+        ///
+        /// O canvas se redimensiona sozinho para continuar preenchendo a tela na nova distância.
+        /// </summary>
+        private static void FundoAtrasDoCarro(GameObject[] raizes, StringBuilder log)
+        {
+            foreach (GameObject raiz in raizes)
+            {
+                foreach (Canvas c in raiz.GetComponentsInChildren<Canvas>(true))
+                {
+                    if (c.renderMode != RenderMode.ScreenSpaceCamera || c.planeDistance >= 60f)
+                        continue;
+
+                    c.planeDistance = 120f;
+                    EditorUtility.SetDirty(c);
+                    log.AppendLine($"  {c.name}: plano 1 → 120 (fundo atrás do carro)");
+                }
+            }
+        }
+
+        private static void Numero(SerializedObject so, string campo, float valor)
+        {
+            SerializedProperty p = so.FindProperty(campo);
+            if (p != null && p.propertyType == SerializedPropertyType.Float)
+                p.floatValue = valor;
+        }
+
+        /// <summary>Rig só vale se alguém tiver preenchido as poses; vazio, ele zera a câmera.</summary>
+        private static bool PoseConfigurada(GarageCameraRig rig)
+        {
+            var so = new SerializedObject(rig);
+            SerializedProperty poses = so.FindProperty("poses");
+            return poses != null && poses.isArray && poses.arraySize > 0
+                && so.FindProperty("palco")?.objectReferenceValue != null;
         }
 
         /// <summary>Veio de um prefab nosso de `Prefabs/UI_v2/Screens`?</summary>

@@ -36,8 +36,12 @@ namespace PartyRacers.UI.Frontend
         [Tooltip("Empurra o carro para a direita da tela. 0 = centralizado.")]
         [Range(0f, 2f)] [SerializeField] private float viesNoLobby = 1.45f;
         [Range(0f, 2f)] [SerializeField] private float viesNaGaragem;
-        [Tooltip("Move o carro para cima no lobby para não disputar espaço com o card de pista.")]
-        [Range(0f, 1f)] [SerializeField] private float viesVerticalNoLobby = 0.28f;
+        // O fundo do frontend é um RENDER da oficina, com a plataforma desenhada nele. O carro
+        // precisa POUSAR nessa plataforma, e para descer na tela o alvo da câmera sobe — daí o
+        // valor negativo. Com o range antigo preso em [0,1] só dava para levantar o carro, e ele
+        // ficava flutuando no meio da sala.
+        [Tooltip("Negativo desce o carro na tela (para assentá-lo na plataforma do fundo).")]
+        [Range(-1.5f, 1f)] [SerializeField] private float viesVerticalNoLobby = -0.29f;
 
         [Header("Partida")]
         [Tooltip("Pista padrão quando não há seletor de mapa na cena. Precisa estar no Build Settings.")]
@@ -229,18 +233,31 @@ namespace PartyRacers.UI.Frontend
         // ---------- palco do carro ----------
         private void AcompanharTela()
         {
-            if (roteador == null || roteador.TelaAtual == telaDoPalco)
+            bool trocouDeTela = roteador != null && roteador.TelaAtual != telaDoPalco;
+
+            // O carro é montado depois do primeiro enquadramento (o modelo vem de um Addressable e
+            // o rig só existe alguns frames adiante). Enquadrar com o rig ainda vazio dá caixa de
+            // tamanho zero e a câmera vai parar DENTRO do carro — a tela mostrava o cenário e
+            // nenhum kart. Reenquadrar quando o rig troca resolve sem depender de ordem.
+            UnityEngine.Object rigAtual = carro != null ? carro.CurrentRig : null;
+            bool trocouDeCarro = rigAtual != rigEnquadrado;
+
+            if (!trocouDeTela && !trocouDeCarro)
                 return;
 
-            telaDoPalco = roteador.TelaAtual;
+            if (trocouDeTela)
+                telaDoPalco = roteador.TelaAtual;
+
             bool mostra = telaDoPalco == "Lobby" || telaDoPalco == "Garagem";
 
-            if (palco != null)
+            if (palco != null && palco.activeSelf != mostra)
                 palco.SetActive(mostra);
 
             if (mostra)
                 Enquadrar();
         }
+
+        private UnityEngine.Object rigEnquadrado;
 
         public void Enquadrar()
         {
@@ -254,6 +271,13 @@ namespace PartyRacers.UI.Frontend
             Bounds caixa = renderers[0].bounds;
             foreach (Renderer renderer in renderers)
                 caixa.Encapsulate(renderer.bounds);
+
+            // Caixa degenerada é rig ainda em construção: enquadrar agora colocaria a câmera na
+            // origem. Sai sem marcar o rig como enquadrado, para tentar de novo no frame seguinte.
+            if (caixa.extents.magnitude < 0.01f)
+                return;
+
+            rigEnquadrado = carro.CurrentRig;
 
             bool noLobby = telaDoPalco == "Lobby";
             float afastamento = noLobby ? afastamentoNoLobby : afastamentoNaGaragem;
