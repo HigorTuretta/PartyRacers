@@ -1,3 +1,4 @@
+using UnityEngine;
 using System.Collections.Generic;
 
 namespace PartyRacers.UI.Frontend.Party
@@ -51,6 +52,43 @@ namespace PartyRacers.UI.Frontend.Party
     }
 
     /// <summary>Uma entrada da lista de amigos (aba NO JOGO ou aba STEAM).</summary>
+    /// <summary>
+    /// Cor de identidade de um jogador, derivada do NOME.
+    ///
+    /// Todo avatar da UI é um quadrado colorido — no lobby, na lista de amigos, na sala do
+    /// matchmaking. Colorir todos igual faz a lista virar uma coluna de retângulos idênticos e
+    /// perde-se a única pista de "quem é quem" que existe antes de ler o texto.
+    ///
+    /// Derivar do nome, em vez de sortear, garante que a mesma pessoa tenha a mesma cor em todas
+    /// as telas e entre sessões, sem precisar guardar nada.
+    /// </summary>
+    public static class PlayerTint
+    {
+        private static readonly Color[] Paleta =
+        {
+            new Color(0.21f, 0.65f, 1.00f),   // azul
+            new Color(0.95f, 0.28f, 0.42f),   // vermelho
+            new Color(0.24f, 0.86f, 0.59f),   // verde
+            new Color(1.00f, 0.69f, 0.13f),   // âmbar
+            new Color(0.55f, 0.48f, 1.00f),   // violeta
+            new Color(0.35f, 0.85f, 0.85f),   // ciano
+            new Color(1.00f, 0.55f, 0.75f),   // rosa
+            new Color(0.98f, 0.95f, 0.88f),   // creme
+        };
+
+        public static Color De(string nome)
+        {
+            if (string.IsNullOrEmpty(nome))
+                return Paleta[0];
+
+            int soma = 0;
+            for (int i = 0; i < nome.Length; i++)
+                soma = soma * 31 + nome[i];
+
+            return Paleta[Mathf.Abs(soma) % Paleta.Length];
+        }
+    }
+
     public class FriendEntry
     {
         public string Id;

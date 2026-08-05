@@ -792,6 +792,18 @@ namespace PartyRacers.UI.Importer
                 vaga.FindPropertyRelative("estadoAguardando").objectReferenceValue = aguarda != null ? aguarda.gameObject : null;
                 vaga.FindPropertyRelative("destaqueLocal").objectReferenceValue = destaque;
 
+                // O avatar da linha: quadrado de ~42 px à esquerda do nome.
+                RectTransform quadro = linha.GetComponentsInChildren<UIRoundedRect>(true)
+                    .Select(f => (RectTransform)f.transform)
+                    .FirstOrDefault(t => t != linha && t.rect.width >= 34f && t.rect.width <= 52f
+                                                    && Mathf.Abs(t.rect.width - t.rect.height) < 8f);
+
+                if (quadro != null)
+                {
+                    quadro.name = "Avatar";
+                    vaga.FindPropertyRelative("avatar").objectReferenceValue = Pintavel(quadro);
+                }
+
                 vazio.SetActive(false);
                 bloqueado.SetActive(false);
                 destaque.SetActive(false);
@@ -894,6 +906,7 @@ namespace PartyRacers.UI.Importer
                 habilitado.SetActive(false);
             }
 
+            so.FindProperty("etiquetaDoKart").objectReferenceValue = Tmp(m.Texto("SEU KART"));
             so.FindProperty("motivoDoBloqueio").objectReferenceValue = Tmp(m.Texto("FALTA 1 JOGADOR"));
             so.FindProperty("resumoDoGrupo").objectReferenceValue = Tmp(m.Texto("AGUARDANDO CONFIRMAÇÃO", false));
 
@@ -929,6 +942,18 @@ namespace PartyRacers.UI.Importer
                 chip.name = "Label_Unavailable";
                 Atribuir(so, "rotuloIndisponivel", chip.gameObject);
                 Atribuir(so, "textoIndisponivel", Tmp(chip));
+            }
+
+            // O quadrado de identidade: o maior gráfico da linha que não é texto nem moldura.
+            RectTransform quadro = modelo.GetComponentsInChildren<UIRoundedRect>(true)
+                .Select(f => (RectTransform)f.transform)
+                .FirstOrDefault(r => r != modelo && r.rect.width >= 30f && r.rect.width <= 48f
+                                                 && Mathf.Abs(r.rect.width - r.rect.height) < 8f);
+
+            if (quadro != null)
+            {
+                quadro.name = "Avatar";
+                Atribuir(so, "avatar", Pintavel(quadro));
             }
 
             // O ponto de presença: verde, âmbar e cinza no mesmo lugar.
@@ -1108,6 +1133,10 @@ namespace PartyRacers.UI.Importer
             }
 
             // ---- as 16 vagas da sala
+            // As vagas ficam onde o design as colocou. Uma grade calculada aqui subia para dentro
+            // do dial: o contêiner delas divide o espaço com o rádio, e recalcular a âncora sem
+            // saber disso desmonta a composição. Como o modal deixou de esticar, as posições do
+            // protótipo voltaram a valer.
             RectTransform[] vagas = m.Caixas(158f, 98.5f, 3f);
             SerializedProperty lista = so.FindProperty("vagas");
             lista.arraySize = vagas.Length;
@@ -1136,6 +1165,17 @@ namespace PartyRacers.UI.Importer
                 RectTransform[] textos = m.TextosEm(vaga);
                 if (textos.Length > 0)
                     item.FindPropertyRelative("nome").objectReferenceValue = Tmp(textos[textos.Length - 1]);
+
+                RectTransform quadro = vaga.GetComponentsInChildren<UIRoundedRect>(true)
+                    .Select(f => (RectTransform)f.transform)
+                    .FirstOrDefault(t => t != vaga && t.rect.width >= 36f && t.rect.width <= 52f
+                                                   && Mathf.Abs(t.rect.width - t.rect.height) < 8f);
+
+                if (quadro != null)
+                {
+                    quadro.name = "Avatar";
+                    item.FindPropertyRelative("avatar").objectReferenceValue = Pintavel(quadro);
+                }
 
                 mate.SetActive(false);
                 humano.SetActive(false);
@@ -1882,6 +1922,28 @@ namespace PartyRacers.UI.Importer
                 : t.parent as RectTransform;
 
             return alvo != null ? Clicavel(alvo) : null;
+        }
+
+        /// <summary>
+        /// O gráfico que realmente PINTA o avatar.
+        ///
+        /// O quadrado do protótipo é um nó com contorno e um degradê dentro: o nó de fora fica
+        /// transparente e quem tem cor é o filho. Ligar o binder ao nó de fora não muda nada — foi
+        /// por isso que os sete amigos apareciam com o mesmo vermelho, a cor com que o prefab foi
+        /// salvo. O alvo é o descendente opaco de maior área.
+        /// </summary>
+        private static Graphic Pintavel(RectTransform quadro)
+        {
+            if (quadro == null)
+                return null;
+
+            // Border e Shadow também são opacos e MAIORES que o miolo — ordenar por área pegava a
+            // moldura, e o avatar ficava com a borda colorida e o centro branco.
+            return quadro.GetComponentsInChildren<UIRoundedRect>(true)
+                .Where(f => f.CorDoPreenchimento.a > 0.5f
+                         && f.name != "Border" && f.name != "Shadow" && f.transform != quadro)
+                .OrderByDescending(f => ((RectTransform)f.transform).rect.width)
+                .FirstOrDefault() ?? quadro.GetComponent<Graphic>();
         }
 
         /// <summary>Troca o texto de um estado clonado — o par PRONTO/AGUARDANDO é o mesmo botão.</summary>

@@ -21,6 +21,9 @@ namespace PartyRacers.UI.Frontend.Party
         [SerializeField] private GameObject rotuloIndisponivel;
         [SerializeField] private TextMeshProUGUI textoIndisponivel;
 
+        [Tooltip("Quadrado de identidade. A cor vem do nome, para o mesmo amigo ter sempre a mesma.")]
+        [SerializeField] private Graphic avatar;
+
         [Header("Pontos de presença (filhos de estado)")]
         [SerializeField] private GameObject pontoOnline;
         [SerializeField] private GameObject pontoEmJogo;
@@ -42,6 +45,11 @@ namespace PartyRacers.UI.Frontend.Party
 
             if (estado != null)
                 estado.text = TextoDePresenca(amigo.Presence);
+
+            // Sem isto a lista inteira sai da cor com que o prefab foi salvo, e as sete linhas
+            // viram sete retângulos iguais — o avatar deixa de informar qualquer coisa.
+            if (avatar != null)
+                avatar.color = PlayerTint.De(amigo.DisplayName);
 
             bool online = amigo.Presence != FriendPresence.Offline;
             bool emCorrida = amigo.Presence == FriendPresence.InRace;

@@ -31,6 +31,8 @@ namespace PartyRacers.UI.Frontend.Party
             public GameObject estadoBot;
             public GameObject estadoVazio;
             public TextMeshProUGUI nome;
+            [Tooltip("Quadrado de identidade. A cor vem do nome do piloto.")]
+            public UnityEngine.UI.Graphic avatar;
         }
 
         /// <summary>Uma chapinha da faixa de progresso, com os três estados do handoff.</summary>
@@ -244,12 +246,27 @@ namespace PartyRacers.UI.Frontend.Party
 
                 bool ocupada = i < slots.Count;
 
+                // O quadrado de identidade só faz sentido com alguém na vaga; vazio ele seria uma
+                // mancha colorida sugerindo que há um piloto ali.
+                if (vaga.avatar != null)
+                {
+                    vaga.avatar.enabled = ocupada;
+                    if (ocupada)
+                        vaga.avatar.color = PlayerTint.De(slots[i].Nome);
+                }
+
                 if (!ocupada)
                 {
                     Ligar(vaga.estadoCompanheiro, false);
                     Ligar(vaga.estadoHumano, false);
                     Ligar(vaga.estadoBot, false);
                     Ligar(vaga.estadoVazio, true);
+
+                    // O nome fica no card, não no estado: sem limpar, a vaga vazia continuava
+                    // exibindo quem esteve ali na busca anterior.
+                    if (vaga.nome != null)
+                        vaga.nome.text = string.Empty;
+
                     continue;
                 }
 

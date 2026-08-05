@@ -269,7 +269,8 @@ namespace PartyRacers.UI.Importer
 
             float axMin, axMax;
             if (n.W >= pw - Tol) { axMin = 0f; axMax = 1f; }
-            else if (n.W >= pw * 0.72f && esq > Tol && dir > Tol) { axMin = 0f; axMax = 1f; }
+            else if (EhPainel(n) && n.W >= pw * 0.72f && n.H <= ph * 0.6f
+                     && esq > Tol && dir > Tol) { axMin = 0f; axMax = 1f; }
             else if (Mathf.Abs(esq - dir) <= Tol) { axMin = axMax = 0.5f; }
             else if (esq <= dir) { axMin = axMax = 0f; }
             else { axMin = axMax = 1f; }
@@ -280,7 +281,16 @@ namespace PartyRacers.UI.Importer
             // pendurar no canto mais próximo. Preso só embaixo, ele sobe quando a janela encolhe e
             // passa por cima da barra de topo — foi o que cortava a marca na garagem. Esticado, as
             // duas margens são fixas e o painel nunca invade o teto da tela.
-            else if (n.H >= ph * 0.72f && topo > Tol && baixo > Tol) { ayMin = 0f; ayMax = 1f; }
+            //
+            // Duas restrições, cada uma paga com um defeito visto na tela:
+            //
+            // • Só quem TEM fundo — contêiner invisível de layout que estica arrasta os filhos
+            //   junto, e no modal de busca isso empilhou o dial em cima da grade da sala.
+            // • Só COLUNA, nunca um bloco grande nos dois eixos. Um modal é grande em largura e
+            //   altura; esticá-lo o encurta junto com a janela e o conteúdo interno se comprime.
+            //   Coluna estica porque é isso que ela faz: acompanha a altura da tela.
+            else if (EhPainel(n) && n.H >= ph * 0.72f && n.W <= pw * 0.6f
+                     && topo > Tol && baixo > Tol) { ayMin = 0f; ayMax = 1f; }
             else if (Mathf.Abs(topo - baixo) <= Tol) { ayMin = ayMax = 0.5f; }
             else if (baixo <= topo) { ayMin = ayMax = 0f; }   // mais perto da base
             else { ayMin = ayMax = 1f; }
@@ -866,6 +876,11 @@ namespace PartyRacers.UI.Importer
 
             return false;
         }
+
+        /// <summary>Tem superfície própria — fundo, contorno ou imagem. Contêiner de layout não.</summary>
+        private static bool EhPainel(No n) =>
+            !string.IsNullOrEmpty(n.Fundo) || !string.IsNullOrEmpty(n.Imagem)
+            || (n.Contorno != null && n.Contorno.Max() > 0.4f);
 
         private static float Luminancia(Color c) => 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
 

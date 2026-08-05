@@ -38,6 +38,8 @@ namespace PartyRacers.UI.Frontend.Party
             public GameObject estadoAguardando;
             [Tooltip("Contorno que marca a linha do próprio jogador.")]
             public GameObject destaqueLocal;
+            [Tooltip("Quadrado de identidade. A cor vem do nome do membro.")]
+            public Graphic avatar;
         }
 
         /// <summary>Um card de modo (SOLO/DUO/SQUAD), já montado com seus dois estados.</summary>
@@ -79,6 +81,10 @@ namespace PartyRacers.UI.Frontend.Party
         [SerializeField] private GameObject buscarDesabilitado;
         [SerializeField] private TextMeshProUGUI motivoDoBloqueio;
         [SerializeField] private TextMeshProUGUI resumoDoGrupo;
+
+        [Header("Palco 3D")]
+        [Tooltip("Chapinha sob o kart do jogador. Mostra o nome de quem está no palco.")]
+        [SerializeField] private TextMeshProUGUI etiquetaDoKart;
 
         [Header("Fluxo")]
         [SerializeField] private PartyController controlador;
@@ -233,6 +239,9 @@ namespace PartyRacers.UI.Frontend.Party
                 if (vaga.meta != null)
                     vaga.meta.text = $"nível {membro.Level} · {membro.PingMs}ms";
 
+                if (vaga.avatar != null)
+                    vaga.avatar.color = PlayerTint.De(membro.DisplayName);
+
                 Ligar(vaga.seloDeLider, membro.IsLeader);
                 Ligar(vaga.estadoPronto, membro.State == MemberState.Ready);
                 Ligar(vaga.estadoAguardando, membro.State != MemberState.Ready);
@@ -241,6 +250,14 @@ namespace PartyRacers.UI.Frontend.Party
 
             if (contadorDoGrupo != null)
                 contadorDoGrupo.text = $"{grupo.FilledSlots}/{grupo.Capacity}";
+
+            // A chapinha sob o kart dizia "SEU KART" fixo — era o rótulo do mockup. Com o nome,
+            // ela passa a ser a legenda do carro que está no palco.
+            if (etiquetaDoKart != null)
+            {
+                PartyMember eu = grupo.Local;
+                etiquetaDoKart.text = eu != null ? eu.DisplayName.ToUpperInvariant() : "SEU KART";
+            }
         }
 
         private void RedesenharBarraDeAcao(PartyState grupo)
