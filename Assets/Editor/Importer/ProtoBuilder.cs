@@ -194,6 +194,10 @@ namespace PartyRacers.UI.Importer
                 return r;
             }
 
+            /// <summary>Todos os nós construídos, para passes que varrem a tela inteira.</summary>
+            public RectTransform[] Todas() =>
+                nos.Where(n => n.Rect != null).Select(n => n.Rect).ToArray();
+
             public RectTransform[] Todos(string valor, bool exato = true) =>
                 nos.Where(x => Bate(x, valor, exato)).Select(x => x.Rect).ToArray();
 
@@ -265,12 +269,18 @@ namespace PartyRacers.UI.Importer
 
             float axMin, axMax;
             if (n.W >= pw - Tol) { axMin = 0f; axMax = 1f; }
+            else if (n.W >= pw * 0.72f && esq > Tol && dir > Tol) { axMin = 0f; axMax = 1f; }
             else if (Mathf.Abs(esq - dir) <= Tol) { axMin = axMax = 0.5f; }
             else if (esq <= dir) { axMin = axMax = 0f; }
             else { axMin = axMax = 1f; }
 
             float ayMin, ayMax;
             if (n.H >= ph - Tol) { ayMin = 0f; ayMax = 1f; }
+            // Um painel que ocupa quase toda a altura ESTICA entre topo e base, em vez de se
+            // pendurar no canto mais próximo. Preso só embaixo, ele sobe quando a janela encolhe e
+            // passa por cima da barra de topo — foi o que cortava a marca na garagem. Esticado, as
+            // duas margens são fixas e o painel nunca invade o teto da tela.
+            else if (n.H >= ph * 0.72f && topo > Tol && baixo > Tol) { ayMin = 0f; ayMax = 1f; }
             else if (Mathf.Abs(topo - baixo) <= Tol) { ayMin = ayMax = 0.5f; }
             else if (baixo <= topo) { ayMin = ayMax = 0f; }   // mais perto da base
             else { ayMin = ayMax = 1f; }
@@ -457,7 +467,16 @@ namespace PartyRacers.UI.Importer
                 uig.Definir(img.Topo, img.Base, img.Direcao);
             }
 
-            if (n.Opacidade < 0.999f)
+            // `opacity` do CSS vira CanvasGroup — mas só onde ele é EFEITO, não onde é o jeito de
+            // desenhar vidro.
+            //
+            // O protótipo pinta o painel translúcido e ainda baixa a opacidade do bloco inteiro,
+            // porque no HTML há uma cena 3D por trás em outra camada. No jogo a translucidez já
+            // está na cor do painel; aplicar a opacidade de novo apaga o conteúdo e o texto passa a
+            // competir com a oficina. Blocos grandes ficam com a própria cor.
+            bool blocoDeConteudo = n.W >= 300f && n.H >= 200f;
+
+            if (n.Opacidade < 0.999f && !blocoDeConteudo)
             {
                 var cg = r.gameObject.AddComponent<CanvasGroup>();
                 cg.alpha = n.Opacidade;

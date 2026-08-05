@@ -114,6 +114,37 @@ namespace PartyRacers.UI.Importer
             // A luz de ambiente é quadrada e enorme (radial-gradient); some junto com o chão.
             foreach (RectTransform luz in m.Caixas(1180f, 1180f, 12f).Concat(m.Caixas(1000f, 1000f, 12f)))
                 Apagar(luz);
+
+            AdensarPaineis(m);
+        }
+
+        /// <summary>
+        /// Fecha um pouco os painéis das telas que têm cena 3D atrás.
+        ///
+        /// O v2 pede `rgba(10,12,34,.82)` MAIS `blur(16)`. O blur é metade do efeito: ele apaga o
+        /// desenho do fundo e deixa só a luz, e é o que permite ao painel ser translúcido sem
+        /// competir com o que está atrás. O UGUI não tem blur, então com os mesmos 0,82 a oficina
+        /// aparece nítida através do painel e o texto disputa leitura com uma caixa de ferramentas.
+        ///
+        /// Compensar na opacidade preserva a INTENÇÃO — o painel continua deixando a cena 3D
+        /// respirar — sem pagar o preço de um desfoque em tela cheia.
+        /// </summary>
+        private static void AdensarPaineis(ProtoBuilder.Mapa m)
+        {
+            foreach (RectTransform r in m.Todas())
+            {
+                if (r == null || r.rect.width < 320f || r.rect.height < 220f)
+                    continue;
+
+                foreach (UIRoundedRect f in r.GetComponents<UIRoundedRect>())
+                {
+                    Color c = f.CorDoPreenchimento;
+                    if (c.a < 0.55f || c.a > 0.97f)
+                        continue;
+
+                    f.Definir(new Color(c.r, c.g, c.b, Mathf.Min(0.96f, c.a + 0.09f)), f.Raio);
+                }
+            }
         }
 
         // ================================================================== Movimento
@@ -976,6 +1007,9 @@ namespace PartyRacers.UI.Importer
 
             // ---- grade de cards
             RectTransform[] cards = m.Caixas(158f, 168f, 6f);
+            if (cards.Length > 0)
+                Gradear(cards, 158f, 168f, 14f, 4);
+
             SerializedProperty lista = so.FindProperty("cards");
             lista.arraySize = cards.Length;
 
@@ -1004,8 +1038,11 @@ namespace PartyRacers.UI.Importer
                 if (textos.Length > 1)
                     item.FindPropertyRelative("nome").objectReferenceValue = Tmp(textos[textos.Length - 2]);
 
-                Image preview = conteudo.GetComponentsInChildren<Image>(true).FirstOrDefault();
-                item.FindPropertyRelative("preview").objectReferenceValue = preview;
+                // O retângulo colorido do card é um `UIRoundedRect`, não um `Image` — procurar
+                // Image ali devolvia nulo e o card ficava sem preview nenhum. A foto entra num
+                // Image PRÓPRIO, por cima da forma: assim a moldura colorida continua servindo de
+                // fundo quando a peça ainda não tem foto gerada.
+                item.FindPropertyRelative("preview").objectReferenceValue = AreaDePreview(card);
 
                 equipado.SetActive(false);
                 selecionado.SetActive(false);
@@ -1017,6 +1054,12 @@ namespace PartyRacers.UI.Importer
             // com os mesmos tokens — é a única peça da garagem que não vem do design.
             if (cards.Length > 0)
                 Paginacao(so, (RectTransform)cards[0].parent);
+
+            // "PREVIEW" era o placeholder do protótipo; agora cada card mostra a FOTO da peça,
+            // gerada pelo `PreviewBaker`. O rótulo sai — deixá-lo sobre a foto seria pior que
+            // antes, porque cobriria justamente o que ele prometia.
+            foreach (RectTransform p in m.Todos("PREVIEW", false))
+                Apagar(p);
 
             Atribuir(so, "contagemDaCategoria", Tmp(m.Texto("ITENS", false)));
             Atribuir(so, "btnEquipar", ClicavelPorTexto(m, "EQUIPAR"));
@@ -1628,6 +1671,78 @@ namespace PartyRacers.UI.Importer
                 tmp.font = fonte;
 
             return Clicavel(r);
+        }
+
+        /// <summary>
+        /// Área da foto do item: um `Image` esticado sobre o topo do card.
+        ///
+        /// A altura é a do card menos a faixa de nome e raridade, medida no próprio card em vez de
+        /// fixada em pixels — os cards de categorias diferentes têm alturas diferentes.
+        /// </summary>
+        private static Image AreaDePreview(RectTransform card)
+        {
+            var go = new GameObject("Preview", typeof(RectTransform));
+            go.transform.SetParent(card, false);
+            go.transform.SetSiblingIndex(1);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0f, 0f);
+            r.anchorMax = new Vector2(1f, 1f);
+            r.pivot = new Vector2(0.5f, 1f);
+            r.offsetMin = new Vector2(4f, 46f);
+            r.offsetMax = new Vector2(-4f, -4f);
+
+            var img = go.AddComponent<Image>();
+            img.raycastTarget = false;
+            img.preserveAspect = true;
+            return img;
+        }
+
+        /// <summary>
+        /// Troca posições absolutas por uma grade de verdade.
+        ///
+        /// Os cards vinham com a posição que tinham no protótipo. Assim que o painel passou a
+        /// esticar com a janela, cada card seguiu a própria âncora e as fileiras se atropelaram.
+        /// Com Grid Layout as células são calculadas a partir do contêiner e a grade se comporta
+        /// como grade — inclusive quando a página troca e o número de cards muda.
+        /// </summary>
+        private static void Gradear(RectTransform[] cards, float largura, float altura,
+                                    float espaco, int colunas)
+        {
+            var pai = (RectTransform)cards[0].parent;
+
+            // O contêiner passa a crescer do TOPO para baixo, preservando onde ele já estava.
+            //
+            // Trocar a âncora sem recalcular os offsets move o bloco: os valores são relativos à
+            // âncora, e o mesmo número significa outra posição depois da troca. Medir o topo atual
+            // antes e reaplicá-lo é o que mantém a grade abaixo da segunda linha de abas, onde o
+            // design a colocou.
+            float alturaNecessaria = Mathf.Ceil(cards.Length / (float)colunas) * (altura + espaco);
+
+            var noPai = pai.parent as RectTransform;
+            float topoAtual = noPai != null
+                ? noPai.rect.yMax - (pai.anchoredPosition.y + pai.rect.yMax)
+                : 0f;
+
+            pai.anchorMin = new Vector2(0f, 1f);
+            pai.anchorMax = new Vector2(1f, 1f);
+            pai.pivot = new Vector2(0.5f, 1f);
+            // A altura é medida A PARTIR DO TOPO do bloco, não do topo do painel: somar as duas
+            // referências encolhia a grade em ~170 px e a última fileira ficava cortada pela
+            // metade, parecendo que faltavam cards.
+            pai.offsetMax = new Vector2(pai.offsetMax.x, -topoAtual);
+            pai.offsetMin = new Vector2(pai.offsetMin.x, -topoAtual - alturaNecessaria);
+
+            var grade = pai.GetComponent<GridLayoutGroup>() ?? pai.gameObject.AddComponent<GridLayoutGroup>();
+            grade.cellSize = new Vector2(largura, altura);
+            grade.spacing = new Vector2(espaco, espaco);
+            grade.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grade.constraintCount = colunas;
+            grade.childAlignment = TextAnchor.UpperLeft;
+
+            foreach (RectTransform c in cards)
+                if (c.GetComponent<LayoutElement>() == null)
+                    c.gameObject.AddComponent<LayoutElement>();
         }
 
         // ================================================================== Listas do documento

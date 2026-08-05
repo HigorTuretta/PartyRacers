@@ -74,6 +74,9 @@ namespace PartyRacers.UI.Garage
         [SerializeField] private KartVisualCustomizer carro;
         [SerializeField] private GarageCameraRig camera3D;
 
+        [Tooltip("Cor do card quando a foto do item ainda não foi gerada.")]
+        [SerializeField] private Color corSemPreview = new Color(0.16f, 0.19f, 0.36f, 1f);
+
         [Header("Abas")]
         [SerializeField] private List<Aba> abas = new List<Aba>();
 
@@ -191,6 +194,8 @@ namespace PartyRacers.UI.Garage
 
                 if (card.nome != null)
                     card.nome.text = NomeDoItem(item);
+
+                PintarPreview(card, item);
 
                 bool estaEquipado = item == equipado;
                 bool estaSelecionado = item == selecionado && !estaEquipado;
@@ -321,6 +326,49 @@ namespace PartyRacers.UI.Garage
                     break;
             }
         }
+
+        /// <summary>
+        /// Mostra a PEÇA no card, nunca a palavra "PREVIEW".
+        ///
+        /// Cor é chapada — ela é a própria informação, e doze fotos do mesmo carro em tons
+        /// diferentes só atrapalhariam a comparação. As outras categorias usam a foto gerada pelo
+        /// `PreviewBaker`, carregada de `Resources/Previews/` na primeira vez e guardada em cache:
+        /// a grade repagina a cada clique e recarregar por frame custaria caro.
+        /// </summary>
+        private void PintarPreview(Card card, int item)
+        {
+            if (card.preview == null || AbaAtual == null)
+                return;
+
+            if (AbaAtual.fonte == Fonte.Cor)
+            {
+                Color[] paleta = carro != null ? carro.PaintPalette : null;
+                card.preview.sprite = null;
+                card.preview.color = paleta != null && item < paleta.Length ? paleta[item] : Color.gray;
+                return;
+            }
+
+            Sprite foto = Foto(AbaAtual.categoria, item);
+            card.preview.sprite = foto;
+
+            // Sem foto o Image ficaria BRANCO e o card viraria um retângulo claro no meio da grade
+            // — pior que o placeholder que ele veio substituir. Sem sprite, a cor do tema.
+            card.preview.color = foto != null ? Color.white : corSemPreview;
+            card.preview.preserveAspect = foto != null;
+        }
+
+        private Sprite Foto(string categoria, int item)
+        {
+            string chave = $"{categoria}_{item:00}";
+            if (fotos.TryGetValue(chave, out Sprite cache))
+                return cache;
+
+            Sprite s = Resources.Load<Sprite>("Previews/" + chave);
+            fotos[chave] = s;
+            return s;
+        }
+
+        private readonly Dictionary<string, Sprite> fotos = new Dictionary<string, Sprite>();
 
         private string NomeDoItem(int item)
         {

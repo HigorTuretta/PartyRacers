@@ -238,19 +238,29 @@ namespace PartyRacers.UI.Importer
                               .FirstOrDefault(c => c != null);
             Referencia(grid, "carro", carro);
 
-            // O GarageCameraRig NÃO é criado aqui.
-            //
-            // Ele move a câmera para `palco.TransformPoint(pose.posicao)`, e sem palco nem poses
-            // configurados isso é a origem do mundo — exatamente onde o carro está. A câmera ia
-            // parar DENTRO do kart e a garagem mostrava o cenário sem carro nenhum.
-            //
-            // Quem enquadra o carro é o `FrontendFlow.Enquadrar()`, que mede a caixa do modelo.
-            // O rig só entra quando alguém o configurar à mão com as poses por categoria.
+            // O rig da câmera vive na CÂMERA e precisa saber o palco e o carro: as poses são
+            // medidas a partir da caixa do modelo, não de coordenadas fixas. Sem essas duas
+            // referências ele não tem o que enquadrar e devolvia a origem do mundo — que é
+            // exatamente onde o kart está, então a câmera ia parar dentro dele.
+            Camera cam = raizes.Select(g => g.GetComponentInChildren<Camera>(true))
+                               .FirstOrDefault(c => c != null && c.CompareTag("MainCamera"));
+
             var rig = raizes.Select(g => g.GetComponentInChildren<GarageCameraRig>(true))
-                            .FirstOrDefault(c => c != null && PoseConfigurada(c));
+                            .FirstOrDefault(c => c != null);
+
+            if (rig == null && cam != null)
+                rig = cam.gameObject.AddComponent<GarageCameraRig>();
+
+            if (rig != null)
+            {
+                Transform palco = raizes.FirstOrDefault(g => g.name == "Turntable")?.transform;
+                Referencia(rig, "camera3D", cam);
+                Referencia(rig, "palco", palco);
+                Referencia(rig, "carro", carro != null ? carro.transform : palco);
+            }
 
             Referencia(grid, "camera3D", rig);
-            log.AppendLine($"  Garagem → rig de câmera: {(rig != null ? rig.name : "nenhum (o FrontendFlow enquadra)")}");
+            log.AppendLine($"  Garagem → rig de câmera: {(rig != null ? "ligado ao palco e ao carro" : "AUSENTE")}");
             log.AppendLine($"  Garagem → carro: {(carro != null ? carro.name : "NULO")}");
         }
 

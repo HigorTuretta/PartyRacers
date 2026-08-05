@@ -20,16 +20,27 @@ namespace PartyRacers.UI.Garage
     public class GarageCameraRig : MonoBehaviour
     {
         /// <summary>Uma pose nomeada. O alvo é procurado por nome dentro do carro montado.</summary>
+        /// <summary>
+        /// Uma pose nomeada, descrita em relação à CAIXA do carro — não em coordenadas do mundo.
+        ///
+        /// Coordenadas fixas quebram a cada troca de modelo: os carros do pack têm tamanhos
+        /// diferentes, e a mesma posição que enquadra a roda de um mostra o asfalto ao lado do
+        /// outro. Com direção + zoom + alvo em frações da caixa, a pose vale para qualquer carro.
+        ///
+        /// São os mesmos ângulos do `PreviewBaker`: o card e a câmera mostram a peça do mesmo
+        /// jeito, então clicar num card não desorienta.
+        /// </summary>
         [System.Serializable]
         public class Pose
         {
             [Tooltip("Chave da categoria: modelo, cor, rodas, frente, traseira, teto, adesivos.")]
             public string categoria;
-            [Tooltip("Posição da câmera em espaço LOCAL do palco.")]
-            public Vector3 posicao;
-            [Tooltip("Nome do transform do carro para onde olhar (Body, Wheel_FL, Bumper_R...). " +
-                     "Não encontrado, olha para o centro do carro.")]
-            public string alvo = "Body";
+            [Tooltip("De onde a câmera olha, em espaço do carro. Normalizado.")]
+            public Vector3 direcao = new Vector3(1f, 0.45f, 1f);
+            [Tooltip("Menor que 1 aproxima da peça.")]
+            public float zoom = 1f;
+            [Tooltip("Para onde olhar, em frações do tamanho da caixa a partir do centro.")]
+            public Vector3 alvo;
             public float fov = 34f;
         }
 
@@ -45,13 +56,13 @@ namespace PartyRacers.UI.Garage
         [SerializeField]
         private List<Pose> poses = new List<Pose>
         {
-            new Pose { categoria = "modelo",   posicao = new Vector3( 3.2f, 1.6f,  4.4f), alvo = "Body",       fov = 34f },
-            new Pose { categoria = "cor",      posicao = new Vector3( 3.2f, 1.6f,  4.4f), alvo = "Body",       fov = 34f },
-            new Pose { categoria = "rodas",    posicao = new Vector3( 2.1f, 0.55f, 2.4f), alvo = "Wheel_FL",   fov = 28f },
-            new Pose { categoria = "frente",   posicao = new Vector3( 0f,   0.8f,  3.6f), alvo = "Bumper_F",   fov = 30f },
-            new Pose { categoria = "traseira", posicao = new Vector3(-0.4f, 1.2f, -3.8f), alvo = "Bumper_R",   fov = 32f },
-            new Pose { categoria = "teto",     posicao = new Vector3( 2.4f, 3.1f,  3.0f), alvo = "RoofSocket", fov = 32f },
-            new Pose { categoria = "adesivos", posicao = new Vector3( 4.4f, 1.1f,  0f),   alvo = "Door_L",     fov = 30f },
+            new Pose { categoria = "modelo",   direcao = new Vector3( 1f,   0.45f,  1f),    zoom = 1f,    fov = 34f },
+            new Pose { categoria = "cor",      direcao = new Vector3( 1f,   0.45f,  1f),    zoom = 1f,    fov = 34f },
+            new Pose { categoria = "rodas",    direcao = new Vector3( 1f,   0.12f,  0.35f), zoom = 0.42f, fov = 30f, alvo = new Vector3(0.5f, -0.5f, 0.45f) },
+            new Pose { categoria = "frente",   direcao = new Vector3( 0.35f, 0.28f, 1f),    zoom = 0.58f, fov = 32f, alvo = new Vector3(0f, -0.2f, 0.65f) },
+            new Pose { categoria = "traseira", direcao = new Vector3( 0.35f, 0.3f, -1f),    zoom = 0.58f, fov = 32f, alvo = new Vector3(0f, -0.1f, -0.65f) },
+            new Pose { categoria = "teto",     direcao = new Vector3( 0.6f,  0.85f, 0.6f),  zoom = 0.7f,  fov = 32f, alvo = new Vector3(0f, 0.4f, 0f) },
+            new Pose { categoria = "adesivos", direcao = new Vector3( 1f,   0.12f,  0.05f), zoom = 0.8f,  fov = 30f },
         };
 
         [Header("Blend")]
@@ -86,19 +97,88 @@ namespace PartyRacers.UI.Garage
             if (pose == null || camera3D == null)
                 return;
 
+            if (!MedirCarro(out Bounds caixa))
+                return;
+
             origemPos = camera3D.transform.position;
             origemRot = camera3D.transform.rotation;
             origemFov = camera3D.fieldOfView;
 
-            destinoPos = palco.TransformPoint(pose.posicao);
-            destinoFov = pose.fov;
+            // A peça em edição precisa estar SEMPRE do mesmo lado. Com o carro girando sozinho,
+            // ir para a pose das rodas mostrava ora a dianteira, ora a traseira — a câmera fazia o
+            // movimento certo e a peça não estava lá. Zerar a rotação é o que torna a pose
+            // previsível, e é o gesto que o jogador espera: "me mostre ISTO".
+            ZerarRotacaoDoCarro();
 
-            Vector3 alvo = ResolverAlvo(pose.alvo);
-            destinoRot = Quaternion.LookRotation((alvo - destinoPos).normalized, Vector3.up);
+            Vector3 centro = caixa.center + new Vector3(pose.alvo.x * caixa.extents.x,
+                                                        pose.alvo.y * caixa.extents.y,
+                                                        pose.alvo.z * caixa.extents.z);
+
+            float raio = Mathf.Max(0.05f, caixa.extents.magnitude * Mathf.Max(0.05f, pose.zoom));
+            float distancia = raio / Mathf.Tan(pose.fov * 0.5f * Mathf.Deg2Rad) * 1.3f;
+
+            destinoPos = centro + pose.direcao.normalized * distancia;
+            destinoFov = pose.fov;
+            destinoRot = Quaternion.LookRotation((centro - destinoPos).normalized, Vector3.up);
 
             t = 0f;
             ultimaInteracao = Time.time;
         }
+
+        /// <summary>Caixa dos renderers do carro. Sem carro montado não há o que enquadrar.</summary>
+        private bool MedirCarro(out Bounds caixa)
+        {
+            caixa = default;
+
+            Transform raiz = carro != null ? carro : palco;
+            if (raiz == null)
+                return false;
+
+            Renderer[] renderers = raiz.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+                return false;
+
+            caixa = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+                caixa.Encapsulate(renderers[i].bounds);
+
+            return caixa.extents.magnitude > 0.01f;
+        }
+
+        /// <summary>
+        /// Devolve o carro ao ângulo de repouso, com uma volta curta em vez de um corte.
+        ///
+        /// O giro automático do <see cref="PartyRacers.UI.Motion.CarStage"/> continua depois — o
+        /// que se zera é a POSE de partida da edição, não o comportamento do palco.
+        /// </summary>
+        private void ZerarRotacaoDoCarro()
+        {
+            Transform alvo = palco != null ? palco : carro;
+            if (alvo == null)
+                return;
+
+            if (retorno != null)
+                StopCoroutine(retorno);
+
+            retorno = StartCoroutine(Retornando(alvo));
+        }
+
+        private System.Collections.IEnumerator Retornando(Transform alvo)
+        {
+            Quaternion inicio = alvo.localRotation;
+            Quaternion fim = Quaternion.identity;
+
+            for (float k = 0f; k < 1f; k += Time.deltaTime / Mathf.Max(0.05f, duracao))
+            {
+                alvo.localRotation = Quaternion.Slerp(inicio, fim, EaseInOutCubic(Mathf.Clamp01(k)));
+                yield return null;
+            }
+
+            alvo.localRotation = fim;
+            retorno = null;
+        }
+
+        private Coroutine retorno;
 
         /// <summary>Avisa que o jogador mexeu — a respiração para e reinicia o atraso.</summary>
         public void NotificarInteracao() => ultimaInteracao = Time.time;
