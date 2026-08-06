@@ -440,6 +440,23 @@ namespace PartyRacers.UI.Frontend
         }
 
         // ---------- sala ----------
+        /// <summary>
+        /// Convite da sessão atual, ou vazio quando não há sala online.
+        ///
+        /// A sala privada mostra este código na faixa do topo. Quando o online não está disponível
+        /// ela mostra o dela, local — mas quem tem a verdade é o Relay, e é ele que responde aqui.
+        /// </summary>
+        public string ConviteAtual()
+            => bootstrap != null && bootstrap.IsOnline && bootstrap.HasJoinCode
+                ? bootstrap.CurrentJoinCode
+                : string.Empty;
+
+        /// <summary>Cria a sala online (ou copia o código, se ela já existe).</summary>
+        public void Convidar() => CriarOuCopiarConvite();
+
+        /// <summary>O online está disponível e ligado nesta sessão.</summary>
+        public bool Online => bootstrap != null && bootstrap.IsOnline;
+
         private void CriarOuCopiarConvite()
         {
             if (bootstrap == null || bootstrap.IsBusy)

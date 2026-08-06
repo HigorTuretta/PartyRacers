@@ -1312,43 +1312,538 @@ namespace PartyRacers.UI.Importer
             var ui = raiz.AddComponent<CustomMatchScreenUI>();
             var so = new SerializedObject(ui);
 
-            Atribuir(so, "codigoDaSala", Tmp(m.Texto("KQ2", false)));
-            Atribuir(so, "contadorDeBots", Tmp(m.Texto("+ BOTS", false)));
-            Atribuir(so, "contador", Tmp(m.Texto("/ 16", false)) ?? Tmp(m.Texto("9 / 16", false)));
-            Atribuir(so, "btnIniciar", ClicavelPorTexto(m, "INICIAR"));
-            Atribuir(so, "btnAdicionarBot", ClicavelPorTexto(m, "BOTS", false));
+            AjustarMolduraDaSala(m);
+
+            // ---- faixa do topo
+            RectTransform chip = m.Caixa(292f, 152f, 181.8f, 46f);
+            Atribuir(so, "codigoDaSala", Tmp(m.Texto("7KQ2XM", false)));
+            Atribuir(so, "btnCopiarCodigo", chip != null ? Clicavel(chip) : null);
+            Atribuir(so, "contador", Tmp(m.Texto("9 / 16", false)));
+            Atribuir(so, "avisoDoConvite", AvisoDoConvite(m));
+
+            // ---- mapa
+            RectTransform cartao = m.Caixa(1428f, 185f, 424f, 228f);
             Atribuir(so, "nomeDoMapa", Tmp(m.Texto("MINI GOLFE RUN", false)));
             Atribuir(so, "descricaoDoMapa", Tmp(m.Texto("níveis", false)));
+            Atribuir(so, "resumoDoMapa", Tmp(m.Texto("VOLTAS", false)));
+            Atribuir(so, "previewDoMapa", RenderDaPista(m, cartao));
+            Atribuir(so, "pontosDoMapa", m.Caixa(1428f, 519f, 424f, 5f));
 
-            RectTransform[] linhas = m.Caixas(644f, 94f, 6f);
-            SerializedProperty lista = so.FindProperty("vagas");
-            lista.arraySize = linhas.Length;
-
-            for (int i = 0; i < linhas.Length; i++)
+            if (cartao != null)
             {
-                RectTransform linha = linhas[i];
-                SerializedProperty item = lista.GetArrayElementAtIndex(i);
-
-                GameObject jogador = Agrupar(linha, "State_Player");
-                GameObject bot = Contorno(linha, "State_Bot", Violeta, 2f, 16f);
-                GameObject vazio = Tracejado(linha, "State_Empty");
-
-                item.FindPropertyRelative("raiz").objectReferenceValue = linha.gameObject;
-                item.FindPropertyRelative("estadoJogador").objectReferenceValue = jogador;
-                item.FindPropertyRelative("estadoBot").objectReferenceValue = bot;
-                item.FindPropertyRelative("estadoVazio").objectReferenceValue = vazio;
-
-                RectTransform[] textos = m.TextosEm(linha);
-                if (textos.Length > 0)
-                    item.FindPropertyRelative("indice").objectReferenceValue = Tmp(textos[0]);
-                if (textos.Length > 1)
-                    item.FindPropertyRelative("nome").objectReferenceValue = Tmp(textos[1]);
-
-                bot.SetActive(false);
-                vazio.SetActive(false);
+                Atribuir(so, "btnMapaAnterior", Seta(cartao, "‹", false));
+                Atribuir(so, "btnMapaProximo", Seta(cartao, "›", true));
             }
 
+            // ---- regras (o documento já desenhou ◄ valor ►; aqui os dois viram botão)
+            Regra(so, m, "voltas", 616f);
+            Regra(so, m, "itens", 657f);
+            Regra(so, m, "botsPreenchem", 698f);
+            Regra(so, m, "danoPorColisao", 739f);
+
+            // ---- ações
+            // O botão continua dizendo o que FAZ. Escrever a contagem nele ("0 BOTS") transformava
+            // a única ação de adicionar bot num letreiro — quem lê "0 BOTS" não clica.
+            Atribuir(so, "btnIniciar", ClicavelPorTexto(m, "INICIAR"));
+            Atribuir(so, "btnAdicionarBot", ClicavelPorTexto(m, "BOTS", false));
+
+            TextMeshProUGUI rotuloDeBots = Tmp(m.Texto("+ BOTS", false));
+            if (rotuloDeBots != null)
+                rotuloDeBots.text = "+ BOT";
+
+            Vagas(so, m);
+
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Põe a moldura da sala no lugar e tira os halos que o UGUI não sabe desenhar.
+        ///
+        /// A área de conteúdo do documento (44/44/128/36) ficava ANCORADA NA BASE, porque a margem
+        /// de baixo é menor que a de cima e a regra escolhe a borda mais próxima. Numa janela mais
+        /// larga que 16:9 o canvas encurta em altura, e um bloco de 916 px preso embaixo sobe até
+        /// atravessar a barra de topo — foi isso que cobriu a marca e a carteira. Esticada com as
+        /// margens do desenho, ela nunca invade o teto.
+        ///
+        /// Os três halos radiais do fundo viram ANEL: o degradê radial não existe em UGUI, e o que
+        /// sobra do contorno é uma elipse laranja atravessada no meio da tela.
+        /// </summary>
+        private static void AjustarMolduraDaSala(ProtoBuilder.Mapa m)
+        {
+            RectTransform conteudo = m.Caixa(44f, 128f, 1832f, 916f);
+            if (conteudo != null)
+            {
+                conteudo.anchorMin = Vector2.zero;
+                conteudo.anchorMax = Vector2.one;
+                conteudo.pivot = new Vector2(0.5f, 0.5f);
+                conteudo.offsetMin = new Vector2(44f, 36f);
+                conteudo.offsetMax = new Vector2(-44f, -128f);
+            }
+
+            Apagar(m.Caixa(370f, 14.8f, 1180f, 1180f));
+            Apagar(m.Caixa(420f, 726f, 1080f, 250f));
+            Apagar(m.Caixa(540f, 750f, 840f, 180f));
+
+            RectTransform faixa = m.Caixa(68f, 152f, 1296f, 46f);
+            if (faixa != null)
+                m.AncorarNoTopo(faixa, 46f);
+
+            // A grade ESTICA. Ela pendurava na base do painel — com a coluna acompanhando a
+            // janela, a primeira fileira subia por cima da faixa "SALA PRIVADA". E com altura fixa
+            // de 808 px ela transbordava por baixo em qualquer janela mais baixa que 1080: as
+            // vagas 15 e 16 saíam da moldura. As oito fileiras dividem a altura disponível, então
+            // a lista inteira cabe sempre — que é a regra da tela (16 vagas, sem rolagem).
+            RectTransform grade = m.Caixa(68f, 212f, 1296f, 808f);
+            if (grade != null)
+            {
+                grade.anchorMin = Vector2.zero;
+                grade.anchorMax = Vector2.one;
+                grade.pivot = new Vector2(0.5f, 0.5f);
+                grade.offsetMin = new Vector2(24f, 24f);
+                grade.offsetMax = new Vector2(-24f, -84f);
+            }
+
+            // A coluna da direita também estica, e seus blocos estavam pendurados em bordas
+            // diferentes: o cartão do mapa descia e o painel de regras subia até se sobreporem, com
+            // a descrição da pista atrás da palavra REGRAS.
+            RectTransform cartao = m.Caixa(1404f, 128f, 472f, 420f);
+            if (cartao != null)
+                m.AncorarNoTopo(cartao, 420f);
+
+            RectTransform regras = m.Caixa(1404f, 562f, 472f, 224f);
+            if (regras != null)
+                m.AncorarNoTopo(regras, 224f);
+
+            Apagar(m.Caixa(1404f, 800f, 472f, 156f));
+        }
+
+        /// <summary>Linha de retorno do convite, no vão entre o código e o contador.</summary>
+        private static TextMeshProUGUI AvisoDoConvite(ProtoBuilder.Mapa m)
+        {
+            RectTransform faixa = m.Caixa(68f, 152f, 1296f, 46f);
+            if (faixa == null)
+                return null;
+
+            var go = new GameObject("Aviso_Convite", typeof(RectTransform));
+            go.transform.SetParent(faixa, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0f, 0.5f);
+            r.anchorMax = new Vector2(0f, 0.5f);
+            r.pivot = new Vector2(0f, 0.5f);
+            r.anchoredPosition = new Vector2(424f, 0f);
+            r.sizeDelta = new Vector2(780f, 24f);
+
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.text = string.Empty;
+            t.fontSize = 15f;
+            t.color = Ambar;
+            t.characterSpacing = 6f;
+            t.raycastTarget = false;
+            t.alignment = TextAlignmentOptions.MidlineLeft;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            return t;
+        }
+
+        /// <summary>
+        /// A área do "RENDER DA PISTA" vira o Image da miniatura.
+        ///
+        /// O texto do protótipo era o placeholder; a pista tem PNG de verdade em
+        /// `TrackDefinition.miniatura`, e mostrar o nome do arquivo em cima dela não ajuda ninguém.
+        /// </summary>
+        private static Image RenderDaPista(ProtoBuilder.Mapa m, RectTransform cartao)
+        {
+            Apagar(m.Texto("RENDER DA PISTA", false));
+
+            if (cartao == null)
+                return null;
+
+            var go = new GameObject("Preview", typeof(RectTransform));
+            go.transform.SetParent(cartao, false);
+            go.transform.SetSiblingIndex(0);
+            Esticar((RectTransform)go.transform);
+
+            var img = go.AddComponent<Image>();
+            img.raycastTarget = false;
+            img.preserveAspect = true;
+            return img;
+        }
+
+        /// <summary>Seta redonda sobre o cartão do mapa, na borda esquerda ou direita.</summary>
+        private static Button Seta(RectTransform cartao, string glifo, bool direita)
+        {
+            var go = new GameObject(direita ? "Btn_Mapa_Proximo" : "Btn_Mapa_Anterior",
+                                    typeof(RectTransform));
+            go.transform.SetParent(cartao, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(direita ? 1f : 0f, 0.5f);
+            r.anchorMax = r.anchorMin;
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.anchoredPosition = new Vector2(direita ? -30f : 30f, 0f);
+            r.sizeDelta = new Vector2(44f, 44f);
+
+            var fundo = go.AddComponent<UIRoundedRect>();
+            fundo.Definir(new Color(0.04f, 0.05f, 0.13f, 0.82f), 22f);
+            fundo.DefinirContorno(Fio, 2f);
+            fundo.DefinirRaio(22f, 22f);
+
+            var rotulo = new GameObject("Label", typeof(RectTransform));
+            rotulo.transform.SetParent(r, false);
+            Esticar((RectTransform)rotulo.transform);
+
+            var t = rotulo.AddComponent<TextMeshProUGUI>();
+            t.text = glifo;
+            t.fontSize = 28f;
+            t.color = new Color(0.85f, 0.88f, 1f, 1f);
+            t.alignment = TextAlignmentOptions.Center;
+            t.raycastTarget = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Archivo", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            var b = go.AddComponent<Button>();
+            b.targetGraphic = fundo;
+            go.AddComponent<UIPress>();
+            return b;
+        }
+
+        /// <summary>
+        /// Uma linha de regra do documento (◄ valor ►) vira controle de verdade.
+        ///
+        /// Os dois quadradinhos de 16 px já estavam desenhados dos dois lados do valor — eles só
+        /// não eram botão. As coordenadas vêm do dump porque no build não há Canvas: medir a
+        /// hierarquia devolveria zero.
+        /// </summary>
+        private static void Regra(SerializedObject so, ProtoBuilder.Mapa m, string campo, float y)
+        {
+            SerializedProperty r = so.FindProperty(campo);
+            if (r == null)
+                return;
+
+            RectTransform menos = m.Caixa(1730f, y, 16f, 16f);
+            RectTransform mais = m.Caixa(1824f, y, 16f, 16f);
+            RectTransform valor = m.Caixa(1756f, y + 1f, 58f, 14f);
+
+            r.FindPropertyRelative("btnAnterior").objectReferenceValue = menos != null ? Passo(menos, "‹") : null;
+            r.FindPropertyRelative("btnProximo").objectReferenceValue = mais != null ? Passo(mais, "›") : null;
+
+            TextMeshProUGUI texto = Tmp(valor);
+            r.FindPropertyRelative("valor").objectReferenceValue = texto;
+
+            if (valor == null || texto == null)
+                return;
+
+            // O documento escreveu "3" e "SIM" nessa caixa; o jogo também escreve "DESLIGADO". Com
+            // os 58 px do desenho a palavra passava por cima das setas. A caixa passa a ocupar todo
+            // o vão ENTRE elas, e o corpo encolhe se ainda faltar espaço.
+            valor.anchorMin = new Vector2(0f, 0.5f);
+            valor.anchorMax = new Vector2(1f, 0.5f);
+            valor.pivot = new Vector2(0.5f, 0.5f);
+            valor.offsetMin = new Vector2(32f, valor.offsetMin.y);
+            valor.offsetMax = new Vector2(-28f, valor.offsetMax.y);
+
+            var rt = (RectTransform)texto.transform;
+            if (rt != valor)
+                Esticar(rt);
+
+            texto.alignment = TextAlignmentOptions.Center;
+            texto.enableAutoSizing = true;
+            texto.fontSizeMax = texto.fontSize;
+            texto.fontSizeMin = 10f;
+        }
+
+        /// <summary>
+        /// Monta as 16 vagas iguais, cada uma com os três estados.
+        ///
+        /// O documento desenhou vagas DIFERENTES entre si — nove com gente dentro e sete com
+        /// "+ CONVIDAR" —, porque ele mostra um exemplo de sala cheia pela metade. No jogo qualquer
+        /// vaga pode virar qualquer coisa, então as duas formas viram MODELO e são clonadas nas
+        /// dezesseis posições. Sem isso, a vaga 3 nunca saberia mostrar um convite e a vaga 12
+        /// nunca saberia mostrar um jogador.
+        /// </summary>
+        private static void Vagas(SerializedObject so, ProtoBuilder.Mapa m)
+        {
+            RectTransform[] originais = m.Caixas(644f, 94f, 6f);
+            if (originais.Length < 10)
+                return;
+
+            RectTransform grade = m.Caixa(68f, 212f, 1296f, 808f);
+            if (grade == null)
+                return;
+
+            RectTransform modeloJogador = originais[0];
+            RectTransform modeloVazio = originais[9];
+
+            // Onde cada peça mora DENTRO do modelo, em índices de irmão. É o que permite achar a
+            // mesma peça em cada clone: o mapa só conhece os nós originais.
+            int[] cIndice = Caminho(modeloJogador, m.Caixa(83f, 252.5f, 12f, 13f));
+            int[] cAvatar = Caminho(modeloJogador, m.Caixa(106f, 242f, 34f, 34f));
+            int[] cNome = Caminho(modeloJogador, m.Caixa(151f, 252f, 397.7f, 14f));
+            int[] cAnfitriao = Caminho(modeloJogador, m.Texto("ANFITRIÃO", false));
+            int[] cPronto = Caminho(modeloJogador, m.Caixa(649f, 253f, 15f, 12f));
+            int[] cExpulsar = Caminho(modeloJogador, m.Caixa(675f, 248f, 22f, 22f));
+
+            int[] cIndiceVazio = Caminho(modeloVazio, m.Caixa(735f, 660.5f, 12f, 13f));
+
+            // Os modelos saem da grade antes de ela ser esvaziada, senão são destruídos junto.
+            var abrigo = new GameObject("__Modelos", typeof(RectTransform));
+            abrigo.transform.SetParent(grade.parent, false);
+            abrigo.SetActive(false);
+
+            RectTransform copiaJogador = Copiar(modeloJogador, abrigo.transform);
+            RectTransform copiaVazio = Copiar(modeloVazio, abrigo.transform);
+
+            foreach (RectTransform antiga in originais)
+                Apagar(antiga);
+
+            SerializedProperty lista = so.FindProperty("vagas");
+            lista.arraySize = 16;
+
+            for (int i = 0; i < 16; i++)
+            {
+                // Duas colunas de oito, em FRAÇÕES da grade. Posição absoluta faria a lista
+                // transbordar por baixo em qualquer janela mais baixa que os 1080 do desenho.
+                int coluna = i % 2;
+                int fileira = i / 2;
+
+                var vaga = new GameObject($"Vaga_{i + 1:00}", typeof(RectTransform));
+                vaga.transform.SetParent(grade, false);
+
+                var vr = (RectTransform)vaga.transform;
+                vr.anchorMin = new Vector2(coluna * 0.5f, 1f - (fileira + 1) / 8f);
+                vr.anchorMax = new Vector2((coluna + 1) * 0.5f, 1f - fileira / 8f);
+                vr.pivot = new Vector2(0.5f, 0.5f);
+                vr.offsetMin = new Vector2(coluna == 0 ? 0f : 4f, 4f);
+                vr.offsetMax = new Vector2(coluna == 0 ? -4f : 0f, -4f);
+
+                RectTransform jogador = Copiar(copiaJogador, vaga.transform);
+                jogador.name = "State_Player";
+                Esticar(jogador);
+
+                RectTransform vazio = Copiar(copiaVazio, vaga.transform);
+                vazio.name = "State_Empty";
+                Esticar(vazio);
+
+                GameObject bot = MarcaDeBot(vr);
+
+                SerializedProperty item = lista.GetArrayElementAtIndex(i);
+                item.FindPropertyRelative("raiz").objectReferenceValue = vaga;
+                item.FindPropertyRelative("estadoJogador").objectReferenceValue = jogador.gameObject;
+                item.FindPropertyRelative("estadoVazio").objectReferenceValue = vazio.gameObject;
+                item.FindPropertyRelative("estadoBot").objectReferenceValue = bot;
+
+                item.FindPropertyRelative("indice").objectReferenceValue = Tmp(Seguir(jogador, cIndice));
+                item.FindPropertyRelative("nome").objectReferenceValue = Tmp(Seguir(jogador, cNome));
+                item.FindPropertyRelative("miniatura").objectReferenceValue = Retrato(Seguir(jogador, cAvatar));
+                item.FindPropertyRelative("seloDeAnfitriao").objectReferenceValue = Objeto(Seguir(jogador, cAnfitriao));
+                item.FindPropertyRelative("indiceVazio").objectReferenceValue = Tmp(Seguir(vazio, cIndiceVazio));
+
+                RectTransform pronto = Seguir(jogador, cPronto);
+                item.FindPropertyRelative("estadoPronto").objectReferenceValue = Objeto(pronto);
+                item.FindPropertyRelative("estadoAguardando").objectReferenceValue = Aguardando(pronto);
+
+                RectTransform expulsar = Seguir(jogador, cExpulsar);
+                item.FindPropertyRelative("btnRemover").objectReferenceValue =
+                    expulsar != null ? Clicavel(expulsar) : null;
+
+                // A vaga livre INTEIRA convida. Um "+" de 34 px como único alvo de clique
+                // transforma convidar numa mira.
+                item.FindPropertyRelative("btnConvidar").objectReferenceValue = Clicavel(vazio);
+
+                vazio.gameObject.SetActive(false);
+                bot.SetActive(false);
+            }
+
+            Object.DestroyImmediate(abrigo);
+        }
+
+        /// <summary>Moldura violeta + etiqueta, por cima da linha, quando o ocupante é bot.</summary>
+        private static GameObject MarcaDeBot(RectTransform vaga)
+        {
+            GameObject go = Contorno(vaga, "State_Bot", Violeta, 2f, 16f);
+
+            var etiqueta = new GameObject("Tag", typeof(RectTransform));
+            etiqueta.transform.SetParent(go.transform, false);
+
+            var r = (RectTransform)etiqueta.transform;
+            r.anchorMin = new Vector2(1f, 0.5f);
+            r.anchorMax = new Vector2(1f, 0.5f);
+            r.pivot = new Vector2(1f, 0.5f);
+            r.anchoredPosition = new Vector2(-56f, 0f);
+            r.sizeDelta = new Vector2(52f, 22f);
+
+            var fundo = etiqueta.AddComponent<UIRoundedRect>();
+            fundo.raycastTarget = false;
+            fundo.Definir(new Color(Violeta.r, Violeta.g, Violeta.b, 0.18f), 11f);
+            fundo.DefinirContorno(Violeta, 1.5f);
+            fundo.DefinirRaio(11f, 11f);
+
+            var texto = new GameObject("Label", typeof(RectTransform));
+            texto.transform.SetParent(r, false);
+            Esticar((RectTransform)texto.transform);
+
+            var t = texto.AddComponent<TextMeshProUGUI>();
+            t.text = "BOT";
+            t.fontSize = 12f;
+            t.characterSpacing = 8f;
+            t.color = Violeta;
+            t.alignment = TextAlignmentOptions.Center;
+            t.raycastTarget = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            return go;
+        }
+
+        /// <summary>Gêmeo âmbar do ponto de "pronto", para o estado aguardando.</summary>
+        private static GameObject Aguardando(RectTransform pronto)
+        {
+            if (pronto == null)
+                return null;
+
+            RectTransform copia = Copiar(pronto, pronto.parent);
+            copia.name = "State_Waiting";
+
+            foreach (UIRoundedRect f in copia.GetComponentsInChildren<UIRoundedRect>(true))
+            {
+                float raio = f.Raio;
+                f.Definir(Ambar, raio);
+                f.DefinirContorno(new Color(Ambar.r, Ambar.g, Ambar.b, 0.4f), 1f);
+            }
+
+            foreach (Image img in copia.GetComponentsInChildren<Image>(true))
+                img.color = Ambar;
+
+            copia.gameObject.SetActive(false);
+            return copia.gameObject;
+        }
+
+        /// <summary>
+        /// O quadradinho do avatar vira a vitrine do kart: placa escura, borda fina e a foto dentro.
+        ///
+        /// O documento reservou 34×34, que é quadrado — e kart é deitado. Sem a placa por trás, a
+        /// foto (fundo transparente) flutuava solta na linha e sumia contra o azul; com ela, a
+        /// miniatura vira um selo e a linha ganha um ponto de leitura antes do nome.
+        /// </summary>
+        private static Image Retrato(RectTransform quadro)
+        {
+            if (quadro == null)
+                return null;
+
+            foreach (Graphic g in quadro.GetComponentsInChildren<Graphic>(true))
+                if (g != null && !(g is TextMeshProUGUI))
+                    Object.DestroyImmediate(g);
+
+            // Cresce para os lados a partir do próprio centro: o número fica à esquerda e o nome à
+            // direita, e mexer só na largura não empurra nenhum dos dois.
+            quadro.sizeDelta = new Vector2(46f, 36f);
+
+            var placa = quadro.gameObject.AddComponent<UIRoundedRect>();
+            placa.raycastTarget = false;
+            placa.Definir(new Color(0.04f, 0.05f, 0.13f, 0.85f), 9f);
+            placa.DefinirContorno(Fio, 1.5f);
+            placa.DefinirRaio(9f, 9f);
+
+            var go = new GameObject("Kart", typeof(RectTransform));
+            go.transform.SetParent(quadro, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = Vector2.zero;
+            r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(2f, 2f);
+            r.offsetMax = new Vector2(-2f, -2f);
+
+            var img = go.AddComponent<Image>();
+            img.raycastTarget = false;
+            img.preserveAspect = true;
+            return img;
+        }
+
+        private static GameObject Objeto(RectTransform r) => r != null ? r.gameObject : null;
+
+        /// <summary>Índices de irmão de <paramref name="alvo"/> até <paramref name="raiz"/>.</summary>
+        private static int[] Caminho(Transform raiz, Transform alvo)
+        {
+            if (raiz == null || alvo == null)
+                return null;
+
+            var passos = new List<int>();
+            Transform t = alvo;
+
+            while (t != null && t != raiz)
+            {
+                passos.Add(t.GetSiblingIndex());
+                t = t.parent;
+            }
+
+            if (t != raiz)
+                return null;
+
+            passos.Reverse();
+            return passos.ToArray();
+        }
+
+        /// <summary>Refaz um <see cref="Caminho"/> dentro de um clone.</summary>
+        private static RectTransform Seguir(Transform raiz, int[] caminho)
+        {
+            if (raiz == null || caminho == null)
+                return null;
+
+            Transform t = raiz;
+            foreach (int i in caminho)
+            {
+                if (t == null || i < 0 || i >= t.childCount)
+                    return null;
+
+                t = t.GetChild(i);
+            }
+
+            return t as RectTransform;
+        }
+
+        /// <summary>Transforma o quadradinho do documento num botão de passo, com glifo.</summary>
+        private static Button Passo(RectTransform alvo, string glifo)
+        {
+            var rotulo = new GameObject("Label", typeof(RectTransform));
+            rotulo.transform.SetParent(alvo, false);
+            Esticar((RectTransform)rotulo.transform);
+
+            var t = rotulo.AddComponent<TextMeshProUGUI>();
+            t.text = glifo;
+            t.fontSize = 18f;
+            t.color = new Color(0.85f, 0.88f, 1f, 1f);
+            t.alignment = TextAlignmentOptions.Center;
+            t.raycastTarget = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Archivo", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            // A caixa de 16 px é pequena demais para o mouse. O alvo de clique cresce sem mexer no
+            // desenho: quem pinta continua sendo o quadradinho.
+            var area = new GameObject("Hit", typeof(RectTransform));
+            area.transform.SetParent(alvo, false);
+            var ar = (RectTransform)area.transform;
+            ar.anchorMin = Vector2.zero;
+            ar.anchorMax = Vector2.one;
+            ar.offsetMin = new Vector2(-8f, -10f);
+            ar.offsetMax = new Vector2(8f, 10f);
+
+            var alvoGrafico = area.AddComponent<Image>();
+            alvoGrafico.color = new Color(0f, 0f, 0f, 0f);
+            alvoGrafico.raycastTarget = true;
+
+            var b = alvo.gameObject.GetComponent<Button>() ?? alvo.gameObject.AddComponent<Button>();
+            b.targetGraphic = alvoGrafico;
+            return b;
         }
 
         // ================================================================== Barra de topo

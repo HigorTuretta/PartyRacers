@@ -56,6 +56,9 @@ namespace PartyRacers.UI.Garage
             {
                 case "MODELO":
                 case "COR": return new Vector3(1f, 0.45f, 1f).normalized;
+                // O selo da sala é uma caixa deitada: um ângulo mais de lado enche a largura dela
+                // em vez de deixar duas tarjas vazias.
+                case "MINIATURA": return new Vector3(1f, 0.34f, 0.62f).normalized;
                 // Uma roda só, de frente e um pouco acima: é o desenho do aro que muda entre as
                 // quinze do catálogo, e ele só se lê de lado.
                 case "RODAS": return new Vector3(1f, 0.22f, 0.3f).normalized;

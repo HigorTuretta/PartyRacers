@@ -176,6 +176,12 @@ public class KartHealth : MonoBehaviour
 
     private void OnWallImpact(float speedKmh, float frontality)
     {
+        // Regra da sala privada. Desligado, a batida continua sacudindo o kart e soltando faísca —
+        // o que sai é só a perda de vida. Tirar o retorno físico junto faria a parede parecer um
+        // bug, e não uma escolha de partida.
+        if (!PartyRacers.Race.RaceRules.DanoPorColisao)
+            return;
+
         if (frontality < minWallFrontality)
             return;
 

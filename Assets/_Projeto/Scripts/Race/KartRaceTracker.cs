@@ -72,6 +72,13 @@ public class KartRaceTracker : MonoBehaviour
 
     private void Awake()
     {
+        // A sala privada pode ter escolhido outro número de voltas. Lido aqui e não varrido de
+        // fora porque os karts são instanciados pelo RaceManager depois que a cena carrega: no
+        // momento do `sceneLoaded` não existe nenhum tracker para configurar.
+        PartyRacers.Race.RaceRules.Carregar();
+        if (PartyRacers.Race.RaceRules.Voltas > 0)
+            totalLaps = PartyRacers.Race.RaceRules.Voltas;
+
         AutoConfigureCheckpointCount();
 
         lastRespawnPosition = transform.position;

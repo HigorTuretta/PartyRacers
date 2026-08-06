@@ -146,11 +146,12 @@ namespace PartyRacers.UI.Importer
             if (busca != null)
                 Referencia(busca.GetComponent<MatchmakingModalUI>(), "controlador", controlador);
 
-            if (sala != null)
-                Referencia(sala.GetComponent<CustomMatchScreenUI>(), "fluxo", fluxo);
-
+            // A garagem primeiro: é ela que cria o estúdio de fotos, que a sala também usa.
             if (garagem != null)
                 LigarGaragem(garagem, raizes, log);
+
+            if (sala != null)
+                LigarSala(sala.GetComponent<CustomMatchScreenUI>(), fluxo, raizes, log);
 
             EnquadramentoDoV2(fluxo, log);
             FundoAtrasDoCarro(raizes, log);
@@ -227,6 +228,43 @@ namespace PartyRacers.UI.Importer
             return instancia;
         }
 
+        /// <summary>
+        /// Liga a sala privada ao fluxo, ao catálogo de pistas e ao estúdio de fotos.
+        ///
+        /// O catálogo é montado a partir dos <c>TrackDefinition</c> do projeto em vez de uma lista
+        /// digitada aqui: hoje são DEMO e MiniGolfeRun, e uma pista nova aparece na sala assim que
+        /// o asset dela existir.
+        /// </summary>
+        private static void LigarSala(CustomMatchScreenUI sala, FrontendFlow fluxo,
+                                      GameObject[] raizes, StringBuilder log)
+        {
+            if (sala == null)
+                return;
+
+            Referencia(sala, "fluxo", fluxo);
+
+            var so = new SerializedObject(sala);
+            SerializedProperty pistas = so.FindProperty("pistas");
+
+            string[] guids = AssetDatabase.FindAssets("t:TrackDefinition");
+            pistas.arraySize = guids.Length;
+
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string caminho = AssetDatabase.GUIDToAssetPath(guids[i]);
+                pistas.GetArrayElementAtIndex(i).objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<PartyRacers.UI.Settings.TrackDefinition>(caminho);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var estudio = raizes.Select(g => g.GetComponentInChildren<PreviewStudio>(true))
+                                .FirstOrDefault(c => c != null);
+            Referencia(sala, "estudio", estudio);
+
+            log.AppendLine($"  Sala privada → {guids.Length} pista(s), estúdio {(estudio != null ? "ok" : "AUSENTE")}");
+        }
+
         private static void LigarGaragem(GameObject garagem, GameObject[] raizes, StringBuilder log)
         {
             var grid = garagem.GetComponent<GarageGridUI>();
@@ -274,16 +312,26 @@ namespace PartyRacers.UI.Importer
             if (fluxo != null)
                 Referencia(fluxo, "rigDaGaragem", rig);
 
-            // O estúdio de preview vive ao lado do carro do palco: ele clona esse customizador
-            // para montar as variantes sem tocar no carro que o jogador está vendo.
-            if (carro != null)
+            // O estúdio clona o customizador do palco para montar as variantes sem tocar no carro
+            // que o jogador está vendo. Ele NÃO pode morar no palco: o palco some nas telas que não
+            // mostram carro, e MonoBehaviour em objeto desligado não roda corrotina — a sala privada
+            // pediria a miniatura do kart e a resposta nunca chegaria. Mora no fluxo, que vive
+            // enquanto o frontend existir.
+            var dono = raizes.Select(g => g.GetComponent<PartyRacers.UI.Frontend.FrontendFlow>())
+                             .FirstOrDefault(c => c != null);
+
+            if (carro != null && dono != null)
             {
-                var estudio = carro.GetComponent<PreviewStudio>()
-                           ?? carro.gameObject.AddComponent<PreviewStudio>();
+                PreviewStudio antigo = carro.GetComponent<PreviewStudio>();
+                if (antigo != null)
+                    Object.DestroyImmediate(antigo);
+
+                var estudio = dono.GetComponent<PreviewStudio>()
+                           ?? dono.gameObject.AddComponent<PreviewStudio>();
 
                 Referencia(estudio, "referencia", carro);
                 Referencia(grid, "estudio", estudio);
-                log.AppendLine("  Garagem → estúdio de preview ligado ao carro do palco");
+                log.AppendLine("  Estúdio de preview no fluxo, apontando para o carro do palco");
             }
             log.AppendLine($"  Garagem → rig de câmera: {(rig != null ? "ligado ao palco e ao carro" : "AUSENTE")}");
             log.AppendLine($"  Garagem → carro: {(carro != null ? carro.name : "NULO")}");

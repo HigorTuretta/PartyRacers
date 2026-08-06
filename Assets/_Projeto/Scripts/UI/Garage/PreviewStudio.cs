@@ -63,7 +63,12 @@ namespace PartyRacers.UI.Garage
                 return;
 
             // O carro entra na chave porque a MESMA peça de índice 3 é outra coisa em outro modelo.
-            string chave = ehModelo ? $"modelo_{indice}" : $"{carro}_{categoria}_{indice}";
+            // A COR entra na chave do modelo porque a foto sai na tinta equipada: sem isso, repintar
+            // o kart deixava a miniatura da sala na cor antiga até fechar o jogo.
+            int cor = referencia.ColorIndex;
+            string chave = ehModelo
+                ? $"{categoria}_{indice}_{cor}"
+                : $"{carro}_{cor}_{categoria}_{indice}";
 
             if (cache.TryGetValue(chave, out Texture2D pronta) && pronta != null)
             {
@@ -85,6 +90,21 @@ namespace PartyRacers.UI.Garage
             trabalhando ??= StartCoroutine(Trabalhar());
         }
 
+        /// <summary>
+        /// Foto do carro do jogador como ele está agora — modelo, peças e tinta.
+        ///
+        /// Usada fora da garagem (a miniatura na faixa de nome da sala privada), então não depende
+        /// de nenhuma categoria: é o kart inteiro, do mesmo ângulo do card de MODELO.
+        /// </summary>
+        public void PedirCarroDoJogador(System.Action<Texture2D> aoFicarPronta)
+        {
+            if (referencia == null)
+                return;
+
+            Pedir(referencia.CarIndex, "MINIATURA", CarElementName.None, true, referencia.CarIndex,
+                  aoFicarPronta);
+        }
+
         /// <summary>Descarta o que dependia do carro que saiu de cena.</summary>
         public void EsquecerPecas()
         {
@@ -92,7 +112,8 @@ namespace PartyRacers.UI.Garage
 
             foreach (KeyValuePair<string, Texture2D> par in cache)
             {
-                if (par.Key.StartsWith("modelo_"))
+                // Fotos do carro INTEIRO valem sempre; as de peça morrem com o modelo que as gerou.
+                if (par.Key.StartsWith("MODELO_") || par.Key.StartsWith("MINIATURA_"))
                     manter[par.Key] = par.Value;
                 else if (par.Value != null)
                     Destroy(par.Value);
@@ -191,6 +212,11 @@ namespace PartyRacers.UI.Garage
             copia.transform.localPosition = Vector3.zero;
             copia.transform.localRotation = Quaternion.identity;
 
+            // O palco some nas telas que não mostram carro, e a cópia de um objeto desligado nasce
+            // desligada — renderer desligado não aparece na foto. A sala privada pede a miniatura
+            // do kart justamente com o palco fora de cena.
+            copia.SetActive(true);
+
             clone = copia.GetComponent<KartVisualCustomizer>();
 
             // O clone não pode escrever a seleção do jogador: ele passa por TODAS as variantes da
@@ -273,9 +299,13 @@ namespace PartyRacers.UI.Garage
             // O card tem 150 px: a peça precisa ocupá-lo. O raio já é o da ESFERA que envolve a
             // peça, bem maior do que a silhueta dela vista de qualquer lado — com 1,55 sobrava
             // metade do card em fundo vazio.
+            //
+            // A MINIATURA da sala é ainda mais apertada: ela vive num selo de 42 px na faixa de
+            // nome, e ali qualquer margem vira um carrinho ilegível.
+            bool miniatura = p.Categoria == "MINIATURA";
             Vector3 direcao = GarageFraming.Direcao(p.Categoria, carro, centro);
             float distancia = raio / Mathf.Tan(camera3D.fieldOfView * 0.5f * Mathf.Deg2Rad)
-                            * (p.EhModelo ? 1.2f : sozinha ? 1.15f : 1.3f);
+                            * (miniatura ? 0.9f : p.EhModelo ? 1.2f : sozinha ? 1.15f : 1.3f);
 
             camera3D.transform.position = centro + direcao * distancia;
             camera3D.transform.LookAt(centro);

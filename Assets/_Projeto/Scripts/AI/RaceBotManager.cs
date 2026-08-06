@@ -110,6 +110,12 @@ namespace PartyRacers.AI
         /// </summary>
         public bool WillFillBots => fillOnStart && ShouldSpawnHere();
 
+        /// <summary>
+        /// Liga/desliga o preenchimento por fora, para a regra da sala privada valer sem que cada
+        /// pista precise ser editada à mão. Chamado no `sceneLoaded`, antes deste Start.
+        /// </summary>
+        public void DefinirPreenchimento(bool preencher) => fillOnStart = preencher;
+
         private void Start()
         {
             if (fillOnStart)
