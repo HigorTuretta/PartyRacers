@@ -47,6 +47,10 @@ public class KartVisualCustomizer : MonoBehaviour
     [Tooltip("Se ligado, lê KartGarageSelection no Start (corrida). Desligue para preview controlado externamente.")]
     [SerializeField] private bool loadSelectionOnStart = true;
 
+    [Tooltip("Desligue em carros de FOTO: eles trocam de peça a cada frame e cada troca gravaria " +
+             "a escolha do jogador por cima da real.")]
+    [SerializeField] private bool persistSelection = true;
+
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
 
@@ -67,6 +71,47 @@ public class KartVisualCustomizer : MonoBehaviour
     public void SetLoadSelectionOnStart(bool enabled)
     {
         loadSelectionOnStart = enabled;
+    }
+
+    /// <summary>
+    /// Liga/desliga a gravação da escolha em <see cref="KartGarageSelection"/>.
+    ///
+    /// O estúdio de previews monta uma CÓPIA deste componente e passa por todas as variantes de
+    /// uma peça para fotografá-las. Cada <see cref="SetElement"/> gravava e salvava — ao abrir a
+    /// aba RODAS, a roda equipada virava a última fotografada, e a moldura de "equipado" apontava
+    /// para um card que o jogador nunca escolheu. O clone chama isto com <c>false</c>.
+    /// </summary>
+    public void SetPersistSelection(bool enabled)
+    {
+        persistSelection = enabled;
+    }
+
+    /// <summary>
+    /// Nome do prefab da variante — a única fonte honesta de rótulo para os cards.
+    ///
+    /// O pack nomeia as peças (<c>Car_01_FrontBumper_Cool</c>, <c>Wheel_07</c>, <c>Empty</c>) e a
+    /// ORDEM das variantes muda de carro para carro: no Car_01 o para-choque traseiro vem
+    /// Cool/Simple e nos demais Simple/Cool. Rotular por índice ("TRASEIRA 01") mostraria nomes
+    /// diferentes para a mesma peça conforme o modelo.
+    /// </summary>
+    public string GetElementVariantName(CarElementName element, int index)
+    {
+        if (_currentRig == null || _currentRig.Elements == null)
+            return string.Empty;
+
+        foreach (CarElementSettings settings in _currentRig.Elements)
+        {
+            if (settings == null || settings.ElementName != element || settings.Elements == null)
+                continue;
+
+            if (index < 0 || index >= settings.Elements.Count)
+                return string.Empty;
+
+            GameObject prefab = settings.Elements[index];
+            return prefab != null ? prefab.name : string.Empty;
+        }
+
+        return string.Empty;
     }
 
     public void ApplySelection(KartVisualSelection selection)
@@ -128,9 +173,14 @@ public class KartVisualCustomizer : MonoBehaviour
             return;
 
         _carIndex = ((index % CarCount) + CarCount) % CarCount;
-        KartGarageSelection.CarIndex = _carIndex;
+
+        if (persistSelection)
+            KartGarageSelection.CarIndex = _carIndex;
+
         BuildCar(applySavedElements: true);
-        KartGarageSelection.Save();
+
+        if (persistSelection)
+            KartGarageSelection.Save();
     }
 
     public void NextCar() => SetCar(_carIndex + 1);
@@ -142,16 +192,31 @@ public class KartVisualCustomizer : MonoBehaviour
             return;
 
         _colorIndex = ((index % ColorCount) + ColorCount) % ColorCount;
-        KartGarageSelection.ColorIndex = _colorIndex;
         ApplyPaintColor();
+
+        if (!persistSelection)
+            return;
+
+        KartGarageSelection.ColorIndex = _colorIndex;
         KartGarageSelection.Save();
     }
 
     public int GetElementVariantCount(CarElementName element)
         => _currentRig != null ? _currentRig.GetVariantCount(element) : 0;
 
+    /// <summary>
+    /// Índice equipado, já preso ao catálogo do carro ATUAL.
+    ///
+    /// A seleção é global e as listas não têm o mesmo tamanho: quem estava na roda 12 e troca para
+    /// um modelo cujo para-choque tem 2 variantes voltaria com "equipado = 12" numa grade de dois
+    /// cards, e nenhum card apareceria marcado.
+    /// </summary>
     public int GetElementIndex(CarElementName element)
-        => KartGarageSelection.GetElement(element);
+    {
+        int saved = KartGarageSelection.GetElement(element);
+        int count = GetElementVariantCount(element);
+        return count > 0 ? Mathf.Clamp(saved, 0, count - 1) : saved;
+    }
 
     public void SetElement(CarElementName element, int index)
     {
@@ -163,10 +228,157 @@ public class KartVisualCustomizer : MonoBehaviour
             return;
 
         index = ((index % count) + count) % count;
-        KartGarageSelection.SetElement(element, index);
         _currentRig.SwitchCarElement(element, index);
         ApplyPaintColor();
+
+        if (!persistSelection)
+            return;
+
+        KartGarageSelection.SetElement(element, index);
         KartGarageSelection.Save();
+    }
+
+    /// <summary>Caixa de todos os renderers do carro montado.</summary>
+    public bool TryGetCarBounds(out Bounds bounds)
+    {
+        bounds = default;
+        if (_currentRig == null)
+            return false;
+
+        return Unir(_currentRig.GetComponentsInChildren<Renderer>(), ref bounds);
+    }
+
+    /// <summary>
+    /// Centro e raio do carro que NÃO mudam quando ele gira.
+    ///
+    /// A caixa de <see cref="Renderer.bounds"/> é alinhada aos eixos do mundo: um kart comprido
+    /// medido de lado dá uma caixa menor do que o mesmo kart a 45°. Quem enquadra pela magnitude
+    /// dela recalcula a distância a cada frame do giro, e o carro do lobby pulsa de tamanho a cada
+    /// volta. Medido no espaço do modelo, o número é o mesmo em qualquer ângulo.
+    ///
+    /// A medida é feita uma vez por rig — trocar de peça invalida (os renderers mudam).
+    /// </summary>
+    public bool TryGetCarShape(out Vector3 center, out float radius)
+    {
+        center = default;
+        radius = 0f;
+
+        if (_currentRig == null)
+            return false;
+
+        Transform raiz = _currentRig.transform;
+        Renderer[] renderers = _currentRig.GetComponentsInChildren<Renderer>();
+
+        if (_shapeRig != _currentRig || _shapeCount != renderers.Length)
+        {
+            Matrix4x4 paraLocal = raiz.worldToLocalMatrix;
+            bool achou = false;
+            var caixa = new Bounds();
+
+            foreach (Renderer r in renderers)
+            {
+                if (r == null || !r.enabled || r is ParticleSystemRenderer)
+                    continue;
+
+                Bounds local = r.localBounds;
+                Matrix4x4 m = paraLocal * r.localToWorldMatrix;
+
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 canto = local.center + new Vector3(
+                        ((i & 1) == 0 ? -1f : 1f) * local.extents.x,
+                        ((i & 2) == 0 ? -1f : 1f) * local.extents.y,
+                        ((i & 4) == 0 ? -1f : 1f) * local.extents.z);
+
+                    Vector3 p = m.MultiplyPoint3x4(canto);
+
+                    if (!achou)
+                    {
+                        caixa = new Bounds(p, Vector3.zero);
+                        achou = true;
+                    }
+                    else
+                    {
+                        caixa.Encapsulate(p);
+                    }
+                }
+            }
+
+            if (!achou)
+                return false;
+
+            _shapeLocal = caixa;
+            _shapeRig = _currentRig;
+            _shapeCount = renderers.Length;
+        }
+
+        Vector3 escala = raiz.lossyScale;
+        float uniforme = Mathf.Max(Mathf.Abs(escala.x), Mathf.Abs(escala.y), Mathf.Abs(escala.z));
+
+        center = raiz.TransformPoint(_shapeLocal.center);
+        radius = _shapeLocal.extents.magnitude * uniforme;
+        return radius > 0.001f;
+    }
+
+    private CarCustomizer _shapeRig;
+    private int _shapeCount = -1;
+    private Bounds _shapeLocal;
+
+    /// <summary>
+    /// Caixa da PEÇA montada agora naquele elemento, em espaço de mundo.
+    ///
+    /// Falso quando a variante equipada é o <c>Empty</c> do pack (aerofólio/adesivo/motor/farol de
+    /// milha "desligados") — não há renderer nenhum para medir. Quem enquadra deve, nesse caso,
+    /// mirar onde a peça ESTARIA, e não desistir: o card do "sem aerofólio" precisa mostrar
+    /// exatamente o mesmo recorte do card "com", senão os dois não se comparam.
+    /// </summary>
+    public bool TryGetElementBounds(CarElementName element, out Bounds bounds)
+    {
+        bounds = default;
+        if (_currentRig == null)
+            return false;
+
+        IReadOnlyList<GameObject> spawned = _currentRig.GetSpawnedElements(element);
+        if (spawned == null || spawned.Count == 0)
+            return false;
+
+        // Só a PRIMEIRA cópia. A roda é instanciada quatro vezes, uma por eixo de montagem, e as
+        // quatro juntas dão uma caixa do tamanho do carro — a garagem enquadrava o carro inteiro e
+        // as quinze rodas do catálogo saíam em quinze cards idênticos. Cópias do mesmo elemento são
+        // iguais por construção, então uma basta e é ela que se vê de perto.
+        foreach (GameObject go in spawned)
+        {
+            if (go == null)
+                continue;
+
+            if (Unir(go.GetComponentsInChildren<Renderer>(), ref bounds))
+                return bounds.extents.magnitude > 0.0005f;
+        }
+
+        return false;
+    }
+
+    private static bool Unir(Renderer[] renderers, ref Bounds bounds, bool jaComecou = false)
+    {
+        bool achou = jaComecou;
+
+        foreach (Renderer r in renderers)
+        {
+            if (r == null || !r.enabled || r is ParticleSystemRenderer)
+                continue;
+
+            if (!achou)
+            {
+                bounds = r.bounds;
+                achou = true;
+            }
+            else
+            {
+                bounds.Encapsulate(r.bounds);
+            }
+        }
+
+        return achou;
     }
 
     // ---------------------------------------------------------------- Construção
@@ -175,15 +387,25 @@ public class KartVisualCustomizer : MonoBehaviour
         if (carModelRoot == null || CarCount == 0)
             return;
 
-        if (_currentRig != null)
+        // Some com TODO carro que já esteja montado, não só com o que este componente lembra de ter
+        // criado. `_currentRig` é um campo de runtime: ele nasce nulo a cada play, então um rig
+        // SALVO na cena (de quando a garagem foi aberta no editor) não era apagado por ninguém.
+        // Dois carros ficavam empilhados no mesmo lugar; trocar de peça mexia só no de baixo e a
+        // metade que o jogador via continuava igual — a garagem parecia não funcionar.
+        _currentRig = null;
+
+        for (int i = carModelRoot.childCount - 1; i >= 0; i--)
         {
+            Transform filho = carModelRoot.GetChild(i);
+            if (filho.GetComponent<CarCustomizer>() == null)
+                continue;
+
             // fora do playmode Destroy é adiado e nunca roda: o rig antigo ficaria na cena
             // sobreposto ao novo, e a Garagem mostraria o carro errado no editor.
             if (Application.isPlaying)
-                Destroy(_currentRig.gameObject);
+                Destroy(filho.gameObject);
             else
-                DestroyImmediate(_currentRig.gameObject);
-            _currentRig = null;
+                DestroyImmediate(filho.gameObject);
         }
 
         CarCustomizer prefab = carRigs[Mathf.Clamp(_carIndex, 0, CarCount - 1)];

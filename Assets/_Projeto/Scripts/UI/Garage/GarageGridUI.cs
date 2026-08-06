@@ -65,6 +65,9 @@ namespace PartyRacers.UI.Garage
 
             [Header("Peças")]
             public TextMeshProUGUI nome;
+            [Tooltip("Segunda linha do card. No design era a raridade; aqui diz o ESTADO, que é a " +
+                     "informação que o projeto realmente tem.")]
+            public TextMeshProUGUI etiqueta;
             public Image preview;
             public GameObject seloDeNovo;
             public GameObject anelDeFoco;
@@ -218,6 +221,11 @@ namespace PartyRacers.UI.Garage
 
                 bool estaEquipado = item == equipado;
                 bool estaSelecionado = item == selecionado && !estaEquipado;
+
+                if (card.etiqueta != null)
+                    card.etiqueta.text = estaEquipado ? "EQUIPADO"
+                                       : estaSelecionado ? "SELECIONADO"
+                                       : string.Empty;
 
                 // Tudo desbloqueado por enquanto: não existe economia de cosméticos no projeto.
                 // O estado Locked fica montado e o binder já sabe ligá-lo quando existir.
@@ -400,17 +408,99 @@ namespace PartyRacers.UI.Garage
                           });
         }
 
+        /// <summary>
+        /// Nome do item como ele existe no pack, não "FRENTE 02".
+        ///
+        /// O rótulo por índice mente duas vezes: não diz o que a peça é, e a ORDEM das variantes
+        /// muda de carro para carro — no Car_01 o para-choque traseiro vem Cool/Simple e nos demais
+        /// Simple/Cool, então "TRASEIRA 01" era uma peça diferente conforme o modelo escolhido.
+        /// O nome do prefab é a única fonte que acompanha a peça.
+        /// </summary>
         private string NomeDoItem(int item)
         {
             if (AbaAtual == null)
-                return $"ITEM {item + 1}";
+                return $"ITEM {item + 1:00}";
 
-            return AbaAtual.fonte switch
+            if (AbaAtual.fonte == Fonte.ModeloDeCarro)
+                return $"KART {item + 1:00}";
+
+            if (AbaAtual.fonte == Fonte.Cor)
             {
-                Fonte.ModeloDeCarro => $"KART {item + 1:00}",
-                Fonte.Cor => $"COR {item + 1:00}",
-                _ => $"{AbaAtual.categoria.ToUpperInvariant()} {item + 1:00}",
-            };
+                Color[] paleta = carro != null ? carro.PaintPalette : null;
+                return paleta != null && item < paleta.Length ? NomeDaCor(paleta[item])
+                                                              : $"COR {item + 1:00}";
+            }
+
+            string prefab = carro != null ? carro.GetElementVariantName(AbaAtual.elemento, item)
+                                          : string.Empty;
+
+            return RotuloDaPeca(prefab, AbaAtual.categoria, item);
+        }
+
+        private static string RotuloDaPeca(string prefab, string categoria, int item)
+        {
+            string peca = Singular(categoria);
+
+            if (string.IsNullOrEmpty(prefab))
+                return $"{peca} {item + 1:00}";
+
+            int corte = prefab.LastIndexOf('_');
+            string sufixo = corte >= 0 ? prefab.Substring(corte + 1) : prefab;
+
+            // `Empty.prefab` é como o pack representa "sem esta peça" — aerofólio, adesivo, motor e
+            // farol de milha são liga/desliga, não catálogos.
+            if (sufixo.Equals("Empty", System.StringComparison.OrdinalIgnoreCase))
+                return "NENHUM";
+
+            if (sufixo.Equals("Simple", System.StringComparison.OrdinalIgnoreCase))
+                return "PADRÃO";
+
+            if (sufixo.Equals("Cool", System.StringComparison.OrdinalIgnoreCase))
+                return "ESPORTIVO";
+
+            return int.TryParse(sufixo, out int numero) ? $"{peca} {numero:00}" : peca;
+        }
+
+        private static string Singular(string categoria) => categoria?.ToUpperInvariant() switch
+        {
+            "RODAS" => "RODA",
+            "ADESIVOS" => "ADESIVO",
+            "FARÓIS" => "FAROL",
+            "TETO" => "AEROFÓLIO",
+            null => "ITEM",
+            _ => categoria.ToUpperInvariant(),
+        };
+
+        /// <summary>
+        /// Nome da tinta pelo matiz, não por índice.
+        ///
+        /// Derivar da própria cor evita que uma tabela de nomes fique defasada assim que a paleta
+        /// do <see cref="KartVisualCustomizer"/> mudar — e "AZUL" num card azul é informação, "COR 02"
+        /// não é.
+        /// </summary>
+        private static string NomeDaCor(Color c)
+        {
+            Color.RGBToHSV(c, out float matiz, out float saturacao, out float valor);
+
+            // O brilho decide antes do matiz. O preto da paleta é (0.08, 0.09, 0.11): tem 27% de
+            // saturação e matiz de 220°, então a conta por matiz sozinha o chamava de "AZUL" — dois
+            // cards "AZUL" na mesma grade, um deles quase preto.
+            if (valor < 0.22f)
+                return "PRETO";
+
+            if (saturacao < 0.16f)
+                return valor > 0.72f ? "BRANCO" : "GRAFITE";
+
+            float grau = matiz * 360f;
+
+            if (grau < 15f || grau >= 340f) return "VERMELHO";
+            if (grau < 40f) return "LARANJA";
+            if (grau < 68f) return "AMARELO";
+            if (grau < 160f) return "VERDE";
+            if (grau < 200f) return "CIANO";
+            if (grau < 255f) return "AZUL";
+            if (grau < 295f) return "ROXO";
+            return "MAGENTA";
         }
 
         private static void Ligar(GameObject alvo, bool ativo)

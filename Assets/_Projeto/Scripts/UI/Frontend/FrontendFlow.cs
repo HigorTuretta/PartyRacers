@@ -26,6 +26,9 @@ namespace PartyRacers.UI.Frontend
         [Tooltip("Palco inteiro: some nas telas que não mostram carro (Loja, Passe, Config).")]
         [SerializeField] private GameObject palco;
         [SerializeField] private Camera cameraDoPalco;
+        [Tooltip("Rig que enquadra as peças na garagem. É desligado nas outras telas, para que o " +
+                 "enquadramento do lobby não seja sobrescrito frame a frame.")]
+        [SerializeField] private PartyRacers.UI.Garage.GarageCameraRig rigDaGaragem;
 
         [Header("Enquadramento do carro")]
         [SerializeField] private float inclinacao = 8f;
@@ -242,18 +245,34 @@ namespace PartyRacers.UI.Frontend
             UnityEngine.Object rigAtual = carro != null ? carro.CurrentRig : null;
             bool trocouDeCarro = rigAtual != rigEnquadrado;
 
-            if (!trocouDeTela && !trocouDeCarro)
-                return;
-
             if (trocouDeTela)
+            {
                 telaDoPalco = roteador.TelaAtual;
+
+                // A posse muda na hora em que a tela muda, e não quando a antiga termina de sumir.
+                // A troca leva 0,22 s de fade com as DUAS telas ligadas: enquanto o rig continuasse
+                // mandando durante esse tempo, o carro só voltava ao lugar num salto no último
+                // frame do fade. Desligado aqui, ele desliza de volta junto com a transição.
+                rigDaGaragem?.Ativar(telaDoPalco == "Garagem");
+            }
 
             bool mostra = telaDoPalco == "Lobby" || telaDoPalco == "Garagem";
 
             if (palco != null && palco.activeSelf != mostra)
                 palco.SetActive(mostra);
 
-            if (mostra)
+            if (!mostra)
+                return;
+
+            // Quem manda na câmera é a TELA, e a divisão é explícita: na garagem o rig enquadra
+            // peça por peça, no lobby o enquadramento é deste componente.
+            //
+            // Antes cada um mexia quando achava que devia e a ordem decidia o resultado: ao voltar
+            // da garagem a câmera ficava na pose da última peça editada e o carro aparecia fora de
+            // posição. Reenquadrar TODO frame no lobby também elimina a deriva do palco girando —
+            // a caixa do kart se desloca conforme ele roda, e um enquadramento tirado uma vez só
+            // deixava o carro escorregar para fora do lugar ao longo da volta.
+            if (telaDoPalco == "Lobby" || trocouDeTela || trocouDeCarro)
                 Enquadrar();
         }
 
@@ -264,17 +283,11 @@ namespace PartyRacers.UI.Frontend
             if (cameraDoPalco == null || carro == null || carro.CurrentRig == null)
                 return;
 
-            Renderer[] renderers = carro.CurrentRig.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0)
-                return;
-
-            Bounds caixa = renderers[0].bounds;
-            foreach (Renderer renderer in renderers)
-                caixa.Encapsulate(renderer.bounds);
-
-            // Caixa degenerada é rig ainda em construção: enquadrar agora colocaria a câmera na
-            // origem. Sai sem marcar o rig como enquadrado, para tentar de novo no frame seguinte.
-            if (caixa.extents.magnitude < 0.01f)
+            // Centro e raio medidos no espaço do MODELO. A caixa alinhada ao mundo encolhe e cresce
+            // conforme o kart gira no palco, e enquadrar por ela fazia o carro pulsar de tamanho a
+            // cada volta. Raio degenerado é rig ainda em construção: sai sem marcar o rig como
+            // enquadrado, para tentar de novo no frame seguinte.
+            if (!carro.TryGetCarShape(out Vector3 centro, out float raioDoCarro))
                 return;
 
             rigEnquadrado = carro.CurrentRig;
@@ -287,15 +300,15 @@ namespace PartyRacers.UI.Frontend
             if (escalaDoPalco < 0.01f)
                 escalaDoPalco = 1f;
 
-            float raio = caixa.extents.magnitude / escalaDoPalco;
+            float raio = raioDoCarro / escalaDoPalco;
             float fov = cameraDoPalco.fieldOfView * Mathf.Deg2Rad;
             float distancia = raio / Mathf.Tan(fov * 0.5f) * afastamento;
 
             Quaternion rotacao = Quaternion.Euler(inclinacao, giro, 0f);
-            cameraDoPalco.transform.position = caixa.center - rotacao * Vector3.forward * distancia;
+            cameraDoPalco.transform.position = centro - rotacao * Vector3.forward * distancia;
             cameraDoPalco.transform.rotation = rotacao;
 
-            Vector3 alvo = caixa.center - cameraDoPalco.transform.right * (raio * viesHorizontal);
+            Vector3 alvo = centro - cameraDoPalco.transform.right * (raio * viesHorizontal);
             if (noLobby)
                 alvo -= cameraDoPalco.transform.up * (raio * viesVerticalNoLobby);
             cameraDoPalco.transform.LookAt(alvo);

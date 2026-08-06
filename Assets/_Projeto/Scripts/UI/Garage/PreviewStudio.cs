@@ -101,6 +101,10 @@ namespace PartyRacers.UI.Garage
             cache.Clear();
             foreach (KeyValuePair<string, Texture2D> par in manter)
                 cache[par.Key] = par.Value;
+
+            // Onde cada peça mora é propriedade do MODELO: a caixa do escapamento do kart 03 não
+            // serve para mirar o do kart 11.
+            recorteDaPeca.Clear();
         }
 
         private IEnumerator Trabalhar()
@@ -148,9 +152,14 @@ namespace PartyRacers.UI.Garage
                 // O rig é montado no mesmo frame: sem esperar, a caixa medida é a do carro anterior.
                 yield return null;
 
+                // Variante vazia sem referência de recorte: acha onde a peça mora antes de mirar.
+                if (!p.EhModelo && !recorteDaPeca.ContainsKey(p.Elemento)
+                    && !clone.TryGetElementBounds(p.Elemento, out _))
+                    yield return Localizar(p);
+
                 VestirLayer(clone.transform);
 
-                Texture2D foto = Fotografar(p.Categoria);
+                Texture2D foto = Fotografar(p);
                 if (foto != null)
                 {
                     cache[p.Chave] = foto;
@@ -184,8 +193,14 @@ namespace PartyRacers.UI.Garage
 
             clone = copia.GetComponent<KartVisualCustomizer>();
 
-            // O clone não pode escrever a seleção do jogador: ele troca de peça o tempo todo, e
-            // cada troca salvaria em PlayerPrefs. A garagem inteira viraria o último preview.
+            // O clone não pode escrever a seleção do jogador: ele passa por TODAS as variantes da
+            // peça para fotografá-las, e cada troca gravava em PlayerPrefs. Ao abrir a aba RODAS, a
+            // roda equipada virava a última fotografada — a moldura verde marcava um card que o
+            // jogador nunca escolheu, e ao entrar na corrida o carro chegava com essa peça.
+            // Desligar os outros MonoBehaviour não bastava: quem grava é o próprio customizador.
+            clone.SetLoadSelectionOnStart(false);
+            clone.SetPersistSelection(false);
+
             foreach (MonoBehaviour c in copia.GetComponentsInChildren<MonoBehaviour>(true))
                 if (c != clone && !(c is CarCustomizer))
                     c.enabled = false;
@@ -222,32 +237,51 @@ namespace PartyRacers.UI.Garage
                 VestirLayer(t.GetChild(i));
         }
 
-        private Texture2D Fotografar(string categoria)
+        private Texture2D Fotografar(Pedido p)
         {
-            if (clone == null || clone.CurrentRig == null || camera3D == null)
+            if (clone == null || camera3D == null || !clone.TryGetCarBounds(out Bounds carro))
                 return null;
 
-            Renderer[] renderers = clone.CurrentRig.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0)
+            if (carro.extents.magnitude < 0.01f)
                 return null;
 
-            Bounds caixa = renderers[0].bounds;
-            foreach (Renderer r in renderers)
-                caixa.Encapsulate(r.bounds);
+            Bounds peca = default;
+            bool temPeca = !p.EhModelo && MedirPeca(p, out peca);
+            bool sozinha = temPeca && GarageFraming.Isolar(p.Categoria);
 
-            if (caixa.extents.magnitude < 0.01f)
-                return null;
+            Vector3 centro;
+            float raio;
 
-            Enquadramento e = Enquadramento.De(categoria);
-            Vector3 centro = caixa.center + new Vector3(e.Alvo.x * caixa.extents.x,
-                                                        e.Alvo.y * caixa.extents.y,
-                                                        e.Alvo.z * caixa.extents.z);
+            if (!temPeca)
+            {
+                centro = carro.center;
+                raio = carro.extents.magnitude;
+            }
+            else
+            {
+                // O recorte sai da PEÇA, não de uma tabela de coordenadas. Duas variantes de
+                // para-choque enquadradas como o carro inteiro davam dois cards idênticos, e a
+                // tabela que corrigia isso errava de carro para carro — os 15 modelos do pack têm
+                // tamanhos e proporções diferentes.
+                centro = peca.center;
 
-            float raio = caixa.extents.magnitude * e.Zoom;
-            float distancia = raio / Mathf.Tan(camera3D.fieldOfView * 0.5f * Mathf.Deg2Rad) * 1.25f;
+                // Sem o carro em volta não há contexto a mostrar: o piso e o teto de
+                // `RaioDaPeca` deixariam o retrato pequeno no meio de um quadro vazio.
+                raio = sozinha ? peca.extents.magnitude : GarageFraming.RaioDaPeca(peca, carro);
+            }
 
-            camera3D.transform.position = centro + e.Direcao.normalized * distancia;
+            // O card tem 150 px: a peça precisa ocupá-lo. O raio já é o da ESFERA que envolve a
+            // peça, bem maior do que a silhueta dela vista de qualquer lado — com 1,55 sobrava
+            // metade do card em fundo vazio.
+            Vector3 direcao = GarageFraming.Direcao(p.Categoria, carro, centro);
+            float distancia = raio / Mathf.Tan(camera3D.fieldOfView * 0.5f * Mathf.Deg2Rad)
+                            * (p.EhModelo ? 1.2f : sozinha ? 1.15f : 1.3f);
+
+            camera3D.transform.position = centro + direcao * distancia;
             camera3D.transform.LookAt(centro);
+
+            if (sozinha)
+                Esconder(p.Elemento);
 
             var rt = RenderTexture.GetTemporary(lado, lado, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, 4);
             camera3D.targetTexture = rt;
@@ -262,26 +296,102 @@ namespace PartyRacers.UI.Garage
 
             camera3D.targetTexture = null;
             RenderTexture.ReleaseTemporary(rt);
+
+            Revelar();
             return tex;
         }
 
-        /// <summary>De onde fotografar cada categoria — os mesmos ângulos da câmera da garagem.</summary>
-        private sealed class Enquadramento
+        /// <summary>
+        /// Apaga tudo do clone menos a peça, para o retrato dela.
+        ///
+        /// Mexe só nos renderers, e só entre <see cref="Camera.Render"/> e o
+        /// <see cref="Revelar"/> logo abaixo: nada disso chega a aparecer num frame.
+        /// </summary>
+        private void Esconder(CarElementName elemento)
         {
-            public Vector3 Direcao = new Vector3(1f, 0.45f, 1f);
-            public float Zoom = 1f;
-            public Vector3 Alvo;
+            escondidos.Clear();
 
-            public static Enquadramento De(string categoria) => categoria?.ToUpperInvariant() switch
+            var daPeca = new HashSet<Renderer>();
+            IReadOnlyList<GameObject> spawned = clone.CurrentRig != null
+                ? clone.CurrentRig.GetSpawnedElements(elemento)
+                : null;
+
+            if (spawned != null)
+                foreach (GameObject go in spawned)
+                    if (go != null)
+                        foreach (Renderer r in go.GetComponentsInChildren<Renderer>(true))
+                            daPeca.Add(r);
+
+            foreach (Renderer r in clone.GetComponentsInChildren<Renderer>(true))
             {
-                "RODAS" => new Enquadramento { Direcao = new Vector3(1f, 0.1f, 0.3f), Zoom = 0.34f, Alvo = new Vector3(0.55f, -0.5f, 0.45f) },
-                "FRENTE" => new Enquadramento { Direcao = new Vector3(0.3f, 0.25f, 1f), Zoom = 0.45f, Alvo = new Vector3(0f, -0.2f, 0.6f) },
-                "TRASEIRA" => new Enquadramento { Direcao = new Vector3(0.3f, 0.28f, -1f), Zoom = 0.45f, Alvo = new Vector3(0f, -0.1f, -0.6f) },
-                "TETO" => new Enquadramento { Direcao = new Vector3(0.5f, 0.8f, 0.5f), Zoom = 0.55f, Alvo = new Vector3(0f, 0.4f, 0f) },
-                "ADESIVOS" => new Enquadramento { Direcao = new Vector3(1f, 0.1f, 0.05f), Zoom = 0.6f },
-                _ => new Enquadramento(),
-            };
+                if (!r.enabled || daPeca.Contains(r))
+                    continue;
+
+                r.enabled = false;
+                escondidos.Add(r);
+            }
         }
+
+        private void Revelar()
+        {
+            foreach (Renderer r in escondidos)
+                if (r != null)
+                    r.enabled = true;
+
+            escondidos.Clear();
+        }
+
+        private readonly List<Renderer> escondidos = new List<Renderer>();
+
+        /// <summary>
+        /// Onde a peça equipada está, em espaço de mundo.
+        ///
+        /// Quatro elementos do pack (aerofólio, adesivo, motor e farol de milha) têm o
+        /// <c>Empty.prefab</c> como segunda variante: não há renderer para medir. Aí o
+        /// enquadramento vem da variante CHEIA do mesmo elemento — o card do "sem" precisa mostrar
+        /// o mesmo recorte do card do "com", senão os dois não se comparam e a grade parece quebrada.
+        /// </summary>
+        private bool MedirPeca(Pedido p, out Bounds caixa)
+        {
+            if (clone.TryGetElementBounds(p.Elemento, out caixa))
+            {
+                recorteDaPeca[p.Elemento] = caixa;
+                return true;
+            }
+
+            return recorteDaPeca.TryGetValue(p.Elemento, out caixa);
+        }
+
+        /// <summary>
+        /// Descobre onde a peça mora quando a variante equipada é o <c>Empty</c>: monta as outras,
+        /// mede, e devolve a equipada. Acontece no máximo uma vez por elemento.
+        ///
+        /// É coroutine porque cada troca de peça precisa de um frame: o <c>Destroy</c> da variante
+        /// anterior só acontece no fim do frame, e fotografar antes disso pegaria a peça velha e a
+        /// nova juntas na mesma imagem.
+        /// </summary>
+        private IEnumerator Localizar(Pedido p)
+        {
+            int total = clone.GetElementVariantCount(p.Elemento);
+
+            for (int i = 0; i < total && !recorteDaPeca.ContainsKey(p.Elemento); i++)
+            {
+                if (i == p.Indice)
+                    continue;
+
+                clone.SetElement(p.Elemento, i);
+                yield return null;
+
+                if (clone.TryGetElementBounds(p.Elemento, out Bounds achada))
+                    recorteDaPeca[p.Elemento] = achada;
+            }
+
+            clone.SetElement(p.Elemento, p.Indice);
+            yield return null;
+        }
+
+        private readonly Dictionary<CarElementName, Bounds> recorteDaPeca =
+            new Dictionary<CarElementName, Bounds>();
 
         private void OnDestroy()
         {

@@ -238,6 +238,7 @@ namespace PartyRacers.UI.Importer
             var carro = raizes.Select(g => g.GetComponentInChildren<KartVisualCustomizer>(true))
                               .FirstOrDefault(c => c != null);
             Referencia(grid, "carro", carro);
+            LimparCarroSalvo(carro, log);
 
             // O rig da câmera vive na CÂMERA e precisa saber o palco e o carro: as poses são
             // medidas a partir da caixa do modelo, não de coordenadas fixas. Sem essas duas
@@ -258,9 +259,20 @@ namespace PartyRacers.UI.Importer
                 Referencia(rig, "camera3D", cam);
                 Referencia(rig, "palco", palco);
                 Referencia(rig, "carro", carro != null ? carro.transform : palco);
+
+                // Com o customizador o rig mira a PEÇA montada em vez de uma fração da caixa do
+                // carro: é o que faz a câmera grande mostrar o mesmo recorte do card.
+                Referencia(rig, "customizador", carro);
             }
 
             Referencia(grid, "camera3D", rig);
+
+            // O fluxo precisa saber quem é o rig para tirar dele a posse da câmera assim que a tela
+            // muda — senão o carro só volta ao lugar do lobby no último frame do fade.
+            var fluxo = raizes.Select(g => g.GetComponent<PartyRacers.UI.Frontend.FrontendFlow>())
+                              .FirstOrDefault(c => c != null);
+            if (fluxo != null)
+                Referencia(fluxo, "rigDaGaragem", rig);
 
             // O estúdio de preview vive ao lado do carro do palco: ele clona esse customizador
             // para montar as variantes sem tocar no carro que o jogador está vendo.
@@ -275,6 +287,40 @@ namespace PartyRacers.UI.Importer
             }
             log.AppendLine($"  Garagem → rig de câmera: {(rig != null ? "ligado ao palco e ao carro" : "AUSENTE")}");
             log.AppendLine($"  Garagem → carro: {(carro != null ? carro.name : "NULO")}");
+        }
+
+        /// <summary>
+        /// Tira da CENA o carro que ficou montado de alguma sessão de editor.
+        ///
+        /// Abrir a garagem no editor monta o rig sob `CarModelRoot`; salvar a cena depois disso
+        /// grava esse carro junto. Em play ele não some — quem monta o carro do jogador nasce sem
+        /// saber que ele existe — e os dois ficam empilhados: trocar de peça mexia num e a metade
+        /// visível continuava igual. O runtime já limpa o nó ao montar; aqui a cena para de
+        /// carregar o peso morto.
+        /// </summary>
+        private static void LimparCarroSalvo(KartVisualCustomizer carro, StringBuilder log)
+        {
+            if (carro == null)
+                return;
+
+            var so = new SerializedObject(carro);
+            var raiz = so.FindProperty("carModelRoot")?.objectReferenceValue as Transform;
+            if (raiz == null)
+                return;
+
+            int removidos = 0;
+            for (int i = raiz.childCount - 1; i >= 0; i--)
+            {
+                Transform filho = raiz.GetChild(i);
+                if (filho.GetComponent<ithappy.CarCustomizer>() == null)
+                    continue;
+
+                Object.DestroyImmediate(filho.gameObject);
+                removidos++;
+            }
+
+            if (removidos > 0)
+                log.AppendLine($"  carro do palco: {removidos} rig(s) salvo(s) na cena removido(s)");
         }
 
         private static void RegistrarTelas(ScreenRouter roteador,

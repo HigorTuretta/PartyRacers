@@ -41,6 +41,16 @@ namespace ithappy
         {
         }
 
+        /// <summary>
+        /// Os objetos que a variante atual daquele elemento instanciou.
+        ///
+        /// Serve para ENQUADRAR a peça: a garagem precisa apontar a câmera para o para-choque, e
+        /// as coordenadas de cada peça mudam de carro para carro. Medir o que está montado é a
+        /// única forma que vale para os 15 modelos do pack.
+        /// </summary>
+        public IReadOnlyList<GameObject> GetSpawnedElements(CarElementName elementName)
+            => _carElementInfos.TryGetValue(elementName, out var spawned) ? spawned : null;
+
         public int GetVariantCount(CarElementName elementName)
         {
             if (_elements == null)

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ithappy;
 using UnityEngine;
 
 namespace PartyRacers.UI.Garage
@@ -77,6 +78,10 @@ namespace PartyRacers.UI.Garage
         [Tooltip("Quanto a câmera recua além do necessário para a peça caber. Menor = mais perto.")]
         [Range(1f, 3f)] [SerializeField] private float afastamento = 2.15f;
 
+        [Tooltip("Recuo quando a mira é uma PEÇA medida. Menor que o do carro inteiro: é o que faz " +
+                 "duas variantes parecidas se distinguirem.")]
+        [Range(1f, 3f)] [SerializeField] private float afastamentoDaPeca = 1.75f;
+
         [Header("Blend")]
         [SerializeField, Min(0.05f)] private float duracao = 0.45f;
 
@@ -102,6 +107,10 @@ namespace PartyRacers.UI.Garage
                 palco = transform;
         }
 
+        [Tooltip("Customizador do carro do palco. Com ele a câmera mira a PEÇA medida em vez de " +
+                 "uma coordenada fixa, e o carro grande mostra o mesmo recorte do card.")]
+        [SerializeField] private KartVisualCustomizer customizador;
+
         /// <summary>Vai para a pose da categoria. Categoria desconhecida cai na de visão completa.</summary>
         public void IrPara(string categoria)
         {
@@ -122,16 +131,60 @@ namespace PartyRacers.UI.Garage
             // previsível, e é o gesto que o jogador espera: "me mostre ISTO".
             ZerarRotacaoDoCarro();
 
-            Vector3 centro = caixa.center + new Vector3(pose.alvo.x * caixa.extents.x,
-                                                        pose.alvo.y * caixa.extents.y,
-                                                        pose.alvo.z * caixa.extents.z);
+            // Mira a PEÇA montada quando ela existe. As poses do JSON descreviam a região do carro
+            // por frações da caixa — "a frente" era sempre 65% para z+, o que servia para um kart e
+            // apontava para o asfalto no seguinte. Medir a peça vale para os 15 modelos e cobre de
+            // graça as categorias que o protótipo não desenhou.
+            CarElementName elemento = GarageFraming.Elemento(categoria);
+            bool naPeca = elemento != CarElementName.None && customizador != null
+                       && customizador.TryGetElementBounds(elemento, out ultimaPeca);
 
-            float raio = Mathf.Max(0.05f, caixa.extents.magnitude * Mathf.Max(0.05f, pose.zoom));
+            // Aerofólio/adesivo/motor/neblina "desligados" não têm renderer para medir. A câmera
+            // fica onde a peça estava: é justamente o vazio dela que o jogador precisa ver.
+            if (!naPeca && elemento != CarElementName.None && elemento == ultimoElemento
+                && ultimaPeca.extents.magnitude > 0.0005f)
+                naPeca = true;
+
+            if (elemento != CarElementName.None)
+                ultimoElemento = elemento;
+
+            Vector3 centro;
+            float raio;
+            Vector3 direcao;
+
+            if (naPeca)
+            {
+                centro = ultimaPeca.center;
+                raio = GarageFraming.RaioDaPeca(ultimaPeca, caixa);
+                direcao = GarageFraming.Direcao(categoria, caixa, centro);
+            }
+            else
+            {
+                // MODELO e COR mostram o carro girando. Medido pela caixa alinhada ao mundo, o raio
+                // muda a cada ângulo e o carro pulsa de tamanho; o raio do modelo é o mesmo sempre.
+                Vector3 centroDoCarro = caixa.center;
+                float raioDoCarro = caixa.extents.magnitude;
+
+                if (customizador != null
+                    && customizador.TryGetCarShape(out Vector3 estavel, out float raioEstavel))
+                {
+                    centroDoCarro = estavel;
+                    raioDoCarro = raioEstavel;
+                }
+
+                centro = centroDoCarro + new Vector3(pose.alvo.x * caixa.extents.x,
+                                                     pose.alvo.y * caixa.extents.y,
+                                                     pose.alvo.z * caixa.extents.z);
+                raio = Mathf.Max(0.05f, raioDoCarro * Mathf.Max(0.05f, pose.zoom));
+                direcao = pose.direcao.normalized;
+            }
+
             // 1,3 deixava o carro estourando a tela: a caixa do kart é comprida e o fator só
             // afasta o suficiente para a MAIOR dimensão caber justa, sem respiro nenhum.
-            float distancia = raio / Mathf.Tan(pose.fov * 0.5f * Mathf.Deg2Rad) * afastamento;
+            float distancia = raio / Mathf.Tan(pose.fov * 0.5f * Mathf.Deg2Rad)
+                            * (naPeca ? afastamentoDaPeca : afastamento);
 
-            destinoPos = centro + pose.direcao.normalized * distancia;
+            destinoPos = centro + direcao * distancia;
             destinoFov = pose.fov;
 
             // O carro não fica no meio da tela: ele mora no espaço livre à DIREITA do painel de
@@ -150,14 +203,19 @@ namespace PartyRacers.UI.Garage
             ultimaInteracao = Time.time;
 
             // Peça em edição fica parada; carro inteiro (modelo, cor) continua girando, porque é
-            // girando que se avalia a silhueta.
+            // girando que se avalia a silhueta. Quem manda é a CATEGORIA, não a pose: as
+            // categorias sem pose própria caíam na de visão completa e editavam a peça com o carro
+            // rodando — a peça passava pela frente e sumia.
             if (palcoQueGira == null && palco != null)
                 palcoQueGira = palco.GetComponentInParent<PartyRacers.UI.Motion.CarStage>();
 
-            palcoQueGira?.DefinirGiroAutomatico(!pose.congelarGiro);
+            bool ehPeca = elemento != CarElementName.None;
+            palcoQueGira?.DefinirGiroAutomatico(!ehPeca && !pose.congelarGiro);
         }
 
         private PartyRacers.UI.Motion.CarStage palcoQueGira;
+        private Bounds ultimaPeca;
+        private CarElementName ultimoElemento = CarElementName.None;
 
         /// <summary>Caixa dos renderers do carro. Sem carro montado não há o que enquadrar.</summary>
         private bool MedirCarro(out Bounds caixa)

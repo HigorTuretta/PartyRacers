@@ -1023,42 +1023,96 @@ namespace PartyRacers.UI.Importer
             var so = new SerializedObject(ui);
 
             // Categoria → de onde vem a lista de opções. Modelo e cor são globais do carro; o resto
-            // é peça, e cada peça é um elemento do modelo 3D (CarElementName).
-            (string rotulo, int fonte, int elemento)[] categorias =
+            // é um elemento do modelo 3D (CarElementName).
+            //
+            // O protótipo desenhou SETE abas, e elas cobriam metade do pack: piloto (5 variantes),
+            // motor, faróis, farol de milha e escapamento não tinham aba nenhuma — era conteúdo
+            // pronto e inalcançável. As doze abaixo cobrem os dez elementos + modelo + cor, ou seja,
+            // tudo o que os rigs do pack expõem hoje.
+            //
+            // As sete do design ficam onde ele as pôs; as cinco novas entram na sobra da segunda
+            // fileira e numa terceira, com as posições em coordenadas do dump (o painel tem 200 px
+            // livres abaixo da grade, então descer o conteúdo em 49 px não custa nada).
+            // rótulo, fonte (0=modelo, 1=cor, 2=elemento), CarElementName, e a caixa em
+            // coordenadas do dump. As sete primeiras são as do design, nas posições dele; as cinco
+            // últimas entram na sobra da segunda fileira e numa terceira.
+            (string rotulo, int fonte, int elemento, float x, float y, float w, float h, bool nova)[] categorias =
             {
-                ("MODELO",   0, 0),
-                ("COR",      1, 0),
-                ("RODAS",    2, 5),
-                ("FRENTE",   2, 1),
-                ("TRASEIRA", 2, 2),
-                ("TETO",     2, 9),
-                ("ADESIVOS", 2, 6),
+                ("MODELO",   0,  0,  68.0f, 152f, 119.8f, 45f, false),
+                ("COR",      1,  0, 193.8f, 152f,  81.7f, 45f, false),
+                ("RODAS",    2,  5, 281.5f, 152f, 109.3f, 45f, false),   // Wheel       — 15 variantes
+                ("FRENTE",   2,  1, 396.8f, 152f, 113.5f, 45f, false),   // FrontBumper — padrão/esportivo
+                ("TRASEIRA", 2,  2, 516.3f, 152f, 135.8f, 45f, false),   // RearBumper  — padrão/esportivo
+                ("TETO",     2,  9,  68.0f, 203f,  91.4f, 43f, false),   // Spoiler     — com/sem
+                ("ADESIVOS", 2,  6, 165.4f, 203f, 136.5f, 43f, false),   // Decals      — com/sem
+
+                ("PILOTO",   2, 10, 307.9f, 203f, 114.3f, 43f, true),    // Racer       — 5 variantes
+                ("FARÓIS",   2,  4, 428.2f, 203f, 114.3f, 43f, true),    // Headlight   — padrão/esportivo
+                ("ESCAPE",   2,  3, 548.5f, 203f, 114.3f, 43f, true),    // Pipe        — padrão/esportivo
+                ("MOTOR",    2,  8,  68.0f, 252f, 103.4f, 43f, true),    // Engine      — com/sem
+                ("NEBLINA",  2,  7, 177.4f, 252f, 125.1f, 43f, true),    // FogLight    — com/sem
             };
+
+            // A terceira fileira empurra o resto do painel para baixo. Cabe: são 916 px de painel
+            // para 726 de grade.
+            const float DescidaDoConteudo = 49f;
 
             SerializedProperty abas = so.FindProperty("abas");
             abas.arraySize = categorias.Length;
 
+            // A faixa é reancorada no topo com a altura das TRÊS fileiras. Sem isso ela crescia
+            // pelo centro e cada fileira ia para um lado: as abas do documento não compartilham
+            // âncora — a primeira fileira está presa no topo, a segunda no rodapé da faixa, e duas
+            // delas na borda direita. Enquanto a faixa tinha altura fixa isso não aparecia.
+            RectTransform faixa = m.Caixa(68f, 152f, 670f, 94f);
+            if (faixa != null)
+                m.AncorarNoTopo(faixa, 94f + DescidaDoConteudo);
+
+            // O modelo é clonado ANTES de ADESIVOS receber os dois estados: senão cada cópia já
+            // nasceria com moldura de aba dentro de outra moldura.
+            RectTransform modeloDeAba = Alvo(m, "ADESIVOS");
+
             for (int i = 0; i < categorias.Length; i++)
             {
+                var c = categorias[i];
                 SerializedProperty item = abas.GetArrayElementAtIndex(i);
-                item.FindPropertyRelative("categoria").stringValue = categorias[i].rotulo;
-                item.FindPropertyRelative("fonte").enumValueIndex = categorias[i].fonte;
-                item.FindPropertyRelative("elemento").intValue = categorias[i].elemento;
+                item.FindPropertyRelative("categoria").stringValue = c.rotulo;
+                item.FindPropertyRelative("fonte").enumValueIndex = c.fonte;
+                item.FindPropertyRelative("elemento").intValue = c.elemento;
 
-                RectTransform aba = Alvo(m, categorias[i].rotulo);
+                RectTransform aba = c.nova
+                    ? Copiar(modeloDeAba, modeloDeAba != null ? modeloDeAba.parent : null)
+                    : Alvo(m, c.rotulo);
+
                 if (aba == null)
                     continue;
 
+                if (c.nova)
+                {
+                    aba.name = "Aba_" + c.rotulo;
+                    Rotular(aba.gameObject, c.rotulo);
+                    CentralizarRotulo(aba);
+                }
+
+                PosicionarAba(aba, c.x - 68f, c.y - 152f, c.w, c.h);
+
                 item.FindPropertyRelative("botao").objectReferenceValue = Clicavel(aba);
-                (GameObject ativo, GameObject ocioso) = DoisEstados(aba, categorias[i].rotulo == "RODAS");
+                // "RODAS" é a aba que o documento desenhou ATIVA. Dizer que era outra fazia a
+                // aparência âmbar dela virar o estado ocioso: RODAS parecia selecionada sempre,
+                // junto com a aba realmente aberta.
+                (GameObject ativo, GameObject ocioso) = DoisEstados(aba, c.rotulo == "RODAS");
                 item.FindPropertyRelative("estadoAtivo").objectReferenceValue = ativo;
                 item.FindPropertyRelative("estadoOcioso").objectReferenceValue = ocioso;
             }
 
+            RectTransform legenda = m.Caixa(68f, 260f, 670f, 20f);
+            if (legenda != null)
+                m.AncorarNoTopo(legenda, 20f, DescidaDoConteudo);
+
             // ---- grade de cards
             RectTransform[] cards = m.Caixas(158f, 168f, 6f);
             if (cards.Length > 0)
-                Gradear(m, cards, 158f, 168f, 14f, 4);
+                Gradear(m, cards, 158f, 168f, 14f, 4, DescidaDoConteudo);
 
             SerializedProperty lista = so.FindProperty("cards");
             lista.arraySize = cards.Length;
@@ -1072,6 +1126,13 @@ namespace PartyRacers.UI.Importer
                 item.FindPropertyRelative("raiz").objectReferenceValue = card.gameObject;
                 item.FindPropertyRelative("botao").objectReferenceValue = Clicavel(card);
 
+                // O documento pintou cada card de uma cor de RARIDADE (comum, raro, épico,
+                // lendário). O projeto não tem economia de cosméticos, então seis cores diferentes
+                // atrás de doze fotos não informam nada e ainda competem com a peça — a mesma roda
+                // parecia outra coisa conforme a célula em que caísse. Fundo único; quem colore é o
+                // estado, que significa algo.
+                Uniformizar(card);
+
                 // Os quatro estados são molduras SOBRE o conteúdo, e não quatro cards diferentes:
                 // assim o preview e o nome nunca saltam de lugar ao selecionar.
                 GameObject equipado = Contorno(card, "Equipped", Verde, 3f, 18f);
@@ -1084,9 +1145,15 @@ namespace PartyRacers.UI.Importer
                 item.FindPropertyRelative("livre").objectReferenceValue = livre;
                 item.FindPropertyRelative("bloqueado").objectReferenceValue = bloqueado;
 
+                // O card do design tem duas linhas: o nome da peça e, abaixo, a raridade. Raridade
+                // é economia de cosméticos, que o projeto não tem — a linha passa a dizer o ESTADO,
+                // que é informação de verdade e ocupa o mesmo lugar na composição.
                 RectTransform[] textos = m.TextosEm(card);
                 if (textos.Length > 1)
+                {
                     item.FindPropertyRelative("nome").objectReferenceValue = Tmp(textos[textos.Length - 2]);
+                    item.FindPropertyRelative("etiqueta").objectReferenceValue = Tmp(textos[textos.Length - 1]);
+                }
 
                 // O retângulo colorido do card é um `UIRoundedRect`, não um `Image` — procurar
                 // Image ali devolvia nulo e o card ficava sem preview nenhum. A foto entra num
@@ -1781,14 +1848,14 @@ namespace PartyRacers.UI.Importer
         /// lixo. O bloco já vem do design no lugar certo — basta deixá-lo em paz.
         /// </summary>
         private static void Gradear(ProtoBuilder.Mapa m, RectTransform[] cards, float largura,
-                                    float altura, float espaco, int colunas)
+                                    float altura, float espaco, int colunas, float descer = 0f)
         {
             var pai = (RectTransform)cards[0].parent;
 
             // A grade cresce do topo para baixo, a partir de onde o protótipo a colocou — logo
             // abaixo da última fileira de abas.
             float linhas = Mathf.Ceil(cards.Length / (float)colunas);
-            m.AncorarNoTopo(pai, linhas * (altura + espaco));
+            m.AncorarNoTopo(pai, linhas * (altura + espaco), descer);
 
             var grade = pai.GetComponent<GridLayoutGroup>() ?? pai.gameObject.AddComponent<GridLayoutGroup>();
             grade.cellSize = new Vector2(largura, altura);
@@ -1977,6 +2044,31 @@ namespace PartyRacers.UI.Importer
             return miolo;
         }
 
+        /// <summary>
+        /// Deixa todos os cards da grade com o mesmo fundo, e o degradê sem tingir.
+        ///
+        /// O degradê do protótipo MULTIPLICA a cor do preenchimento: mantê-lo como veio faria a
+        /// tinta única voltar a virar seis tons diferentes.
+        /// </summary>
+        private static void Uniformizar(RectTransform card)
+        {
+            foreach (UIRoundedRect f in card.GetComponentsInChildren<UIRoundedRect>(true))
+            {
+                if (f.name == "Shadow" || f.CorDoPreenchimento.a <= 0.05f)
+                    continue;
+
+                float raio = f.Raio;
+                f.Definir(FundoDoCard, raio);
+                f.DefinirContorno(Fio, 2f);
+
+                var degrade = f.GetComponent<PartyRacers.UI.Motion.UIGradient>();
+                if (degrade != null)
+                    degrade.Definir(Color.white, new Color(0.82f, 0.82f, 0.86f, 1f));
+            }
+        }
+
+        private static readonly Color FundoDoCard = new Color(0.098f, 0.106f, 0.153f, 1f);
+
         /// <summary>Troca o texto de um estado clonado — o par PRONTO/AGUARDANDO é o mesmo botão.</summary>
         private static void Rotular(GameObject estado, string texto)
         {
@@ -2067,6 +2159,48 @@ namespace PartyRacers.UI.Importer
             go.transform.SetParent(pai, false);
             Esticar((RectTransform)go.transform);
             return go;
+        }
+
+        /// <summary>
+        /// Prende uma aba ao canto superior esquerdo da faixa, na caixa que ela tem no documento.
+        ///
+        /// As abas do dump não compartilham âncora — o navegador resolveu cada uma pela borda mais
+        /// próxima, e a fileira de baixo ficou presa no RODAPÉ da faixa. Enquanto a faixa tinha
+        /// altura fixa dava no mesmo; ao ganhar uma terceira fileira, cada uma foi para um lado.
+        /// Uma âncora só, em coordenadas do documento, torna a faixa previsível.
+        /// </summary>
+        private static void PosicionarAba(RectTransform aba, float x, float y, float w, float h)
+        {
+            aba.anchorMin = new Vector2(0f, 1f);
+            aba.anchorMax = new Vector2(0f, 1f);
+            aba.pivot = new Vector2(0f, 1f);
+            aba.anchoredPosition = new Vector2(x, -y);
+            aba.sizeDelta = new Vector2(w, h);
+        }
+
+        /// <summary>
+        /// Faz o rótulo da aba clonada preencher a aba, centrado.
+        ///
+        /// A cópia herda a caixa de texto de "ADESIVOS", dimensionada para oito letras e presa à
+        /// esquerda: "MOTOR" ficaria descolado para um lado e "NEBLINA" encostaria na moldura. No
+        /// design a folga é a mesma dos dois lados, então centrar reproduz o mesmo resultado sem
+        /// depender de acertar a largura do texto.
+        /// </summary>
+        private static void CentralizarRotulo(RectTransform aba)
+        {
+            TextMeshProUGUI texto = aba.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (texto == null)
+                return;
+
+            var r = (RectTransform)texto.transform;
+            r.anchorMin = new Vector2(0f, 0f);
+            r.anchorMax = new Vector2(1f, 1f);
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.offsetMin = Vector2.zero;
+            r.offsetMax = Vector2.zero;
+
+            texto.alignment = TextAlignmentOptions.Center;
+            texto.enableWordWrapping = false;
         }
 
         private static RectTransform Copiar(RectTransform origem, Transform destino)

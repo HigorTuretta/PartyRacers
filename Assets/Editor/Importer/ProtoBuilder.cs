@@ -223,14 +223,14 @@ namespace PartyRacers.UI.Importer
             /// rect esticado mede zero e qualquer medida tirada da cena vira lixo — foi assim que a
             /// grade de cards subiu por cima da segunda fileira de abas.
             /// </summary>
-            public void AncorarNoTopo(RectTransform alvo, float altura)
+            public void AncorarNoTopo(RectTransform alvo, float altura, float descer = 0f)
             {
                 No n = nos.FirstOrDefault(x => x.Rect == alvo);
                 if (n == null)
                     return;
 
                 No pai = n.Pai >= 0 && n.Pai < nos.Count ? nos[n.Pai] : null;
-                float topo = pai != null ? n.Y - pai.Y : n.Y;
+                float topo = (pai != null ? n.Y - pai.Y : n.Y) + descer;
                 float esquerda = pai != null ? n.X - pai.X : n.X;
 
                 alvo.anchorMin = new Vector2(0f, 1f);
