@@ -93,6 +93,7 @@ GameObject:
   - component: {fileID: -2359419696250044244}
   - component: {fileID: 8680242141638413743}
   - component: {fileID: 3381975461864155478}
+  - component: {fileID: 1560548847806504178}
   m_Layer: 0
   m_Name: PlayerKart_Local
   m_TagString: Player
@@ -778,6 +779,7 @@ MonoBehaviour:
   - {r: 1, g: 0.45, b: 0.05, a: 1}
   - {r: 0.55, g: 0.2, b: 0.8, a: 1}
   loadSelectionOnStart: 1
+  persistSelection: 1
 --- !u!114 &7838859324014391471
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -910,6 +912,22 @@ MonoBehaviour:
   localRig: {fileID: 0}
   blockVFXPrefab: {fileID: 0}
   blockVFXLifetime: 1.5
+--- !u!114 &1560548847806504178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2611403489893210895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f20f736b62abe6042b17c2d473d3ddf8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KartBrokenSmoke
+  fumacaPrefab: {fileID: 4318940320840401929, guid: 842eb98046e1ca348b3c0807fcfe362d, type: 3}
+  saida: {fileID: 0}
+  deslocamento: {x: 0, y: 0.6, z: -0.1}
+  escala: 0.1
 --- !u!1 &2907691769381872857
 GameObject:
   m_ObjectHideFlags: 0

@@ -16,40 +16,44 @@ namespace PartyRacers.UI.Race
     /// • Os quatro estados do escudo são LINHAS INTEIRAS irmãs, já estilizadas: o protótipo troca
     ///   até a cor do rótulo entre eles, e recolorir por código seria o binder decidindo estilo.
     /// • O estado danificado SUBSTITUI a vida pela barra de reparo; o escudo não some, apaga.
-    /// • Segmento meio drenado é `fillAmount`, nunca redimensionamento do RectTransform.
+    /// • As barras preenchem pela LARGURA do rect. `Image.fillAmount` é ignorado quando o
+    ///   Image não tem sprite — e as barras da HUD são retângulos lisos, sem sprite nenhum.
     /// </summary>
     [DisallowMultipleComponent]
     public class VitalClusterUI : MonoBehaviour
     {
-        /// <summary>Um bloco da barra de vida: os três filhos já existem na cena.</summary>
-        [System.Serializable]
-        public class SegmentoDeVida
-        {
-            [Tooltip("Preenchimento verde (Image type Filled, Horizontal).")]
-            public Image cheio;
-            [Tooltip("Preenchimento âmbar de vida baixa (Image type Filled, Horizontal).")]
-            public Image ferido;
-            [Tooltip("Trilho apagado que fica sempre ligado, por baixo.")]
-            public GameObject vazio;
-        }
-
         [Header("Dados")]
         [SerializeField] private RaceHUDDataProvider dados;
 
-        [Header("Vida")]
+        [Header("Vida — uma barra sólida")]
         [SerializeField] private GameObject raizVida;
-        [Tooltip("Os 5 blocos de 20 HP, da esquerda para a direita.")]
-        [SerializeField] private SegmentoDeVida[] segmentosDeVida = new SegmentoDeVida[5];
+        [Tooltip("Preenchimento da vida. Ancorado à esquerda; a largura é o valor.")]
+        [SerializeField] private Image preenchimentoVida;
+        [Tooltip("Rastro atrás do preenchimento: fica onde a vida ESTAVA e alcança devagar. É ele " +
+                 "que mostra QUANTO se perdeu — a barra nova sozinha só diz quanto sobrou.")]
+        [SerializeField] private Image rastroDeDano;
+        [Tooltip("Velocidade com que o rastro alcança a vida atual, em frações por segundo.")]
+        [SerializeField] private float velocidadeDoRastro = 0.9f;
+        [Tooltip("Segundos que o rastro espera antes de começar a andar. A pausa é o que torna a " +
+                 "perda legível: sem ela o rastro e a barra descem juntos e não há o que comparar.")]
+        [SerializeField] private float esperaDoRastro = 0.35f;
         [SerializeField] private TextMeshProUGUI valorDeVida;
-        [Tooltip("Abaixo desta fração os blocos trocam para âmbar — é o aviso de que o próximo " +
-                 "golpe pode quebrar o carro.")]
+        [Tooltip("Abaixo desta fração a barra troca para âmbar — é o aviso de que o próximo golpe " +
+                 "pode quebrar o carro.")]
         [SerializeField, Range(0f, 1f)] private float limiarDeVidaBaixa = 0.4f;
+        [SerializeField] private Color corDeVida = new Color(0.24f, 0.86f, 0.59f);
+        [SerializeField] private Color corDeVidaBaixa = new Color(1f, 0.69f, 0.13f);
+        [Tooltip("Vida piscando enquanto o carro se repara.")]
+        [SerializeField] private Color corDeReparo = new Color(0.42f, 0.72f, 1f);
+
+        private float rastro = 1f;
+        private float esperaRestante;
 
         [Header("Escudo — uma barra, três estados")]
         [SerializeField] private GameObject raizEscudo;
-        [Tooltip("Preenchimento da barra (Image type Filled, Horizontal).")]
+        [Tooltip("Preenchimento da barra. Ancorado à esquerda; a largura é o valor.")]
         [SerializeField] private Image preenchimentoEscudo;
-        [Tooltip("Risquinho na ponta do preenchimento. Anda junto com o fillAmount.")]
+        [Tooltip("Risquinho na ponta do preenchimento. Anda com a borda da barra.")]
         [SerializeField] private RectTransform pontaDoEscudo;
         [Tooltip("Chapinha à direita da barra: PRONTO / ATIVO 2,3s / 3,4s.")]
         [SerializeField] private TextMeshProUGUI textoDoEscudo;
@@ -61,9 +65,16 @@ namespace PartyRacers.UI.Race
         [SerializeField] private Color corAtivo = new Color(0.62f, 0.92f, 1f);
         [SerializeField] private Color corRecarga = new Color(0.29f, 0.33f, 0.66f);
 
+        [Header("Escudo — animação (§ do protótipo: prGlow 1,8 s e prShine 2,4 s / 1 s)")]
+        [Tooltip("Faixa de luz que varre a barra. Ligada quando pronto (2,4 s) e ativo (1 s); " +
+                 "desligada em recarga — é a AUSÊNCIA dela que diz indisponível.")]
+        [SerializeField] private PartyRacers.UI.Motion.UIShineSweep varredura;
+        [Tooltip("Halo pulsante por trás da barra, aceso quando o escudo está pronto.")]
+        [SerializeField] private PartyRacers.UI.Motion.UIGlowPulse halo;
+
         [Header("Imunidade (cooldown de contato)")]
         [SerializeField] private GameObject raizImunidade;
-        [Tooltip("Barra âmbar que drena em 0,75 s (Image type Filled, Horizontal).")]
+        [Tooltip("Barra âmbar que drena em 0,75 s.")]
         [SerializeField] private Image barraDeImunidade;
 
         [Header("Movimento")]
@@ -78,7 +89,7 @@ namespace PartyRacers.UI.Race
 
         [Header("Estado danificado")]
         [SerializeField] private GameObject raizReparo;
-        [Tooltip("Listras diagonais que drenam em 2,5 s (Image type Filled, Horizontal).")]
+        [Tooltip("Barra que ENCHE enquanto o carro se conserta.")]
         [SerializeField] private Image preenchimentoDoReparo;
         [SerializeField] private TextMeshProUGUI contagemDoReparo;
 
@@ -100,8 +111,14 @@ namespace PartyRacers.UI.Race
 
             bool danificado = dados.IsBroken;
 
-            Ligar(raizVida, !danificado);
-            Ligar(raizReparo, danificado);
+            // A barra de vida NÃO some quando o carro quebra: ela vira a barra de reparo, enchendo
+            // no lugar. Trocar por outro widget faria a informação mudar de lugar justamente no
+            // momento em que o jogador mais procura por ela.
+            Ligar(raizVida, true);
+
+            // `raizReparo` era o bloco separado de conserto do documento. Como a própria barra de
+            // vida virou a barra de reparo, ligá-lo deixava uma faixa pálida sobrando ao lado.
+            Ligar(raizReparo, false);
 
             AtualizarEscudo(danificado);
 
@@ -118,45 +135,63 @@ namespace PartyRacers.UI.Race
 
         // ---------------------------------------------------------------- Vida
 
+        /// <summary>
+        /// Barra sólida com RASTRO. A vida vai para o valor novo na hora; o rastro fica para trás,
+        /// espera um instante e alcança — a faixa entre os dois É o dano que acabou de acontecer.
+        ///
+        /// Cinco blocos contáveis eram a ideia do documento, e ela funciona parada. Em movimento
+        /// não: um bloco caindo de 100% para 70% se confunde com o bloco do lado, e o jogador não
+        /// consegue dizer se levou 6 ou 30 de dano. Uma barra só, com rastro, responde isso sem
+        /// contar nada.
+        /// </summary>
         private void AtualizarVida()
         {
             int max = Mathf.Max(1, dados.MaxHp);
             int hp = Mathf.Clamp(dados.Hp, 0, max);
-            bool vidaBaixa = dados.Hp01 <= limiarDeVidaBaixa;
+            float alvo = hp / (float)max;
+            bool vidaBaixa = alvo <= limiarDeVidaBaixa;
 
             if (valorDeVida != null)
                 valorDeVida.text = hp.ToString();
 
             if (hp < hpAnterior && hpAnterior >= 0)
+            {
                 chuteDeDano?.Chutar();
+                esperaRestante = esperaDoRastro;
+            }
+
+            if (hp > hpAnterior && hpAnterior >= 0)
+                rastro = alvo;   // curou: o rastro não faz sentido subindo
 
             hpAnterior = hp;
 
-            if (segmentosDeVida == null || segmentosDeVida.Length == 0)
+            if (preenchimentoVida != null)
+            {
+                Encher(preenchimentoVida, alvo);
+                preenchimentoVida.color = vidaBaixa ? corDeVidaBaixa : corDeVida;
+            }
+
+            AndarRastro(alvo);
+        }
+
+        private void AndarRastro(float alvo)
+        {
+            if (rastro < alvo)
+                rastro = alvo;
+
+            if (esperaRestante > 0f)
+                esperaRestante -= Time.deltaTime;
+            else
+                rastro = Mathf.MoveTowards(rastro, alvo, velocidadeDoRastro * Time.deltaTime);
+
+            if (rastroDeDano == null)
                 return;
 
-            float porSegmento = max / (float)segmentosDeVida.Length;
+            bool mostrar = rastro > alvo + 0.002f;
+            Ligar(rastroDeDano.gameObject, mostrar);
 
-            for (int i = 0; i < segmentosDeVida.Length; i++)
-            {
-                SegmentoDeVida seg = segmentosDeVida[i];
-                if (seg == null)
-                    continue;
-
-                float preenchido = Mathf.Clamp01((hp - i * porSegmento) / porSegmento);
-
-                if (seg.cheio != null)
-                {
-                    Ligar(seg.cheio.gameObject, !vidaBaixa && preenchido > 0f);
-                    seg.cheio.fillAmount = preenchido;
-                }
-
-                if (seg.ferido != null)
-                {
-                    Ligar(seg.ferido.gameObject, vidaBaixa && preenchido > 0f);
-                    seg.ferido.fillAmount = preenchido;
-                }
-            }
+            if (mostrar)
+                Encher(rastroDeDano, rastro);
         }
 
         // ---------------------------------------------------------------- Escudo
@@ -197,7 +232,7 @@ namespace PartyRacers.UI.Race
 
             if (preenchimentoEscudo != null)
             {
-                preenchimentoEscudo.fillAmount = preenchimento;
+                Encher(preenchimentoEscudo, preenchimento);
                 preenchimentoEscudo.color = cor;
             }
 
@@ -211,9 +246,10 @@ namespace PartyRacers.UI.Race
 
                 if (mostrar && preenchimentoEscudo != null)
                 {
-                    float largura = preenchimentoEscudo.rectTransform.rect.width;
+                    // A ponta anda com a BORDA da barra, que agora é a largura dela.
+                    RectTransform b = preenchimentoEscudo.rectTransform;
                     pontaDoEscudo.anchoredPosition =
-                        new Vector2(largura * preenchimento, pontaDoEscudo.anchoredPosition.y);
+                        new Vector2(b.anchoredPosition.x + b.sizeDelta.x, pontaDoEscudo.anchoredPosition.y);
                 }
             }
 
@@ -229,6 +265,18 @@ namespace PartyRacers.UI.Race
                 chuteDoEscudo?.Chutar();
 
             escudoProntoAntes = pronto;
+
+            // Pronto varre devagar, ativo varre rápido, recarga não varre. O halo pulsa só no
+            // pronto: aceso durante a recarga ele diria "disponível" enquanto não está.
+            if (varredura != null)
+            {
+                Ligar(varredura.gameObject, pronto || ativo);
+                if (pronto || ativo)
+                    varredura.DefinirPeriodo(ativo ? 1f : 2.4f);
+            }
+
+            if (halo != null)
+                Ligar(halo.gameObject, pronto || ativo);
         }
 
         // ---------------------------------------------------------------- Imunidade e reparo
@@ -239,16 +287,69 @@ namespace PartyRacers.UI.Race
             Ligar(raizImunidade, imune);
 
             if (imune && barraDeImunidade != null)
-                barraDeImunidade.fillAmount = dados.DamageCooldown01;
+                Encher(barraDeImunidade, dados.DamageCooldown01);
         }
 
+        /// <summary>
+        /// Carro quebrado: a barra de vida vira barra de REPARO e enche de volta.
+        ///
+        /// `BrokenRemaining01` conta quanto FALTA, então a barra que enche é o complemento — e é a
+        /// direção certa: o jogador está esperando a vida voltar, não vendo um prazo acabar. A cor
+        /// pisca para separar "consertando" de "correndo com pouca vida", que na barra sozinha
+        /// seriam a mesma imagem.
+        /// </summary>
         private void AtualizarReparo()
         {
+            float progresso = 1f - Mathf.Clamp01(dados.BrokenRemaining01);
+
             if (preenchimentoDoReparo != null)
-                preenchimentoDoReparo.fillAmount = dados.BrokenRemaining01;
+                Encher(preenchimentoDoReparo, progresso);
+
+            if (preenchimentoVida != null)
+            {
+                Encher(preenchimentoVida, progresso);
+
+                float pisca = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f);
+                preenchimentoVida.color = Color.Lerp(corDeReparo * 0.55f, corDeReparo, pisca);
+            }
+
+            if (rastroDeDano != null)
+                Ligar(rastroDeDano.gameObject, false);
+
+            rastro = progresso;
+            esperaRestante = 0f;
+            hpAnterior = -1;
+
+            if (valorDeVida != null)
+                valorDeVida.text = $"{dados.BrokenRemaining:0.0}";
 
             if (contagemDoReparo != null)
                 contagemDoReparo.text = $"{dados.BrokenRemaining:0.0}s";
+        }
+
+        /// <summary>
+        /// Preenche uma barra pela LARGURA do rect.
+        ///
+        /// `Image.fillAmount` só funciona com sprite: sem ele o Unity desenha o quad inteiro e a
+        /// barra fica cheia com qualquer valor. Como as barras da HUD são retângulos lisos, medir a
+        /// largura é a forma que não depende de asset nenhum — e é exata.
+        /// </summary>
+        private static void Encher(Image barra, float fracao)
+        {
+            if (barra == null)
+                return;
+
+            RectTransform r = barra.rectTransform;
+            var pai = r.parent as RectTransform;
+            if (pai == null)
+                return;
+
+            float margem = r.anchoredPosition.x;
+            float util = Mathf.Max(0f, pai.rect.width - margem * 2f);
+            float largura = util * Mathf.Clamp01(fracao);
+
+            if (!Mathf.Approximately(r.sizeDelta.x, largura))
+                r.sizeDelta = new Vector2(largura, r.sizeDelta.y);
         }
 
         private static void Ligar(GameObject alvo, bool ativo)

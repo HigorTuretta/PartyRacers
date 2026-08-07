@@ -37,6 +37,9 @@ namespace PartyRacers.UI.Importer
         private const string HudNovo = "Assets/_Projeto/Prefabs/UI_v2/Screens/Screen_RaceHUD_PC.prefab";
         private const string MenuDaPartida = "Assets/_Projeto/Prefabs/UI_v2/Screens/Screen_RaceMenu.prefab";
 
+        private const string FumacaDeAvaria =
+            "Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Smoke loop.prefab";
+
         [MenuItem("Party Racers/UI v2/7 · Instalar vida e HUD nas pistas", priority = 22)]
         public static void Instalar()
         {
@@ -78,6 +81,22 @@ namespace PartyRacers.UI.Importer
                 raiz.AddComponent<KartShieldAbility>();
                 mudou = true;
                 log.AppendLine($"  + KartShieldAbility em {System.IO.Path.GetFileName(caminho)}");
+            }
+
+            // Fumaça de avaria: o estado quebrado só existia na HUD, e quem corre nessa hora está
+            // olhando para a pista. O efeito põe a avaria onde ela acontece.
+            if (raiz.GetComponent<KartBrokenSmoke>() == null)
+            {
+                var fumaca = raiz.AddComponent<KartBrokenSmoke>();
+                var prefabDaFumaca = AssetDatabase.LoadAssetAtPath<GameObject>(FumacaDeAvaria);
+
+                var so = new SerializedObject(fumaca);
+                so.FindProperty("fumacaPrefab").objectReferenceValue = prefabDaFumaca;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                mudou = true;
+                log.AppendLine($"  + KartBrokenSmoke em {System.IO.Path.GetFileName(caminho)}"
+                               + (prefabDaFumaca == null ? " (SEM prefab de fumaça!)" : string.Empty));
             }
 
             if (mudou)

@@ -660,34 +660,42 @@ namespace PartyRacers.UI.Importer
             var ui = raiz.AddComponent<PartyRacers.UI.Race.VitalClusterUI>();
             var so = new SerializedObject(ui);
 
-            // Vida: 5 blocos de 20 HP. Blocos porque são CONTÁVEIS de relance — barra contínua
-            // exige medir, e a 150 km/h ninguém mede.
-            //
-            // Cada bloco é REFEITO: o que o protótipo deixou ali era um retângulo pintado por um
-            // `UIRoundedRect`, e `UIRoundedRect` não é `Image`. O binder guardava null no campo,
-            // então a barra nunca descia — ela ficava verde e cheia levando dano até o carro
-            // quebrar. Aqui nascem três camadas de verdade: trilho apagado, verde e âmbar, as duas
-            // últimas como `Image` do tipo Filled.
-            RectTransform[] blocos = m.Caixas(78f, 32f, 4f);
-            SerializedProperty segmentos = so.FindProperty("segmentosDeVida");
-            segmentos.arraySize = blocos.Length;
+            // Vida: UMA barra sólida. O documento desenhou cinco blocos e eles funcionam parados —
+            // em movimento, um bloco caindo de 100% para 70% se confunde com o vizinho e não dá
+            // para dizer se o dano foi 6 ou 30. Os cinco viram trilho de uma barra só, com um
+            // RASTRO por trás que fica onde a vida estava e alcança depois: a faixa entre os dois
+            // é o dano que acabou de acontecer.
+            foreach (RectTransform bloco in m.Caixas(78f, 32f, 4f))
+                Apagar(bloco);
 
-            for (int i = 0; i < blocos.Length; i++)
+            RectTransform trilhoDeVida = m.Caixa(105f, 1000f, 417f, 46f);
+            if (trilhoDeVida != null)
             {
-                RectTransform bloco = blocos[i];
-                Despintar(new[] { bloco });
+                // A chapinha do número vive dentro do trilho e não pode virar barra.
+                RectTransform chapinha = m.Caixa(460.3f, 1011f, 45.7f, 24f);
+                Transform guardar = chapinha != null ? chapinha.parent : null;
+                _ = guardar;
 
-                GameObject vazio = Preenchido(bloco, "Vazio", new Color(1f, 1f, 1f, 0.09f));
-                Image cheio = BarraQueEnche(bloco, "Cheio", Verde);
-                Image ferido = BarraQueEnche(bloco, "Ferido", Ambar);
+                GameObject fundo = Preenchido(trilhoDeVida, "Trilho", new Color(1f, 1f, 1f, 0.08f));
+                fundo.transform.SetSiblingIndex(0);
+                Estreitar((RectTransform)fundo.transform, 6f, 7f);
 
-                SerializedProperty item = segmentos.GetArrayElementAtIndex(i);
-                item.FindPropertyRelative("vazio").objectReferenceValue = vazio;
-                item.FindPropertyRelative("cheio").objectReferenceValue = cheio;
-                item.FindPropertyRelative("ferido").objectReferenceValue = ferido;
+                Image rastro = BarraQueEnche(trilhoDeVida, "RastroDeDano", new Color(1f, 0.42f, 0.48f, 0.75f));
+                Estreitar((RectTransform)rastro.transform, 6f, 7f);
+                rastro.transform.SetSiblingIndex(1);
 
-                vazio.SetActive(true);
-                ferido.gameObject.SetActive(false);
+                Image vida = BarraQueEnche(trilhoDeVida, "Vida", Verde);
+                Estreitar((RectTransform)vida.transform, 6f, 7f);
+                vida.transform.SetSiblingIndex(2);
+
+                // A moldura e a sombra do documento são FILHAS do nó, não o desenho dele — e filho
+                // desenha depois. Sem empurrá-las para trás, elas cobriam a barra inteira: o
+                // preenchimento existia, com o valor certo, e a tela mostrava um retângulo preto.
+                MoldurasAoFundo(trilhoDeVida);
+
+                Atribuir(so, "preenchimentoVida", vida);
+                Atribuir(so, "rastroDeDano", rastro);
+                Atribuir(so, "preenchimentoDoReparo", vida);
             }
 
             Atribuir(so, "valorDeVida", Tmp(m.Texto("100")));
@@ -739,6 +747,13 @@ namespace PartyRacers.UI.Importer
             fundo.DefinirRaio(6f, 6f);
 
             Image preenchimento = BarraQueEnche(barra, "Preenchimento", new Color(0.21f, 0.65f, 1f));
+            Estreitar((RectTransform)preenchimento.transform, 3f, 4f);
+
+            // Halo pulsante (prGlow do protótipo, 1,8 s) e faixa de luz (prShine, 2,4 s pronto /
+            // 1 s ativo). São os DOIS sinais de "disponível" que o design usa — não há ícone nem
+            // botão de escudo dizendo isso com palavras.
+            Atribuir(so, "halo", Halo(barra));
+            Atribuir(so, "varredura", Varredura(barra));
 
             var ponta = new GameObject("Ponta", typeof(RectTransform));
             ponta.transform.SetParent(barra, false);
@@ -769,19 +784,129 @@ namespace PartyRacers.UI.Importer
         /// Tem de ser `Image`: o `UIRoundedRect` do projeto desenha malha própria e não tem
         /// `fillAmount`, então toda barra montada com ele fica parada por construção.
         /// </summary>
+        /// <summary>
+        /// Manda sombra e moldura para o fundo da pilha de desenho.
+        ///
+        /// O construtor decompõe borda e sombra em nós IRMÃOS do conteúdo, e no UGUI quem vem
+        /// depois desenha por cima. Para um card isso é inofensivo; para uma barra que ganha
+        /// preenchimento depois, é a diferença entre ver a vida e ver um retângulo preto.
+        /// </summary>
+        private static void MoldurasAoFundo(RectTransform pai)
+        {
+            foreach (string nome in new[] { "Shape", "Shadow" })
+            {
+                Transform t = pai.Find(nome);
+                if (t != null)
+                    t.SetSiblingIndex(0);
+            }
+        }
+
+        /// <summary>
+        /// Encolhe um preenchimento para dentro da moldura, deixando o trilho aparecer.
+        ///
+        /// A barra é ancorada à ESQUERDA, então a largura vem de `sizeDelta` e quem a move é o
+        /// binder. Aqui ela nasce cheia, medida a partir da caixa do pai no documento.
+        /// </summary>
+        private static void Estreitar(RectTransform r, float x, float y)
+        {
+            var pai = (RectTransform)r.parent;
+            float largura = pai.sizeDelta.x > 1f ? pai.sizeDelta.x : pai.rect.width;
+
+            r.anchoredPosition = new Vector2(x, 0f);
+            r.offsetMin = new Vector2(x, y);
+            r.offsetMax = new Vector2(x + Mathf.Max(0f, largura - x * 2f), -y);
+        }
+
+        /// <summary>Halo pulsante por trás da barra do escudo — o `prGlow` do protótipo.</summary>
+        private static UIGlowPulse Halo(RectTransform barra)
+        {
+            var go = new GameObject("Halo", typeof(RectTransform));
+            go.transform.SetParent(barra, false);
+            go.transform.SetSiblingIndex(0);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = Vector2.zero;
+            r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(-14f, -14f);
+            r.offsetMax = new Vector2(14f, 14f);
+
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(new Color(0.21f, 0.65f, 1f, 0.30f), 18f);
+            f.DefinirRaio(18f, 18f);
+
+            var grupo = go.AddComponent<CanvasGroup>();
+            grupo.blocksRaycasts = false;
+
+            var pulso = go.AddComponent<UIGlowPulse>();
+            var so = new SerializedObject(pulso);
+            so.FindProperty("alvo").objectReferenceValue = grupo;
+            so.FindProperty("periodo").floatValue = 1.8f;
+            so.FindProperty("alfaMin").floatValue = 0.25f;
+            so.FindProperty("alfaMax").floatValue = 0.8f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return pulso;
+        }
+
+        /// <summary>Faixa de luz que atravessa a barra — o `prShine` do protótipo.</summary>
+        private static UIShineSweep Varredura(RectTransform barra)
+        {
+            RectMask2D mascara = barra.GetComponent<RectMask2D>() ?? barra.gameObject.AddComponent<RectMask2D>();
+            _ = mascara;
+
+            var go = new GameObject("Varredura", typeof(RectTransform));
+            go.transform.SetParent(barra, false);
+            go.transform.SetAsLastSibling();
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0f, 0f);
+            r.anchorMax = new Vector2(0f, 1f);
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.sizeDelta = new Vector2(70f, 0f);
+
+            var faixa = go.AddComponent<Image>();
+            faixa.raycastTarget = false;
+            faixa.color = Color.white;
+
+            // Transparente nas pontas e claro no meio: é a faixa do `prShine`, não um retângulo
+            // branco atravessando a barra.
+            var degrade = go.AddComponent<UIGradient>();
+            degrade.Definir(new Color(1f, 1f, 1f, 0f), new Color(1f, 1f, 1f, 0.75f),
+                            UIGradient.Direcao.Horizontal);
+
+            var sweep = go.AddComponent<UIShineSweep>();
+            var so = new SerializedObject(sweep);
+            so.FindProperty("periodo").floatValue = 2.4f;
+            so.FindProperty("folga").floatValue = 70f;
+            so.FindProperty("vaivem").boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return sweep;
+        }
+
+        /// <summary>
+        /// Retângulo que preenche da esquerda para a direita — pela LARGURA do rect, não por
+        /// <c>fillAmount</c>.
+        ///
+        /// `Image.type = Filled` é ignorado quando o Image não tem sprite: o Unity cai no caminho
+        /// simples e desenha o quad inteiro. A barra ficava cheia com qualquer valor de vida, e a
+        /// única coisa que se movia era o risquinho da ponta. Ancorada à esquerda e redimensionada,
+        /// ela obedece sem depender de nenhum asset.
+        /// </summary>
         private static Image BarraQueEnche(RectTransform pai, string nome, Color cor)
         {
             var go = new GameObject(nome, typeof(RectTransform));
             go.transform.SetParent(pai, false);
-            Esticar((RectTransform)go.transform);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0f, 0f);
+            r.anchorMax = new Vector2(0f, 1f);
+            r.pivot = new Vector2(0f, 0.5f);
 
             var img = go.AddComponent<Image>();
             img.color = cor;
             img.raycastTarget = false;
-            img.type = Image.Type.Filled;
-            img.fillMethod = Image.FillMethod.Horizontal;
-            img.fillOrigin = (int)Image.OriginHorizontal.Left;
-            img.fillAmount = 1f;
             return img;
         }
 
