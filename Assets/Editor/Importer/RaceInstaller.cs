@@ -83,6 +83,15 @@ namespace PartyRacers.UI.Importer
                 log.AppendLine($"  + KartShieldAbility em {System.IO.Path.GetFileName(caminho)}");
             }
 
+            // O número de dano sobe AO LADO DO CARRO. A HUD diz quanto sobrou; ela não diz quanto
+            // acabou de sair, e quem corre não desvia o olho da pista para descobrir.
+            if (raiz.GetComponent<KartDamagePopup>() == null)
+            {
+                raiz.AddComponent<KartDamagePopup>();
+                mudou = true;
+                log.AppendLine($"  + KartDamagePopup em {System.IO.Path.GetFileName(caminho)}");
+            }
+
             // Fumaça de avaria: o estado quebrado só existia na HUD, e quem corre nessa hora está
             // olhando para a pista. O efeito põe a avaria onde ela acontece.
             if (raiz.GetComponent<KartBrokenSmoke>() == null)
@@ -119,6 +128,9 @@ namespace PartyRacers.UI.Importer
             log.AppendLine($"  · {cena.name}");
 
             GameObject[] raizes = cena.GetRootGameObjects();
+
+            BolasDeGolfe(raizes, log);
+
             var provider = raizes.Select(g => g.GetComponentInChildren<RaceHUDDataProvider>(true))
                                  .FirstOrDefault(c => c != null);
 
@@ -268,6 +280,55 @@ namespace PartyRacers.UI.Importer
             }
 
             return n;
+        }
+
+        /// <summary>
+        /// As bolas gigantes passam a tirar vida, PROPORCIONAL à velocidade e com teto de 30.
+        ///
+        /// Elas eram o único obstáculo grande da MiniGolfeRun que só empurrava — atravessar uma
+        /// bola a 180 km/h saía de graça. O teto existe porque bola não é armadilha: ela está
+        /// parada no caminho, e cobrar mais que 30 por um erro de traçado transformaria a pista
+        /// inteira num campo minado.
+        ///
+        /// O componente vai em cada filho que TEM collider: `OnCollisionEnter` só chega no objeto
+        /// do collider, e a raiz "BolaGigante..." é só um agrupador.
+        /// </summary>
+        private static void BolasDeGolfe(GameObject[] raizes, StringBuilder log)
+        {
+            int postos = 0;
+
+            foreach (GameObject raiz in raizes)
+            {
+                foreach (Transform t in raiz.GetComponentsInChildren<Transform>(true))
+                {
+                    if (!t.name.StartsWith("BolaGigante", System.StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    foreach (Collider c in t.GetComponentsInChildren<Collider>(true))
+                    {
+                        if (c.GetComponent<ObstacleKnockback>() != null)
+                            continue;
+
+                        var golpe = c.gameObject.AddComponent<ObstacleKnockback>();
+                        var so = new SerializedObject(golpe);
+                        so.FindProperty("dealsTrapDamage").boolValue = true;
+                        so.FindProperty("danoProporcionalAVelocidade").boolValue = true;
+                        so.FindProperty("tetoDeDano").intValue = 30;
+                        so.FindProperty("limiarDeVelocidade").floatValue = 0f;
+                        so.FindProperty("shieldBlocksLaunch").boolValue = true;
+
+                        // A bola já empurra por física; o arremesso do knockback seria dobrado.
+                        so.FindProperty("launchSpeed").floatValue = 6f;
+                        so.FindProperty("upwardSpeed").floatValue = 2.5f;
+                        so.ApplyModifiedPropertiesWithoutUndo();
+
+                        postos++;
+                    }
+                }
+            }
+
+            if (postos > 0)
+                log.AppendLine($"      {postos} bola(s) de golfe agora tiram vida (teto 30, por velocidade)");
         }
 
         /// <summary>Procura um filho pelo nome em toda a árvore.</summary>

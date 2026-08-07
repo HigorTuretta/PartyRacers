@@ -62,6 +62,11 @@ public class AutoGolfSwing : MonoBehaviour
     public float impulsoEmCorposFisicos = 1f;
 
     [Header("Debug")]
+    [Header("Dano")]
+    [Tooltip("Vida tirada por tacada. 0 desliga. Fixo, e não proporcional à velocidade: quem " +
+             "manda na tacada é o TACO, não a velocidade de quem passou por ali.")]
+    [Min(0)] public int danoDaTacada = 18;
+
     [SerializeField] private bool debugMode;
 
     private Quaternion rotacaoCentro;
@@ -194,6 +199,16 @@ public class AutoGolfSwing : MonoBehaviour
             return;
 
         ultimaTacada[kart] = Time.time;
+
+        // Tacada tira vida. O taco arremessava o kart e não cobrava nada por isso — o obstáculo
+        // mais violento da pista era o único que não aparecia na barra. O escudo segura: é a
+        // mesma porta de `KartHealth.ApplyDamage`, que já decide se o escudo protege.
+        if (danoDaTacada > 0)
+        {
+            KartHealth vida = kart.GetComponent<KartHealth>();
+            if (vida != null)
+                vida.ApplyDamage(danoDaTacada, KartDamageKind.Trap, kart.transform.position, gameObject);
+        }
 
         Vector3 launch = direcao * horizontal + Vector3.up * vertical;
         Vector3 tumble = Vector3.Cross(Vector3.up, direcao) * giroArremesso

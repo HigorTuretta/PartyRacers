@@ -28,10 +28,10 @@ namespace PartyRacers.UI.Race
         [Header("Vida — uma barra sólida")]
         [SerializeField] private GameObject raizVida;
         [Tooltip("Preenchimento da vida. Ancorado à esquerda; a largura é o valor.")]
-        [SerializeField] private Image preenchimentoVida;
+        [SerializeField] private Graphic preenchimentoVida;
         [Tooltip("Rastro atrás do preenchimento: fica onde a vida ESTAVA e alcança devagar. É ele " +
                  "que mostra QUANTO se perdeu — a barra nova sozinha só diz quanto sobrou.")]
-        [SerializeField] private Image rastroDeDano;
+        [SerializeField] private Graphic rastroDeDano;
         [Tooltip("Velocidade com que o rastro alcança a vida atual, em frações por segundo.")]
         [SerializeField] private float velocidadeDoRastro = 0.9f;
         [Tooltip("Segundos que o rastro espera antes de começar a andar. A pausa é o que torna a " +
@@ -52,7 +52,7 @@ namespace PartyRacers.UI.Race
         [Header("Escudo — uma barra, três estados")]
         [SerializeField] private GameObject raizEscudo;
         [Tooltip("Preenchimento da barra. Ancorado à esquerda; a largura é o valor.")]
-        [SerializeField] private Image preenchimentoEscudo;
+        [SerializeField] private Graphic preenchimentoEscudo;
         [Tooltip("Risquinho na ponta do preenchimento. Anda com a borda da barra.")]
         [SerializeField] private RectTransform pontaDoEscudo;
         [Tooltip("Chapinha à direita da barra: PRONTO / ATIVO 2,3s / 3,4s.")]
@@ -70,12 +70,12 @@ namespace PartyRacers.UI.Race
                  "desligada em recarga — é a AUSÊNCIA dela que diz indisponível.")]
         [SerializeField] private PartyRacers.UI.Motion.UIShineSweep varredura;
         [Tooltip("Halo pulsante por trás da barra, aceso quando o escudo está pronto.")]
-        [SerializeField] private PartyRacers.UI.Motion.UIGlowPulse halo;
+        [SerializeField] private PartyRacers.UI.Motion.UIPulse halo;
 
         [Header("Imunidade (cooldown de contato)")]
         [SerializeField] private GameObject raizImunidade;
         [Tooltip("Barra âmbar que drena em 0,75 s.")]
-        [SerializeField] private Image barraDeImunidade;
+        [SerializeField] private Graphic barraDeImunidade;
 
         [Header("Movimento")]
         [Tooltip("Empurrão + pisca no bloco de vida quando o carro leva dano. A barra descendo " +
@@ -90,7 +90,7 @@ namespace PartyRacers.UI.Race
         [Header("Estado danificado")]
         [SerializeField] private GameObject raizReparo;
         [Tooltip("Barra que ENCHE enquanto o carro se conserta.")]
-        [SerializeField] private Image preenchimentoDoReparo;
+        [SerializeField] private Graphic preenchimentoDoReparo;
         [SerializeField] private TextMeshProUGUI contagemDoReparo;
 
         private void Reset() => dados = FindAnyObjectByType<RaceHUDDataProvider>();
@@ -247,7 +247,7 @@ namespace PartyRacers.UI.Race
                 if (mostrar && preenchimentoEscudo != null)
                 {
                     // A ponta anda com a BORDA da barra, que agora é a largura dela.
-                    RectTransform b = preenchimentoEscudo.rectTransform;
+                    var b = (RectTransform)preenchimentoEscudo.transform;
                     pontaDoEscudo.anchoredPosition =
                         new Vector2(b.anchoredPosition.x + b.sizeDelta.x, pontaDoEscudo.anchoredPosition.y);
                 }
@@ -334,12 +334,12 @@ namespace PartyRacers.UI.Race
         /// barra fica cheia com qualquer valor. Como as barras da HUD são retângulos lisos, medir a
         /// largura é a forma que não depende de asset nenhum — e é exata.
         /// </summary>
-        private static void Encher(Image barra, float fracao)
+        private static void Encher(Graphic barra, float fracao)
         {
             if (barra == null)
                 return;
 
-            RectTransform r = barra.rectTransform;
+            var r = (RectTransform)barra.transform;
             var pai = r.parent as RectTransform;
             if (pai == null)
                 return;

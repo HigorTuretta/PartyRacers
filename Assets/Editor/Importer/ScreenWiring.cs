@@ -679,13 +679,15 @@ namespace PartyRacers.UI.Importer
                 GameObject fundo = Preenchido(trilhoDeVida, "Trilho", new Color(1f, 1f, 1f, 0.08f));
                 fundo.transform.SetSiblingIndex(0);
                 Estreitar((RectTransform)fundo.transform, 6f, 7f);
+                Arredondar(fundo, 13f);
 
-                Image rastro = BarraQueEnche(trilhoDeVida, "RastroDeDano", new Color(1f, 0.42f, 0.48f, 0.75f));
-                Estreitar((RectTransform)rastro.transform, 6f, 7f);
+                Graphic rastro = BarraQueEnche(trilhoDeVida, "RastroDeDano",
+                                               new Color(1f, 0.42f, 0.48f, 0.75f), 13f);
+                EstreitarBarra((RectTransform)rastro.transform, 6f, 7f, 417f);
                 rastro.transform.SetSiblingIndex(1);
 
-                Image vida = BarraQueEnche(trilhoDeVida, "Vida", Verde);
-                Estreitar((RectTransform)vida.transform, 6f, 7f);
+                Graphic vida = BarraQueEnche(trilhoDeVida, "Vida", Verde, 13f);
+                EstreitarBarra((RectTransform)vida.transform, 6f, 7f, 417f);
                 vida.transform.SetSiblingIndex(2);
 
                 // A moldura e a sombra do documento são FILHAS do nó, não o desenho dele — e filho
@@ -739,19 +741,24 @@ namespace PartyRacers.UI.Importer
 
             Despintar(new[] { barra });
 
+            // O documento pede 11 px de raio na barra do escudo — a mesma família de canto da
+            // barra de vida, que estava com 13 e parecia de outro jogo ao lado de um trilho de 6.
             GameObject trilho = Nó(barra, "Trilho");
             var fundo = trilho.AddComponent<UIRoundedRect>();
             fundo.raycastTarget = false;
-            fundo.Definir(new Color(1f, 1f, 1f, 0.09f), 6f);
+            fundo.Definir(new Color(1f, 1f, 1f, 0.09f), 12f);
             fundo.DefinirContorno(Fio, 1f);
-            fundo.DefinirRaio(6f, 6f);
+            fundo.DefinirRaio(12f, 12f);
 
-            Image preenchimento = BarraQueEnche(barra, "Preenchimento", new Color(0.21f, 0.65f, 1f));
-            Estreitar((RectTransform)preenchimento.transform, 3f, 4f);
+            Graphic preenchimento = BarraQueEnche(barra, "Preenchimento", new Color(0.21f, 0.65f, 1f), 9f);
+            EstreitarBarra((RectTransform)preenchimento.transform, 3f, 4f, 305.5f);
 
             // Halo pulsante (prGlow do protótipo, 1,8 s) e faixa de luz (prShine, 2,4 s pronto /
             // 1 s ativo). São os DOIS sinais de "disponível" que o design usa — não há ícone nem
             // botão de escudo dizendo isso com palavras.
+            //
+            // O halo mora FORA da barra: dentro dela seria recortado pela máscara da varredura, e
+            // um halo cortado no próprio contorno não é halo.
             Atribuir(so, "halo", Halo(barra));
             Atribuir(so, "varredura", Varredura(barra));
 
@@ -801,49 +808,67 @@ namespace PartyRacers.UI.Importer
             }
         }
 
-        /// <summary>
-        /// Encolhe um preenchimento para dentro da moldura, deixando o trilho aparecer.
-        ///
-        /// A barra é ancorada à ESQUERDA, então a largura vem de `sizeDelta` e quem a move é o
-        /// binder. Aqui ela nasce cheia, medida a partir da caixa do pai no documento.
-        /// </summary>
+        /// <summary>Encolhe um nó ESTICADO para dentro da moldura (trilho, véu, halo).</summary>
         private static void Estreitar(RectTransform r, float x, float y)
         {
-            var pai = (RectTransform)r.parent;
-            float largura = pai.sizeDelta.x > 1f ? pai.sizeDelta.x : pai.rect.width;
-
-            r.anchoredPosition = new Vector2(x, 0f);
             r.offsetMin = new Vector2(x, y);
-            r.offsetMax = new Vector2(x + Mathf.Max(0f, largura - x * 2f), -y);
+            r.offsetMax = new Vector2(-x, -y);
         }
 
-        /// <summary>Halo pulsante por trás da barra do escudo — o `prGlow` do protótipo.</summary>
-        private static UIGlowPulse Halo(RectTransform barra)
+        /// <summary>
+        /// Põe uma barra ancorada à ESQUERDA dentro da moldura, começando cheia.
+        ///
+        /// Precisa ser separado do <see cref="Estreitar"/>: a barra não estica: a largura dela é o
+        /// VALOR, escrito pelo binder. Aplicar a versão esticada aqui somava a largura do pai à
+        /// margem e o trilho da vida saía com 723 px numa moldura de 366 — uma faixa clara
+        /// atravessando meia tela.
+        /// </summary>
+        private static void EstreitarBarra(RectTransform r, float x, float y, float larguraDoPai)
         {
-            var go = new GameObject("Halo", typeof(RectTransform));
-            go.transform.SetParent(barra, false);
-            go.transform.SetSiblingIndex(0);
+            r.anchoredPosition = new Vector2(x, 0f);
+            r.offsetMin = new Vector2(x, y);
+            r.offsetMax = new Vector2(x + Mathf.Max(0f, larguraDoPai - x * 2f), -y);
+        }
+
+        /// <summary>
+        /// Halo pulsante por trás da barra do escudo — o `prGlow` do protótipo.
+        ///
+        /// Pulsa por ALFA, não por tamanho. O <c>UIGlowPulse</c> do projeto redimensiona o alvo a
+        /// partir de um `tamanhoBase` fixo (486×24, medido para outra barra), e aplicado aqui ele
+        /// esticava o halo para 726 px numa barra de 290 — uma mancha clara atravessando o canto da
+        /// tela. Respirar de alfa é o que o CSS do protótipo faz de qualquer forma.
+        /// </summary>
+        private static UIPulse Halo(RectTransform barra)
+        {
+            Transform pai = barra.parent != null ? barra.parent : barra;
+
+            var go = new GameObject("Halo_Escudo", typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+            go.transform.SetAsFirstSibling();
 
             var r = (RectTransform)go.transform;
-            r.anchorMin = Vector2.zero;
-            r.anchorMax = Vector2.one;
-            r.offsetMin = new Vector2(-14f, -14f);
-            r.offsetMax = new Vector2(14f, 14f);
+            r.anchorMin = barra.anchorMin;
+            r.anchorMax = barra.anchorMax;
+            r.pivot = barra.pivot;
+            r.anchoredPosition = barra.anchoredPosition;
+            r.sizeDelta = barra.sizeDelta + new Vector2(16f, 14f);
 
+            // ANEL, não placa. Preenchido, o halo virava uma lousa pálida atrás da barra — lia
+            // como moldura sobrando, não como brilho. O contorno grosso pulsando é o mais perto
+            // de um `box-shadow` que o UGUI alcança sem shader.
             var f = go.AddComponent<UIRoundedRect>();
             f.raycastTarget = false;
-            f.Definir(new Color(0.21f, 0.65f, 1f, 0.30f), 18f);
-            f.DefinirRaio(18f, 18f);
+            f.SemPreenchimento();
+            f.DefinirContorno(new Color(0.35f, 0.78f, 1f, 0.9f), 5f);
+            f.DefinirRaio(19f, 19f);
 
-            var grupo = go.AddComponent<CanvasGroup>();
-            grupo.blocksRaycasts = false;
-
-            var pulso = go.AddComponent<UIGlowPulse>();
+            var pulso = go.AddComponent<UIPulse>();
             var so = new SerializedObject(pulso);
-            so.FindProperty("alvo").objectReferenceValue = grupo;
             so.FindProperty("periodo").floatValue = 1.8f;
-            so.FindProperty("alfaMin").floatValue = 0.25f;
-            so.FindProperty("alfaMax").floatValue = 0.8f;
+            so.FindProperty("alfa").boolValue = true;
+            so.FindProperty("alfaMin").floatValue = 0.22f;
+            so.FindProperty("alfaMax").floatValue = 0.75f;
+            so.FindProperty("escala").boolValue = false;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             return pulso;
@@ -894,7 +919,7 @@ namespace PartyRacers.UI.Importer
         /// única coisa que se movia era o risquinho da ponta. Ancorada à esquerda e redimensionada,
         /// ela obedece sem depender de nenhum asset.
         /// </summary>
-        private static Image BarraQueEnche(RectTransform pai, string nome, Color cor)
+        private static Graphic BarraQueEnche(RectTransform pai, string nome, Color cor, float raio)
         {
             var go = new GameObject(nome, typeof(RectTransform));
             go.transform.SetParent(pai, false);
@@ -904,10 +929,24 @@ namespace PartyRacers.UI.Importer
             r.anchorMax = new Vector2(0f, 1f);
             r.pivot = new Vector2(0f, 0.5f);
 
-            var img = go.AddComponent<Image>();
-            img.color = cor;
-            img.raycastTarget = false;
-            return img;
+            // `UIRoundedRect` em vez de `Image`: a barra tem de ter o mesmo canto da moldura, e um
+            // retângulo de cantos vivos dentro de uma moldura arredondada aparece nas pontas.
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(cor, raio);
+            f.DefinirRaio(raio, raio);
+            return f;
+        }
+
+        /// <summary>Troca o raio de um nó já pintado.</summary>
+        private static void Arredondar(GameObject alvo, float raio)
+        {
+            var f = alvo.GetComponent<UIRoundedRect>();
+            if (f == null)
+                return;
+
+            f.Definir(f.CorDoPreenchimento, raio);
+            f.DefinirRaio(raio, raio);
         }
 
         private static void SlotDePoder(GameObject raiz, ProtoBuilder.Mapa m)

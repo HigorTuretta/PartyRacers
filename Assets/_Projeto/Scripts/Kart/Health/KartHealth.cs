@@ -62,15 +62,15 @@ public class KartHealth : MonoBehaviour
     [SerializeField, Min(1)] private int maxHp = 100;
 
     [Header("Dano por batida no cenário")]
-    [Tooltip("Faixas de velocidade (km/h) → dano. Fora de qualquer faixa = 0 de dano.")]
-    [SerializeField]
-    private WallDamageBand[] wallDamageBands =
-    {
-        new WallDamageBand { minKmh = 0f,   maxKmh = 74f,  damage = 0 },
-        new WallDamageBand { minKmh = 75f,  maxKmh = 110f, damage = 4 },
-        new WallDamageBand { minKmh = 111f, maxKmh = 150f, damage = 6 },
-        new WallDamageBand { minKmh = 151f, maxKmh = 200f, damage = 8 },
-    };
+    [Tooltip("Velocidade máxima de referência do kart, em km/h. É a régua do dano proporcional.")]
+    [SerializeField, Min(1f)] private float referenciaDeVelocidadeKmh = 190f;
+
+    [Tooltip("Fração da velocidade máxima a partir da qual a batida tira vida. Abaixo disso é " +
+             "encostada de manobra, e cobrar por ela punia quem estava só se recolocando na pista.")]
+    [SerializeField, Range(0f, 1f)] private float limiarDeParede = 0.5f;
+
+    [Tooltip("Dano de uma batida na velocidade máxima. Entre o limiar e ela o valor é proporcional.")]
+    [SerializeField, Min(0)] private int danoMaximoDeParede = 22;
 
     [Tooltip("Frontalidade mínima (0 = raspão paralelo, 1 = de cara) para a batida contar como " +
              "impacto. Abaixo disso é lataria raspando na mureta e não tira vida.")]
@@ -79,6 +79,11 @@ public class KartHealth : MonoBehaviour
     [Header("Outras fontes")]
     [SerializeField, Min(0)] private int trapDamage = 10;
     [SerializeField, Min(0)] private int itemDamage = 15;
+
+    [Header("Escudo")]
+    [Tooltip("O escudo também segura o dano do CENÁRIO — parede, moinho, taco, bola. Desligado, " +
+             "ele volta a valer só contra item e armadilha, como no handoff original.")]
+    [SerializeField] private bool escudoProtegeDoCenario = true;
 
     [Header("Cooldown de contato")]
     [Tooltip("Tempo mínimo entre dois danos. É o que impede o moinho de drenar a vida inteira " +
@@ -192,31 +197,55 @@ public class KartHealth : MonoBehaviour
         ApplyDamage(amount, KartDamageKind.Wall, transform.position, null);
     }
 
-    /// <summary>Dano da tabela para uma velocidade. Fora de todas as faixas → 0.</summary>
+    /// <summary>
+    /// Dano de batida em parede: nada abaixo do limiar, proporcional acima dele.
+    ///
+    /// A tabela de faixas que existia aqui cobrava 4 de dano a 75 km/h e 8 a 200 — o dobro de
+    /// velocidade pelo dobro do dano, mas em degraus, e com a faixa mais baixa punindo manobra
+    /// normal de reposicionamento. Metade da velocidade máxima é o ponto em que a batida deixa de
+    /// ser manobra e vira erro; daí para cima o preço sobe junto com a velocidade.
+    /// </summary>
     public int WallDamageFor(float speedKmh)
+        => DanoProporcional(speedKmh, danoMaximoDeParede, limiarDeParede);
+
+    /// <summary>
+    /// Dano proporcional à velocidade, com piso e teto.
+    ///
+    /// A mesma conta serve para parede, bola de golfe e taco: o que muda é o TETO que cada um
+    /// passa. Sem uma régua comum, cada obstáculo inventaria a própria escala e o jogador não
+    /// conseguiria prever nada.
+    /// </summary>
+    public int DanoProporcional(float speedKmh, int teto, float limiar)
     {
-        if (wallDamageBands == null)
+        if (teto <= 0)
             return 0;
 
-        int worst = 0;
-        for (int i = 0; i < wallDamageBands.Length; i++)
-        {
-            WallDamageBand band = wallDamageBands[i];
-            if (speedKmh >= band.minKmh && speedKmh <= band.maxKmh)
-                return band.damage;
+        float maxima = Mathf.Max(1f, referenciaDeVelocidadeKmh);
+        float minima = maxima * Mathf.Clamp01(limiar);
 
-            // Acima do teto da última faixa (boost extremo) vale o dano da faixa mais alta,
-            // em vez de sair impune por ter passado do limite da tabela.
-            if (speedKmh > band.maxKmh && band.damage > worst)
-                worst = band.damage;
-        }
+        if (speedKmh <= minima)
+            return 0;
 
-        return worst;
+        float t = Mathf.Clamp01((speedKmh - minima) / Mathf.Max(1f, maxima - minima));
+        return Mathf.Clamp(Mathf.RoundToInt(teto * t), 1, teto);
     }
 
     /// <summary>Dano de armadilha/obstáculo do mapa. Respeita o escudo.</summary>
     public bool ApplyTrapDamage(Vector3 point, GameObject source)
         => ApplyDamage(trapDamage, KartDamageKind.Trap, point, source);
+
+    /// <summary>
+    /// Dano de obstáculo PROPORCIONAL à velocidade do kart, com teto próprio do obstáculo.
+    ///
+    /// A bola de golfe usa isto com teto 30: atravessá-la parado é um encosto, atravessá-la a
+    /// 180 km/h é um acidente, e o mesmo obstáculo não pode cobrar igual pelos dois.
+    /// </summary>
+    public bool ApplyImpactDamage(Vector3 point, GameObject source, int teto, float limiar = 0f)
+    {
+        float velocidade = kart != null ? kart.SpeedKmh : 0f;
+        int dano = DanoProporcional(velocidade, teto, limiar);
+        return dano > 0 && ApplyDamage(dano, KartDamageKind.Trap, point, source);
+    }
 
     /// <summary>Dano de item de outro jogador. Respeita o escudo.</summary>
     public bool ApplyItemDamage(Vector3 point, GameObject source)
@@ -231,9 +260,12 @@ public class KartHealth : MonoBehaviour
         if (amount <= 0 || IsBroken)
             return false;
 
-        // O escudo é a defesa contra o que os OUTROS fazem — item, armadilha e obstáculo.
-        // Bater na parede continua sendo por conta do piloto (handoff v2 §5).
-        if (kind != KartDamageKind.Wall && shield != null && shield.IsActive)
+        // O escudo é a defesa contra o que ACONTECE com o kart. Antes ele valia só para item e
+        // armadilha; agora o cenário entra junto (parede, moinho, taco, bola), porque um escudo
+        // que some ao encostar num obstáculo do mapa não parece escudo — parece bug.
+        bool protegido = escudoProtegeDoCenario || kind != KartDamageKind.Wall;
+
+        if (protegido && shield != null && shield.IsActive)
         {
             shield.NotifyBlocked(point);
             Damaged?.Invoke(this, new DamageReport(0, kind, point, source, true));

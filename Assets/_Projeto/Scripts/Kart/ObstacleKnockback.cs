@@ -43,6 +43,18 @@ public class ObstacleKnockback : MonoBehaviour, IKartImpactObstacle
     [Tooltip("Aplicar o dano de ARMADILHA do KartHealth (10 por padrão) ao arremessar. " +
              "Desligue em obstáculos que só devem empurrar, sem machucar.")]
     [SerializeField] private bool dealsTrapDamage = true;
+
+    [Tooltip("Dano proporcional à VELOCIDADE do kart em vez do valor fixo de armadilha. É o que " +
+             "faz encostar numa bola de golfe parado custar pouco e atravessá-la a 180 km/h custar " +
+             "caro — o mesmo obstáculo não pode cobrar igual pelos dois.")]
+    [SerializeField] private bool danoProporcionalAVelocidade;
+
+    [Tooltip("Teto do dano proporcional. A bola de golfe usa 30.")]
+    [SerializeField, Min(1)] private int tetoDeDano = 30;
+
+    [Tooltip("Fração da velocidade máxima abaixo da qual o obstáculo não tira vida. 0 = qualquer " +
+             "toque conta (bola); 0,5 = só de meia velocidade para cima (parede).")]
+    [SerializeField, Range(0f, 1f)] private float limiarDeVelocidade;
     [Tooltip("Com o escudo ativo o kart também NÃO é arremessado — o escudo protege contra " +
              "obstáculos e armadilhas, e ser jogado longe é a parte que mais custa a corrida.")]
     [SerializeField] private bool shieldBlocksLaunch = true;
@@ -113,7 +125,12 @@ public class ObstacleKnockback : MonoBehaviour, IKartImpactObstacle
         {
             KartHealth health = kart.GetComponent<KartHealth>();
             if (health != null)
-                health.ApplyTrapDamage(contactPoint, gameObject);
+            {
+                if (danoProporcionalAVelocidade)
+                    health.ApplyImpactDamage(contactPoint, gameObject, tetoDeDano, limiarDeVelocidade);
+                else
+                    health.ApplyTrapDamage(contactPoint, gameObject);
+            }
         }
 
         Vector3 obstaclePointVelocity = EstimatePointVelocity(contactPoint);

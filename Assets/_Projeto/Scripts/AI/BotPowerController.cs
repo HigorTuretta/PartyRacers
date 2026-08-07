@@ -15,8 +15,16 @@ namespace PartyRacers.AI
         [Header("Shield")]
         [SerializeField] private float shieldThreatRadius = 9f;
         [SerializeField] private float shieldMaxHoldSeconds = 4f;
-        [Tooltip("Fração de vida abaixo da qual o bot levanta o escudo mesmo sem ninguém por perto.")]
-        [SerializeField, Range(0f, 1f)] private float shieldLowHpThreshold = 0.25f;
+        [Tooltip("Fração de vida abaixo da qual um adversário colado já conta como ameaça.")]
+        [SerializeField, Range(0f, 1f)] private float shieldLowHpThreshold = 0.35f;
+
+        [Tooltip("Distância em que um projétil vindo na direção do bot conta como ameaça.")]
+        [SerializeField, Min(1f)] private float raioDeProjetil = 26f;
+
+        [Tooltip("Antecedência, em segundos, com que o bot levanta o escudo antes de um obstáculo. " +
+                 "Muito alto e ele escuda a pista inteira; muito baixo e o escudo sobe depois da " +
+                 "pancada.")]
+        [SerializeField, Range(0.1f, 2f)] private float segundosDeAntecedencia = 0.6f;
 
         [Header("Rocket")]
         [SerializeField] private float rocketMinDistance = 7f;
@@ -122,19 +130,89 @@ namespace PartyRacers.AI
         }
 
         /// <summary>
-        /// Aciona o escudo quando há ameaça por perto ou quando a vida já está baixa o bastante
-        /// para uma pancada quebrar o carro. Sem gasto de item — a habilidade é sempre do kart.
+        /// Levanta o escudo quando há AMEAÇA, não quando ele está pronto.
+        ///
+        /// A regra antiga era "tem alguém a 9 metros" — com 16 karts na pista isso é verdade quase
+        /// o tempo todo, e o resultado era a grade inteira correndo permanentemente escudada. Um
+        /// escudo que está sempre ligado não defende de nada: ele só deixa de ser um recurso.
+        ///
+        /// As três ameaças que valem gastar a recarga, em ordem de urgência:
+        ///  • projétil vindo na sua direção (foguete, disco) — é o que o escudo existe para parar;
+        ///  • obstáculo do cenário logo à frente, agora que o escudo também protege dele;
+        ///  • adversário colado ATRÁS com a vida já baixa, que é quando uma pancada quebra o carro.
         /// </summary>
         private void TryUseShieldAbility()
         {
             if (shieldAbility == null || !shieldAbility.IsReady)
                 return;
 
-            bool ameaçaPerto = HasNearbyOpponent(shieldThreatRadius);
-            bool vidaCritica = health != null && !health.IsBroken && health.Hp01 <= shieldLowHpThreshold;
+            if (Time.time < proximaAvaliacaoDeEscudo)
+                return;
 
-            if (ameaçaPerto || vidaCritica)
+            proximaAvaliacaoDeEscudo = Time.time + 0.2f;
+
+            if (ProjetilVindo() || ObstaculoIminente() || PressionadoAtras())
                 shieldAbility.TryActivate();
+        }
+
+        private float proximaAvaliacaoDeEscudo;
+
+        /// <summary>Projétil de outro jogador se aproximando — a ameaça mais cara de ignorar.</summary>
+        private bool ProjetilVindo()
+        {
+            Vector3 minha = transform.position;
+
+            foreach (Rigidbody corpo in Object.FindObjectsByType<Rigidbody>(FindObjectsInactive.Exclude))
+            {
+                if (corpo == null || corpo.gameObject == gameObject)
+                    continue;
+
+                if (corpo.GetComponent<RocketProjectile>() == null
+                    && corpo.GetComponent<UFOSwapProjectile>() == null)
+                    continue;
+
+                Vector3 ateMim = minha - corpo.position;
+                float distancia = ateMim.magnitude;
+
+                if (distancia > raioDeProjetil || distancia < 0.5f)
+                    continue;
+
+                // Só conta o que vem NA MINHA direção: um foguete passando de raspão para outro
+                // alvo não justifica queimar a recarga.
+                Vector3 v = corpo.linearVelocity;
+                if (v.sqrMagnitude < 1f || Vector3.Dot(v.normalized, ateMim.normalized) < 0.6f)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Obstáculo do cenário a poucos décimos de segundo à frente.</summary>
+        private bool ObstaculoIminente()
+        {
+            if (kart == null)
+                return false;
+
+            float velocidade = Mathf.Max(6f, kart.SpeedKmh / 3.6f);
+            float alcance = velocidade * segundosDeAntecedencia;
+
+            if (!Physics.SphereCast(transform.position + Vector3.up * 0.5f, 1.2f, transform.forward,
+                                    out RaycastHit hit, alcance, ~0, QueryTriggerInteraction.Collide))
+                return false;
+
+            return hit.collider.GetComponentInParent<IKartImpactObstacle>() != null
+                || hit.collider.GetComponentInParent<AutoGolfSwing>() != null;
+        }
+
+        /// <summary>Adversário colado atrás com a vida já baixa: a próxima pancada quebra.</summary>
+        private bool PressionadoAtras()
+        {
+            if (health == null || health.IsBroken || health.Hp01 > shieldLowHpThreshold)
+                return false;
+
+            return HasNearbyOpponent(shieldThreatRadius);
         }
 
         private void ResolveReferences()
