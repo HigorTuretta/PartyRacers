@@ -83,12 +83,7 @@ public static class RaceProgress
 
         RaceCheckpoint next = FindCheckpoint(tracker.NextCheckpointIndex);
 
-        if (BotRacingLine.TryGetNearestRouteInfo(
-                kart.transform.position,
-                out _,
-                out float kartDistance,
-                out float routeLength,
-                out bool looped)
+        if (TryRota(kart, out float kartDistance, out float routeLength, out bool looped)
             && next != null
             && TryGetCheckpointRouteDistance(next, out float checkpointDistance))
         {
@@ -122,8 +117,7 @@ public static class RaceProgress
         if (kart == null || tracker == null)
             return false;
 
-        if (!BotRacingLine.TryGetNearestRouteInfo(kart.transform.position, out _,
-                out float distancia, out float comprimento, out bool fechada)
+        if (!TryRota(kart, out float distancia, out float comprimento, out bool fechada)
             || comprimento <= 0.01f)
             return false;
 
@@ -136,6 +130,57 @@ public static class RaceProgress
         meters = voltasFeitas * comprimento + naVolta;
         return true;
     }
+
+    /// <summary>
+    /// Onde o kart está sobre o traçado — medido UMA vez por kart por frame, com memória.
+    ///
+    /// A posição na rota era consultada duas vezes por kart (ordenação e intervalo) e cada consulta
+    /// varria o traçado inteiro. Com 16 karts isso custava mais de 20 ms por frame — o jogo rodava
+    /// a 20 fps por causa da classificação. Agora a busca é em JANELA em volta do último segmento
+    /// conhecido, como a dos bots, e o resultado do frame é reaproveitado.
+    /// </summary>
+    private static bool TryRota(KartController kart, out float distancia, out float comprimento,
+                                out bool fechada)
+    {
+        int chave = kart.GetInstanceID();
+
+        if (rotaPorKart.TryGetValue(chave, out Rota guardada) && guardada.Frame == Time.frameCount)
+        {
+            distancia = guardada.Distancia;
+            comprimento = guardada.Comprimento;
+            fechada = guardada.Fechada;
+            return guardada.Valida;
+        }
+
+        int segmento = guardada.Frame > 0 ? guardada.Segmento : -1;
+        bool ok = BotRacingLine.TryGetRouteInfoContinuous(
+            kart.transform.position, ref segmento, out distancia, out comprimento, out fechada);
+
+        rotaPorKart[chave] = new Rota
+        {
+            Frame = Time.frameCount,
+            Segmento = segmento,
+            Distancia = distancia,
+            Comprimento = comprimento,
+            Fechada = fechada,
+            Valida = ok,
+        };
+
+        return ok;
+    }
+
+    private struct Rota
+    {
+        public int Frame;
+        public int Segmento;
+        public float Distancia;
+        public float Comprimento;
+        public bool Fechada;
+        public bool Valida;
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<int, Rota> rotaPorKart =
+        new System.Collections.Generic.Dictionary<int, Rota>();
 
     private static float distanciaDaLargada = -1f;
 
@@ -241,6 +286,7 @@ public static class RaceProgress
         cachedCheckpointFrame = -1;
         checkpointRouteDistance.Clear();
         distanciaDaLargada = -1f;
+        rotaPorKart.Clear();
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += (_, __) =>
         {
             cachedCheckpoints = null;

@@ -279,6 +279,9 @@ namespace PartyRacers.UI.Importer
             Fundo(m.Caixa(36f, 32f, 227.6f, 81f), 20f, 14f, 8f);
             RealcarTotal(m);
 
+            Atribuir(so, "chuteDaPosicao", Chute(m.Caixa(34.6f, 30.4f, 95.4f, 84.2f), 1.2f, false));
+            Atribuir(so, "chuteDaVolta", Chute(m.Caixa(720.5f, 32f, 212f, 74f), 1.1f, false));
+
             so.ApplyModifiedPropertiesWithoutUndo();
 
             Classificacao(raiz, m);
@@ -294,6 +297,24 @@ namespace PartyRacers.UI.Importer
         /// quantos segundos faltam para o carro da frente. Como o número é maior e muda toda hora,
         /// a caixa ganha corpo próprio e passa a caber "LÍDER" sem quebrar linha.
         /// </summary>
+        /// <summary>Põe um <see cref="UIKick"/> num bloco, para o binder poder empurrá-lo.</summary>
+        private static UIKick Chute(RectTransform alvo, float pico, bool piscar)
+        {
+            if (alvo == null)
+                return null;
+
+            UIKick k = alvo.GetComponent<UIKick>() ?? alvo.gameObject.AddComponent<UIKick>();
+
+            var so = new SerializedObject(k);
+            so.FindProperty("pico").floatValue = pico;
+            so.FindProperty("piscar").boolValue = piscar;
+            if (piscar)
+                so.FindProperty("corDoPisca").colorValue = new Color(1f, 0.42f, 0.48f, 1f);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return k;
+        }
+
         /// <summary>Placa escura por trás de um bloco solto, para ele não boiar sobre o cenário.</summary>
         private static void Fundo(RectTransform bloco, float raio, float folgaX, float folgaY)
         {
@@ -676,6 +697,10 @@ namespace PartyRacers.UI.Importer
                 Atribuir(so, "raizVida", rotuloVida.parent.gameObject);
 
             EscudoDoCluster(so, m);
+
+            Atribuir(so, "chuteDeDano", Chute(m.Caixa(105f, 1000f, 417f, 46f), 1.06f, true));
+            Atribuir(so, "chuteDoEscudo", Chute(m.Caixa(421.5f, 962f, 100.5f, 29f), 1.18f, false));
+
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

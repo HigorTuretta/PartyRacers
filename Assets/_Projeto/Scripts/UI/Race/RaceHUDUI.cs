@@ -30,6 +30,17 @@ namespace PartyRacers.UI.Race
         [SerializeField] private Color corLider = new Color(1f, 0.69f, 0.13f);
         [SerializeField] private Color corPerseguindo = new Color(0.79f, 0.82f, 0.96f);
 
+        [Header("Movimento")]
+        [Tooltip("Empurrão no emblema quando a posição muda — ganhar ou perder um lugar é a coisa " +
+                 "mais importante que acontece na corrida, e o jogador não está olhando para o " +
+                 "número quando acontece.")]
+        [SerializeField] private PartyRacers.UI.Motion.UIKick chuteDaPosicao;
+        [Tooltip("Empurrão na placa a cada volta nova.")]
+        [SerializeField] private PartyRacers.UI.Motion.UIKick chuteDaVolta;
+
+        private int posicaoAnterior = -1;
+        private int voltaAnterior = -1;
+
         [Header("Estados (objetos irmãos)")]
         [Tooltip("Chip vermelho ÚLTIMA VOLTA — ligado só na volta final.")]
         [SerializeField] private GameObject chipUltimaVolta;
@@ -51,8 +62,18 @@ namespace PartyRacers.UI.Race
             dados.Refresh();
             AtualizarPosicao();
 
+            int volta = Mathf.Clamp(dados.CurrentLap, 1, dados.TotalLaps);
+
             if (textoVolta != null)
-                textoVolta.text = $"VOLTA {Mathf.Clamp(dados.CurrentLap, 1, dados.TotalLaps)}/{dados.TotalLaps}";
+                textoVolta.text = $"VOLTA {volta}/{dados.TotalLaps}";
+
+            if (volta != voltaAnterior)
+            {
+                if (voltaAnterior > 0)
+                    chuteDaVolta?.Chutar();
+
+                voltaAnterior = volta;
+            }
 
             if (textoTempo != null)
                 textoTempo.text = HUDFormat.LapTime(dados.CurrentLapTime);
@@ -82,6 +103,16 @@ namespace PartyRacers.UI.Race
         {
             if (textoPosicao != null)
                 textoPosicao.text = dados.LocalPosition.ToString();
+
+            if (dados.LocalPosition != posicaoAnterior)
+            {
+                // O primeiro valor não é uma mudança: chutar na largada faria a HUD parecer que
+                // algo aconteceu antes de a corrida começar.
+                if (posicaoAnterior > 0)
+                    chuteDaPosicao?.Chutar();
+
+                posicaoAnterior = dados.LocalPosition;
+            }
 
             if (textoTotalDeCorredores != null)
                 textoTotalDeCorredores.text = $"DE {Mathf.Max(1, dados.RacerCount)}";

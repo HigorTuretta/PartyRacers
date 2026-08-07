@@ -57,7 +57,19 @@ namespace PartyRacers.UI.Race
         [SerializeField] private float alturaCompleta = 268f;
         [SerializeField] private float alturaSoTopo = 214f;
 
+        [Header("Tendência do intervalo")]
+        [Tooltip("Intervalo encolhendo: você está alcançando.")]
+        [SerializeField] private Color corAproximando = new Color(0.24f, 0.86f, 0.59f);
+        [Tooltip("Intervalo crescendo: está perdendo terreno.")]
+        [SerializeField] private Color corAfastando = new Color(1f, 0.42f, 0.48f);
+        [SerializeField] private Color corEstavel = new Color(1f, 0.69f, 0.13f);
+        [Tooltip("Variação por segundo a partir da qual a cor muda. Abaixo disso é ruído.")]
+        [SerializeField] private float limiarDeTendencia = 0.25f;
+
         private const int Topo = 5;
+
+        private readonly Dictionary<int, float> intervaloAnterior = new Dictionary<int, float>();
+        private float relogioDaTendencia;
 
         private void Reset() => dados = FindAnyObjectByType<RaceHUDDataProvider>();
 
@@ -113,7 +125,53 @@ namespace PartyRacers.UI.Race
                     continue;
 
                 Escrever(linha, lista[alvo]);
+                Tingir(linha, lista[alvo]);
             }
+
+            if (Time.unscaledTime - relogioDaTendencia < 0.5f)
+                return;
+
+            relogioDaTendencia = Time.unscaledTime;
+            foreach (RaceHUDDataProvider.Standing d in lista)
+                if (d.Kart != null && d.GapKnown)
+                    intervaloAnterior[d.Kart.GetInstanceID()] = d.GapToAhead;
+        }
+
+        /// <summary>
+        /// A cor do intervalo diz para onde ele ANDA: verde encolhendo, vermelho crescendo.
+        ///
+        /// Um número sozinho obriga a lembrar quanto era há um segundo. A cor responde isso sem
+        /// leitura, e é a única coisa da classificação que serve de instrução de pilotagem —
+        /// "insiste" ou "desiste desta e defende a posição".
+        ///
+        /// A comparação é a cada meio segundo, não a cada frame: entre dois frames a variação é
+        /// ruído de medição, e a linha ficaria piscando verde e vermelho sem parar.
+        /// </summary>
+        private void Tingir(Linha linha, RaceHUDDataProvider.Standing dado)
+        {
+            TextMeshProUGUI alvo = dado.IsLocal && linha.estadoLocal != null
+                ? linha.intervaloLocal
+                : linha.intervaloOutro;
+
+            if (alvo == null)
+                return;
+
+            // A faixa âmbar do jogador tem texto escuro; tingir de verde ali sumiria no fundo.
+            if (dado.IsLocal && linha.estadoLocal != null)
+                return;
+
+            Color cor = corEstavel;
+
+            if (dado.Position > 1 && dado.GapKnown && dado.Kart != null
+                && intervaloAnterior.TryGetValue(dado.Kart.GetInstanceID(), out float antes))
+            {
+                float variacao = dado.GapToAhead - antes;
+                if (variacao < -limiarDeTendencia * 0.5f) cor = corAproximando;
+                else if (variacao > limiarDeTendencia * 0.5f) cor = corAfastando;
+            }
+
+            if (alvo.color != cor)
+                alvo.color = cor;
         }
 
         private static void Escrever(Linha linha, RaceHUDDataProvider.Standing dado)

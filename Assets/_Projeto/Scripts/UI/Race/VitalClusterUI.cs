@@ -66,6 +66,16 @@ namespace PartyRacers.UI.Race
         [Tooltip("Barra âmbar que drena em 0,75 s (Image type Filled, Horizontal).")]
         [SerializeField] private Image barraDeImunidade;
 
+        [Header("Movimento")]
+        [Tooltip("Empurrão + pisca no bloco de vida quando o carro leva dano. A barra descendo " +
+                 "sozinha não chama atenção: a 150 km/h o olho está na pista, não no canto.")]
+        [SerializeField] private PartyRacers.UI.Motion.UIKick chuteDeDano;
+        [Tooltip("Empurrão quando o escudo fica pronto de novo.")]
+        [SerializeField] private PartyRacers.UI.Motion.UIKick chuteDoEscudo;
+
+        private int hpAnterior = -1;
+        private bool escudoProntoAntes;
+
         [Header("Estado danificado")]
         [SerializeField] private GameObject raizReparo;
         [Tooltip("Listras diagonais que drenam em 2,5 s (Image type Filled, Horizontal).")]
@@ -116,6 +126,11 @@ namespace PartyRacers.UI.Race
 
             if (valorDeVida != null)
                 valorDeVida.text = hp.ToString();
+
+            if (hp < hpAnterior && hpAnterior >= 0)
+                chuteDeDano?.Chutar();
+
+            hpAnterior = hp;
 
             if (segmentosDeVida == null || segmentosDeVida.Length == 0)
                 return;
@@ -207,6 +222,13 @@ namespace PartyRacers.UI.Race
 
             if (fundoDaChapinha != null)
                 fundoDaChapinha.color = new Color(cor.r, cor.g, cor.b, pronto || ativo ? 0.9f : 0.35f);
+
+            // "Voltou a ficar pronto" é a única transição do escudo que o jogador precisa notar
+            // sem estar olhando: é ela que autoriza a próxima disputa de espaço.
+            if (pronto && !escudoProntoAntes)
+                chuteDoEscudo?.Chutar();
+
+            escudoProntoAntes = pronto;
         }
 
         // ---------------------------------------------------------------- Imunidade e reparo

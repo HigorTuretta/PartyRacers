@@ -149,6 +149,20 @@ namespace PartyRacers.UI.Importer
                 int reapontados = Reapontar(raizes, "hudDaCorrida", hud);
                 if (reapontados > 0)
                     log.AppendLine($"      {reapontados} referência(s) de HUD reapontada(s)");
+
+                // A tela de resultado desenha DEPOIS do HUD. Sem isso a corrida terminava, a tela
+                // abria — e o HUD continuava por cima dela, com classificação, vida e escudo
+                // riscando o pódio. Parecia que a corrida não tinha acabado.
+                foreach (GameObject raiz in raizes)
+                {
+                    Transform resultado = raiz.transform.Find("Screen_Result")
+                                       ?? Achar(raiz.transform, "Screen_Result");
+                    if (resultado != null && resultado.parent == hud.transform.parent)
+                    {
+                        resultado.SetAsLastSibling();
+                        log.AppendLine("      Screen_Result acima do HUD");
+                    }
+                }
             }
 
             if (menu != null)
@@ -207,8 +221,18 @@ namespace PartyRacers.UI.Importer
                         continue;
 
                     Object atual = p.objectReferenceValue;
+
+                    // Campo VAZIO também é reapontado. `hudDaCorrida` estava nulo na cena — o HUD
+                    // que ele apontava foi removido em alguma instalação anterior —, então a tela
+                    // de resultado não tinha o que esconder e o HUD ficava por cima do pódio.
                     if (atual == null)
+                    {
+                        p.objectReferenceValue = novo;
+                        so.ApplyModifiedPropertiesWithoutUndo();
+                        EditorUtility.SetDirty(c);
+                        n++;
                         continue;
+                    }
 
                     var comoGrupo = atual as CanvasGroup;
                     var alvo = comoGrupo != null
@@ -225,6 +249,22 @@ namespace PartyRacers.UI.Importer
             }
 
             return n;
+        }
+
+        /// <summary>Procura um filho pelo nome em toda a árvore.</summary>
+        private static Transform Achar(Transform raiz, string nome)
+        {
+            if (raiz.name == nome)
+                return raiz;
+
+            for (int i = 0; i < raiz.childCount; i++)
+            {
+                Transform achado = Achar(raiz.GetChild(i), nome);
+                if (achado != null)
+                    return achado;
+            }
+
+            return null;
         }
 
         private static Transform AcharCanvas(GameObject[] raizes)

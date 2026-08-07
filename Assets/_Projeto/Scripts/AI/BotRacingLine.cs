@@ -161,6 +161,45 @@ namespace PartyRacers.AI
             return true;
         }
 
+        /// <summary>
+        /// Mesma informação, mas com MEMÓRIA: procura só numa janela em volta do último segmento
+        /// conhecido daquele consultante.
+        ///
+        /// A varredura global percorre o traçado inteiro. Com 16 karts consultando todo frame ela
+        /// custava 10 ms sozinha — mais que o orçamento de um frame a 60 Hz. Os bots já navegam
+        /// pela busca em janela (<see cref="BotPath.FindNearestLocal"/>) exatamente por isso; quem
+        /// mede classificação e intervalo passa a usar a mesma.
+        ///
+        /// <paramref name="segmento"/> entra e sai: guarde-o por kart e devolva no frame seguinte.
+        /// Passe -1 na primeira vez, ou depois de um respawn, para varrer tudo uma vez.
+        /// </summary>
+        public static bool TryGetRouteInfoContinuous(
+            Vector3 position,
+            ref int segmento,
+            out float distanceOnRoute,
+            out float routeTotalLength,
+            out bool routeLooped,
+            float janelaMetros = 120f)
+        {
+            distanceOnRoute = 0f;
+            routeTotalLength = 0f;
+            routeLooped = false;
+
+            EnsureRuntimePaths();
+            if (runtimeMainPath == null || !runtimeMainPath.IsValid)
+                return false;
+
+            BotPath.NearestResult nearest = segmento < 0
+                ? runtimeMainPath.FindNearestGlobal(position)
+                : runtimeMainPath.FindNearestLocal(position, segmento, janelaMetros);
+
+            segmento = nearest.Segment;
+            distanceOnRoute = nearest.DistanceOnPath;
+            routeTotalLength = runtimeMainPath.TotalLength;
+            routeLooped = runtimeMainPath.Looped;
+            return true;
+        }
+
         // Filhos com BotRouteBranch (rotas alternativas) ou BotTrackZone (marcadores de trecho)
         // NÃO contam como pontos do traçado principal.
         private static bool IsRoutePointChild(Transform child)

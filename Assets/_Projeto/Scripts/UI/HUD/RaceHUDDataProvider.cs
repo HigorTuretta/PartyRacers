@@ -125,8 +125,28 @@ namespace PartyRacers.UI.HUD
             ResolveLocalKart();
             EnsureRaceContext();
             ReadLocalKart();
+
+            // A classificação NÃO precisa de 60 Hz. Ela varre 16 karts, projeta cada um no traçado
+            // e ordena — trabalho de milissegundos que ninguém percebe acontecer 20 vezes por
+            // segundo em vez de 60. Velocidade, vida e cronômetro continuam lidos todo frame,
+            // porque esses o olho acompanha.
+            if (Time.unscaledTime < proximaClassificacao && standings.Count > 0)
+                return;
+
+            deltaDaClassificacao = Mathf.Max(0.001f, Time.unscaledTime - ultimaClassificacao);
+            ultimaClassificacao = Time.unscaledTime;
+            proximaClassificacao = Time.unscaledTime + 1f / Mathf.Max(1f, hzDaClassificacao);
+
             BuildStandings();
         }
+
+        [Header("Ritmo")]
+        [Tooltip("Quantas vezes por segundo a classificação e os intervalos são recalculados.")]
+        [SerializeField, Range(4f, 60f)] private float hzDaClassificacao = 20f;
+
+        private float proximaClassificacao;
+        private float ultimaClassificacao;
+        private float deltaDaClassificacao = 0.05f;
 
         private void Update() => Refresh();
 
@@ -436,19 +456,21 @@ namespace PartyRacers.UI.HUD
 
             int chave = tras.Kart.GetInstanceID();
             float anterior = intervalos.TryGetValue(chave, out Intervalo guardado)
-                             && guardado.Frame >= Time.frameCount - 4
+                             && Time.unscaledTime - guardado.Quando < 1f
                 ? guardado.Valor
                 : bruto;
 
-            segundos = Mathf.Lerp(anterior, bruto, 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime));
-            intervalos[chave] = new Intervalo { Valor = segundos, Frame = Time.frameCount };
+            // A suavização anda no passo da CLASSIFICAÇÃO, não do frame: ela roda 20 vezes por
+            // segundo, e usar o delta do frame faria o filtro convergir três vezes mais devagar.
+            segundos = Mathf.Lerp(anterior, bruto, 1f - Mathf.Exp(-6f * deltaDaClassificacao));
+            intervalos[chave] = new Intervalo { Valor = segundos, Quando = Time.unscaledTime };
             return true;
         }
 
         private struct Intervalo
         {
             public float Valor;
-            public int Frame;
+            public float Quando;
         }
 
         private readonly Dictionary<int, Intervalo> intervalos = new Dictionary<int, Intervalo>();
@@ -461,7 +483,7 @@ namespace PartyRacers.UI.HUD
 
             intervalosParaTirar.Clear();
             foreach (KeyValuePair<int, Intervalo> par in intervalos)
-                if (par.Value.Frame < Time.frameCount - 120)
+                if (Time.unscaledTime - par.Value.Quando > 5f)
                     intervalosParaTirar.Add(par.Key);
 
             foreach (int chave in intervalosParaTirar)
