@@ -6,16 +6,20 @@ using PartyRacers.UI.HUD;
 namespace PartyRacers.UI.Race
 {
     /// <summary>
-    /// Classificação do HUD v2. Cada linha tem DUAS variantes já montadas — a do jogador (âmbar,
-    /// maior, com sombra dura) e a dos demais (vidro escuro, menor) — e o binder só liga uma.
+    /// Classificação do HUD v2: o TOP 5 e, abaixo, a faixa do jogador.
     ///
     /// É um binder separado do <see cref="StandingsUI"/> de propósito: aquele usa medalhas por
     /// posição e está ligado às telas que já existem no jogo. Mudar os campos dele quebraria essas
     /// referências sem ganho nenhum.
     ///
-    /// A linha do jogador está SEMPRE visível: fora do top 5, a lista mostra os que estão à frente
-    /// e reserva a última faixa para ele — ver alguém em 16º precisa saber com quem está brigando,
-    /// não quem lidera.
+    /// Cada faixa tem quatro colunas, na ordem em que a informação é procurada:
+    /// <b>posição</b>, <b>nome</b>, <b>melhor volta</b> e <b>intervalo</b>. O intervalo é o tempo
+    /// até o carro da FRENTE, medido a cada frame — a mesma coluna que a F1 chama de "Interval".
+    /// Quem lidera não tem ninguém à frente, então ali se lê LÍDER.
+    ///
+    /// A faixa do jogador está SEMPRE visível: dentro do top 5 é a linha dele que ganha o
+    /// destaque; fora dele, a faixa de baixo aparece. Quem corre em 12º precisa saber com quem
+    /// está brigando, não só quem lidera.
     /// </summary>
     [DisallowMultipleComponent]
     public class StandingsV2UI : MonoBehaviour
@@ -32,16 +36,28 @@ namespace PartyRacers.UI.Race
             public GameObject sombraLocal;
             public GameObject estadoOutro;
 
-            [Header("Textos de dentro de cada estado")]
-            public TextMeshProUGUI posicaoLocal, nomeLocal, tempoLocal;
-            public TextMeshProUGUI posicaoOutro, nomeOutro, tempoOutro;
+            [Tooltip("Moldura âmbar acesa quando ESTA faixa do topo é a do jogador. As cinco de " +
+                     "cima não têm variante local própria — quem marca que a linha é sua é isto.")]
+            public GameObject destaque;
+
+            [Header("Colunas de cada estado")]
+            public TextMeshProUGUI posicaoLocal, nomeLocal, voltaLocal, intervaloLocal;
+            public TextMeshProUGUI posicaoOutro, nomeOutro, voltaOutro, intervaloOutro;
         }
 
         [Header("Dados")]
         [SerializeField] private RaceHUDDataProvider dados;
 
-        [Header("Linhas já montadas na cena")]
+        [Header("Linhas já montadas na cena (as 5 do topo + a do jogador)")]
         [SerializeField] private List<Linha> linhas = new List<Linha>();
+
+        [Tooltip("Placa de fundo. Encolhe quando a faixa do jogador não está em uso — painel com " +
+                 "um terço vazio parece lista cortada.")]
+        [SerializeField] private RectTransform painel;
+        [SerializeField] private float alturaCompleta = 268f;
+        [SerializeField] private float alturaSoTopo = 214f;
+
+        private const int Topo = 5;
 
         private void Reset() => dados = FindAnyObjectByType<RaceHUDDataProvider>();
 
@@ -62,15 +78,23 @@ namespace PartyRacers.UI.Race
             int indiceLocal = -1;
             for (int i = 0; i < lista.Count; i++)
             {
-                if (lista[i].IsLocal) { indiceLocal = i; break; }
+                if (lista[i].IsLocal)
+                {
+                    indiceLocal = i;
+                    break;
+                }
             }
 
-            // Dentro das faixas visíveis: a lista é o topo puro. Fora: as faixas de cima mostram
-            // quem está imediatamente à frente e a última guarda o jogador.
-            bool localCabeNoTopo = indiceLocal >= 0 && indiceLocal < linhas.Count;
-            int primeiro = localCabeNoTopo || indiceLocal < 0
-                ? 0
-                : Mathf.Max(0, indiceLocal - (linhas.Count - 1));
+            // As cinco primeiras faixas são o top 5, sempre. A sexta é a do jogador e só existe
+            // quando ele está fora dele — dentro, ela seria uma repetição da linha destacada acima.
+            bool localNoTopo = indiceLocal >= 0 && indiceLocal < Topo;
+
+            if (painel != null)
+            {
+                float altura = localNoTopo ? alturaSoTopo : alturaCompleta;
+                if (!Mathf.Approximately(painel.sizeDelta.y, altura))
+                    painel.sizeDelta = new Vector2(painel.sizeDelta.x, altura);
+            }
 
             for (int i = 0; i < linhas.Count; i++)
             {
@@ -78,42 +102,70 @@ namespace PartyRacers.UI.Race
                 if (linha == null || linha.raiz == null)
                     continue;
 
-                int alvo = localCabeNoTopo || indiceLocal < 0
-                    ? i
-                    : (i == linhas.Count - 1 ? indiceLocal : primeiro + i);
+                bool ehFaixaDoJogador = i >= Topo;
+                int alvo = ehFaixaDoJogador ? indiceLocal : i;
+                bool temDado = alvo >= 0 && alvo < lista.Count
+                               && (!ehFaixaDoJogador || !localNoTopo);
 
-                bool temDado = alvo >= 0 && alvo < lista.Count;
                 Ligar(linha.raiz, temDado);
 
                 if (!temDado)
                     continue;
 
-                RaceHUDDataProvider.Standing dado = lista[alvo];
-                bool ehLocal = dado.IsLocal;
-
-                Ligar(linha.estadoLocal, ehLocal);
-                Ligar(linha.sombraLocal, ehLocal);
-                Ligar(linha.estadoOutro, !ehLocal);
-
-                string posicao = dado.Position.ToString();
-                string tempo = HUDFormat.LapTimeShort(dado.BestLapTime);
-
-                if (ehLocal)
-                {
-                    Escrever(linha.posicaoLocal, posicao);
-                    Escrever(linha.nomeLocal, dado.DisplayName);
-                    Escrever(linha.tempoLocal, tempo);
-                }
-                else
-                {
-                    Escrever(linha.posicaoOutro, posicao);
-                    Escrever(linha.nomeOutro, dado.DisplayName);
-                    Escrever(linha.tempoOutro, tempo);
-                }
+                Escrever(linha, lista[alvo]);
             }
         }
 
-        private static void Escrever(TextMeshProUGUI alvo, string valor)
+        private static void Escrever(Linha linha, RaceHUDDataProvider.Standing dado)
+        {
+            // As cinco faixas do topo têm só a variante "outro" — a variante âmbar existe uma vez
+            // só, na faixa de baixo. Ligar um estado que não existe apagava a linha inteira: quem
+            // subia para o pódio desaparecia da própria classificação. Sem variante própria, a
+            // faixa continua sendo a comum e ganha a moldura de destaque.
+            bool ehLocal = dado.IsLocal;
+            bool usarLocal = ehLocal && linha.estadoLocal != null;
+
+            Ligar(linha.estadoLocal, usarLocal);
+            Ligar(linha.sombraLocal, usarLocal);
+            Ligar(linha.estadoOutro, !usarLocal);
+            Ligar(linha.destaque, ehLocal && !usarLocal);
+
+            string posicao = dado.Position.ToString();
+            string volta = HUDFormat.LapTimeShort(dado.BestLapTime);
+            string intervalo = Intervalo(dado);
+
+            if (usarLocal)
+            {
+                Texto(linha.posicaoLocal, posicao);
+                Texto(linha.nomeLocal, dado.DisplayName);
+                Texto(linha.voltaLocal, volta);
+                Texto(linha.intervaloLocal, intervalo);
+            }
+            else
+            {
+                Texto(linha.posicaoOutro, posicao);
+                Texto(linha.nomeOutro, dado.DisplayName);
+                Texto(linha.voltaOutro, volta);
+                Texto(linha.intervaloOutro, intervalo);
+            }
+        }
+
+        /// <summary>
+        /// Coluna de intervalo. Líder não tem ninguém à frente; medida indisponível vira "--", e
+        /// não zero — zero significaria "colado", que é exatamente o oposto de "não sei".
+        /// </summary>
+        public static string Intervalo(RaceHUDDataProvider.Standing dado)
+        {
+            if (dado.Position <= 1)
+                return "LÍDER";
+
+            if (!dado.GapKnown)
+                return "--";
+
+            return dado.GapToAhead >= 100f ? "+99" : "+" + dado.GapToAhead.ToString("0.0");
+        }
+
+        private static void Texto(TextMeshProUGUI alvo, string valor)
         {
             if (alvo != null && alvo.text != valor)
                 alvo.text = valor;

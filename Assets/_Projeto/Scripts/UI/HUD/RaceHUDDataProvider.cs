@@ -15,13 +15,16 @@ namespace PartyRacers.UI.HUD
     {
         public readonly struct Standing
         {
-            public Standing(KartController kart, int position, string displayName, bool isLocal, float bestLapTime)
+            public Standing(KartController kart, int position, string displayName, bool isLocal,
+                            float bestLapTime, float gapToAhead, bool gapKnown)
             {
                 Kart = kart;
                 Position = position;
                 DisplayName = displayName;
                 IsLocal = isLocal;
                 BestLapTime = bestLapTime;
+                GapToAhead = gapToAhead;
+                GapKnown = gapKnown;
             }
 
             public KartController Kart { get; }
@@ -29,6 +32,12 @@ namespace PartyRacers.UI.HUD
             public string DisplayName { get; }
             public bool IsLocal { get; }
             public float BestLapTime { get; }
+
+            /// <summary>Segundos até o carro da FRENTE. 0 para o líder.</summary>
+            public float GapToAhead { get; }
+
+            /// <summary>Falso quando não dá para medir (pista sem traçado, kart parado).</summary>
+            public bool GapKnown { get; }
         }
 
         [Header("Contexto de cena")]
@@ -82,6 +91,8 @@ namespace PartyRacers.UI.HUD
         public float ShieldCooldown01 { get; private set; }
         public float ShieldCooldownRemaining { get; private set; }
         public float ShieldActiveRemaining { get; private set; }
+        /// <summary>Fração do escudo ATIVO que ainda resta (1 = acabou de ligar, 0 = expirou).</summary>
+        public float ShieldActive01 { get; private set; }
 
         public int LocalPosition { get; private set; } = 1;
         public int RacerCount { get; private set; }
@@ -288,6 +299,7 @@ namespace PartyRacers.UI.HUD
                 ShieldCooldown01 = LocalShield.Cooldown01;
                 ShieldCooldownRemaining = LocalShield.CooldownRemaining;
                 ShieldActiveRemaining = LocalShield.ActiveRemaining;
+                ShieldActive01 = LocalShield.ActiveRemaining01;
             }
             else
             {
@@ -349,6 +361,8 @@ namespace PartyRacers.UI.HUD
 
             LocalPosition = ranked.Count > 0 ? ranked.Count : 1;
             RacerCount = ranked.Count;
+            LocalGapAhead = 0f;
+            LocalGapKnown = false;
 
             for (int i = 0; i < ranked.Count; i++)
             {
@@ -359,7 +373,18 @@ namespace PartyRacers.UI.HUD
                     LocalPosition = position;
 
                 float bestLap = entry.Tracker != null ? entry.Tracker.BestLapTime : -1f;
-                standings.Add(new Standing(entry.Kart, position, ResolveDisplayName(entry.Kart, position), isLocal, bestLap));
+                float intervalo = 0f;
+                bool temIntervalo = i > 0 && MedirIntervalo(ranked[i - 1], entry, out intervalo);
+
+                if (isLocal)
+                {
+                    LocalGapAhead = intervalo;
+                    LocalGapKnown = temIntervalo;
+                }
+
+                standings.Add(new Standing(entry.Kart, position,
+                                           ResolveDisplayName(entry.Kart, position), isLocal,
+                                           bestLap, intervalo, temIntervalo));
             }
 
             // Garante ao menos o kart local na lista (cena single antes de registrar na corrida).
@@ -367,8 +392,80 @@ namespace PartyRacers.UI.HUD
             {
                 LocalPosition = 1;
                 RacerCount = 1;
-                standings.Add(new Standing(LocalKart, 1, ResolveDisplayName(LocalKart, 1), true, BestLapTime));
+                standings.Add(new Standing(LocalKart, 1, ResolveDisplayName(LocalKart, 1), true,
+                                           BestLapTime, 0f, false));
             }
+
+            LimparIntervalosVelhos();
+        }
+
+        /// <summary>Segundos até o carro da frente. 0 quando o jogador lidera.</summary>
+        public float LocalGapAhead { get; private set; }
+
+        /// <summary>Falso quando o intervalo não pode ser medido — a HUD mostra "--" e não zero.</summary>
+        public bool LocalGapKnown { get; private set; }
+
+        /// <summary>
+        /// Intervalo, em segundos, entre dois karts consecutivos — a coluna "Interval" da F1.
+        ///
+        /// A conta é a distância que os separa PELA PISTA dividida pela velocidade de quem vem
+        /// atrás: é assim que o número responde ao que o jogador vê, encolhendo quando ele
+        /// aproxima e crescendo quando perde terreno. Distância em linha reta não serve — numa
+        /// curva fechada dois karts a 200 m de pista ficam a 30 m um do outro.
+        ///
+        /// O valor é SUAVIZADO. A projeção do kart sobre o traçado oscila alguns centímetros por
+        /// frame, e sem filtro o último dígito tremia sem parar, que é o tipo de ruído que faz o
+        /// jogador parar de olhar para o número.
+        /// </summary>
+        private bool MedirIntervalo(RankedKart frente, RankedKart tras, out float segundos)
+        {
+            segundos = 0f;
+
+            if (!RaceProgress.TryMeasureMeters(frente.Kart, frente.Tracker, out float metrosFrente)
+                || !RaceProgress.TryMeasureMeters(tras.Kart, tras.Tracker, out float metrosTras))
+                return false;
+
+            float distancia = metrosFrente - metrosTras;
+            if (distancia < 0f)
+                return false;
+
+            // Piso de velocidade: parado, a conta iria ao infinito e o mostrador viraria lixo. A
+            // 25 km/h o intervalo já fica grande o bastante para comunicar "muito longe".
+            float velocidade = Mathf.Max(tras.Kart.SpeedKmh / 3.6f, 7f);
+            float bruto = distancia / velocidade;
+
+            int chave = tras.Kart.GetInstanceID();
+            float anterior = intervalos.TryGetValue(chave, out Intervalo guardado)
+                             && guardado.Frame >= Time.frameCount - 4
+                ? guardado.Valor
+                : bruto;
+
+            segundos = Mathf.Lerp(anterior, bruto, 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime));
+            intervalos[chave] = new Intervalo { Valor = segundos, Frame = Time.frameCount };
+            return true;
+        }
+
+        private struct Intervalo
+        {
+            public float Valor;
+            public int Frame;
+        }
+
+        private readonly Dictionary<int, Intervalo> intervalos = new Dictionary<int, Intervalo>();
+        private readonly List<int> intervalosParaTirar = new List<int>();
+
+        private void LimparIntervalosVelhos()
+        {
+            if (intervalos.Count <= ranked.Count + 8)
+                return;
+
+            intervalosParaTirar.Clear();
+            foreach (KeyValuePair<int, Intervalo> par in intervalos)
+                if (par.Value.Frame < Time.frameCount - 120)
+                    intervalosParaTirar.Add(par.Key);
+
+            foreach (int chave in intervalosParaTirar)
+                intervalos.Remove(chave);
         }
 
         /// <summary>

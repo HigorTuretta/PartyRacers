@@ -45,21 +45,21 @@ namespace PartyRacers.UI.Race
                  "golpe pode quebrar o carro.")]
         [SerializeField, Range(0f, 1f)] private float limiarDeVidaBaixa = 0.4f;
 
-        [Header("Escudo — linhas de estado (irmãs, mutuamente exclusivas)")]
+        [Header("Escudo — uma barra, três estados")]
         [SerializeField] private GameObject raizEscudo;
-        [SerializeField] private GameObject estadoPronto;
-        [SerializeField] private GameObject estadoAtivo;
-        [SerializeField] private GameObject estadoRecarga;
-        [Tooltip("Escudo apagado durante o estado danificado.")]
-        [SerializeField] private GameObject estadoApagado;
-
-        [Header("Escudo — peças que o binder escreve")]
-        [Tooltip("Preenchimento proporcional da recarga (Image type Filled, Horizontal).")]
-        [SerializeField] private Image preenchimentoRecarga;
+        [Tooltip("Preenchimento da barra (Image type Filled, Horizontal).")]
+        [SerializeField] private Image preenchimentoEscudo;
         [Tooltip("Risquinho na ponta do preenchimento. Anda junto com o fillAmount.")]
-        [SerializeField] private RectTransform pontaDaRecarga;
-        [SerializeField] private TextMeshProUGUI textoDaChapinhaAtivo;
-        [SerializeField] private TextMeshProUGUI textoDaChapinhaRecarga;
+        [SerializeField] private RectTransform pontaDoEscudo;
+        [Tooltip("Chapinha à direita da barra: PRONTO / ATIVO 2,3s / 3,4s.")]
+        [SerializeField] private TextMeshProUGUI textoDoEscudo;
+        [Tooltip("Fundo da chapinha, recolorido junto com a barra.")]
+        [SerializeField] private Graphic fundoDaChapinha;
+
+        [Header("Escudo — cores por estado")]
+        [SerializeField] private Color corPronto = new Color(0.21f, 0.65f, 1f);
+        [SerializeField] private Color corAtivo = new Color(0.62f, 0.92f, 1f);
+        [SerializeField] private Color corRecarga = new Color(0.29f, 0.33f, 0.66f);
 
         [Header("Imunidade (cooldown de contato)")]
         [SerializeField] private GameObject raizImunidade;
@@ -146,40 +146,67 @@ namespace PartyRacers.UI.Race
 
         // ---------------------------------------------------------------- Escudo
 
+        /// <summary>
+        /// Uma barra, três estados — porque o jogo tem UM escudo, não três cargas.
+        ///
+        /// O protótipo desenhou três segmentos e o binder antigo tentou tratá-los como quatro
+        /// linhas de estado inteiras; o resultado foi uma barra que nunca se mexia, porque nada
+        /// disso existe no <see cref="KartShieldAbility"/>. O que existe é: pronto, ativo (drenando
+        /// pelo tempo de duração) e recarregando (enchendo pelo cooldown). A barra mostra os três
+        /// pela mesma régua, e a cor diz qual deles é.
+        ///
+        /// Ativo DRENA e recarga ENCHE de propósito: as duas coisas andam, mas em sentidos opostos,
+        /// e é o sentido que distingue "está acabando" de "está voltando" sem precisar ler nada.
+        /// </summary>
         private void AtualizarEscudo(bool danificado)
         {
             Ligar(raizEscudo, true);
 
             bool ativo = !danificado && dados.ShieldActive;
             bool pronto = !danificado && dados.ShieldReady;
-            bool recarregando = !danificado && !ativo && !pronto;
 
-            Ligar(estadoPronto, pronto);
-            Ligar(estadoAtivo, ativo);
-            Ligar(estadoRecarga, recarregando);
-            Ligar(estadoApagado, danificado);
+            float preenchimento = danificado ? 0f
+                                : ativo ? dados.ShieldActive01
+                                : pronto ? 1f
+                                : dados.ShieldCooldown01;
 
-            if (ativo && textoDaChapinhaAtivo != null)
-                textoDaChapinhaAtivo.text = $"ATIVO {dados.ShieldActiveRemaining:0.0}s";
+            Color cor = danificado ? corRecarga
+                      : ativo ? corAtivo
+                      : pronto ? corPronto
+                      : corRecarga;
 
-            if (!recarregando)
-                return;
+            string rotulo = danificado ? "—"
+                          : ativo ? $"ATIVO {dados.ShieldActiveRemaining:0.0}s"
+                          : pronto ? "PRONTO"
+                          : $"{dados.ShieldCooldownRemaining:0.0}s";
 
-            float p = dados.ShieldCooldown01;
-
-            if (preenchimentoRecarga != null)
-                preenchimentoRecarga.fillAmount = p;
-
-            // O risquinho marca a PONTA do preenchimento — parado no zero ele viraria só um traço
-            // decorativo, e é justamente ele que mostra que a recarga está andando.
-            if (pontaDaRecarga != null && preenchimentoRecarga != null)
+            if (preenchimentoEscudo != null)
             {
-                float largura = preenchimentoRecarga.rectTransform.rect.width;
-                pontaDaRecarga.anchoredPosition = new Vector2(largura * p, pontaDaRecarga.anchoredPosition.y);
+                preenchimentoEscudo.fillAmount = preenchimento;
+                preenchimentoEscudo.color = cor;
             }
 
-            if (textoDaChapinhaRecarga != null)
-                textoDaChapinhaRecarga.text = $"{dados.ShieldCooldownRemaining:0.0}s";
+            // O risquinho marca a PONTA do preenchimento. Parado no zero ele viraria só um traço
+            // decorativo, e é justamente ele que mostra que a barra está andando. Some quando não
+            // há movimento nenhum a marcar.
+            if (pontaDoEscudo != null)
+            {
+                bool mostrar = preenchimento > 0.01f && preenchimento < 0.995f;
+                Ligar(pontaDoEscudo.gameObject, mostrar);
+
+                if (mostrar && preenchimentoEscudo != null)
+                {
+                    float largura = preenchimentoEscudo.rectTransform.rect.width;
+                    pontaDoEscudo.anchoredPosition =
+                        new Vector2(largura * preenchimento, pontaDoEscudo.anchoredPosition.y);
+                }
+            }
+
+            if (textoDoEscudo != null && textoDoEscudo.text != rotulo)
+                textoDoEscudo.text = rotulo;
+
+            if (fundoDaChapinha != null)
+                fundoDaChapinha.color = new Color(cor.r, cor.g, cor.b, pronto || ativo ? 0.9f : 0.35f);
         }
 
         // ---------------------------------------------------------------- Imunidade e reparo

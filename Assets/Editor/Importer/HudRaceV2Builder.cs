@@ -218,8 +218,8 @@ namespace PartyRacers.UI.Importer
                     raiz = linha.gameObject,
                     estadoLocal = local.gameObject,
                     estadoOutro = outro.gameObject,
-                    posicaoLocal = txtPosL, nomeLocal = txtNomeL, tempoLocal = txtGapL,
-                    posicaoOutro = txtPosO, nomeOutro = txtNomeO, tempoOutro = txtGapO,
+                    posicaoLocal = txtPosL, nomeLocal = txtNomeL, intervaloLocal = txtGapL,
+                    posicaoOutro = txtPosO, nomeOutro = txtNomeO, intervaloOutro = txtGapO,
                 };
             }
 
@@ -862,10 +862,10 @@ namespace PartyRacers.UI.Importer
                 s.FindPropertyRelative("estadoOutro").objectReferenceValue = linhas[i].estadoOutro;
                 s.FindPropertyRelative("posicaoLocal").objectReferenceValue = linhas[i].posicaoLocal;
                 s.FindPropertyRelative("nomeLocal").objectReferenceValue = linhas[i].nomeLocal;
-                s.FindPropertyRelative("tempoLocal").objectReferenceValue = linhas[i].tempoLocal;
+                s.FindPropertyRelative("intervaloLocal").objectReferenceValue = linhas[i].intervaloLocal;
                 s.FindPropertyRelative("posicaoOutro").objectReferenceValue = linhas[i].posicaoOutro;
                 s.FindPropertyRelative("nomeOutro").objectReferenceValue = linhas[i].nomeOutro;
-                s.FindPropertyRelative("tempoOutro").objectReferenceValue = linhas[i].tempoOutro;
+                s.FindPropertyRelative("intervaloOutro").objectReferenceValue = linhas[i].intervaloOutro;
             }
             soS.ApplyModifiedPropertiesWithoutUndo();
 

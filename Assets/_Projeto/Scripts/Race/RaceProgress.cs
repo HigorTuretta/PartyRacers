@@ -103,6 +103,75 @@ public static class RaceProgress
         return kart.SpeedKmh * 0.01f;
     }
 
+    /// <summary>
+    /// Quantos METROS de corrida o kart já fez, contando as voltas.
+    ///
+    /// A classificação usa <see cref="Sample"/>, que é ótima para ordenar e inútil para medir
+    /// diferença: "coarse" está em checkpoints e "fine" zera a cada trecho. Para dizer quantos
+    /// SEGUNDOS separam dois karts — o intervalo de F1 — é preciso uma régua contínua, e ela só
+    /// existe se o traçado dos bots estiver na cena.
+    ///
+    /// A origem do traçado não é a linha de chegada: ela é onde quem desenhou a rota começou a
+    /// desenhar. Sem descontar isso, um kart logo depois da largada marcaria quase uma volta
+    /// inteira e o intervalo daria um salto absurdo uma vez por volta.
+    /// </summary>
+    public static bool TryMeasureMeters(KartController kart, KartRaceTracker tracker, out float meters)
+    {
+        meters = 0f;
+
+        if (kart == null || tracker == null)
+            return false;
+
+        if (!BotRacingLine.TryGetNearestRouteInfo(kart.transform.position, out _,
+                out float distancia, out float comprimento, out bool fechada)
+            || comprimento <= 0.01f)
+            return false;
+
+        float largada = DistanciaDaLargada(comprimento);
+        float naVolta = fechada
+            ? Mathf.Repeat(distancia - largada, comprimento)
+            : Mathf.Max(0f, distancia - largada);
+
+        int voltasFeitas = Mathf.Max(0, tracker.CurrentLap - 1);
+        meters = voltasFeitas * comprimento + naVolta;
+        return true;
+    }
+
+    private static float distanciaDaLargada = -1f;
+
+    private static float DistanciaDaLargada(float comprimento)
+    {
+        if (distanciaDaLargada >= 0f)
+            return distanciaDaLargada;
+
+        RaceCheckpoint largada = null;
+        RaceCheckpoint[] todos = Object.FindObjectsByType<RaceCheckpoint>(
+            FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+
+        foreach (RaceCheckpoint c in todos)
+        {
+            if (c == null)
+                continue;
+
+            if (c.IsStartFinish)
+            {
+                largada = c;
+                break;
+            }
+
+            if (largada == null || c.CheckpointIndex < largada.CheckpointIndex)
+                largada = c;
+        }
+
+        distanciaDaLargada = largada != null
+            && BotRacingLine.TryGetNearestRouteInfo(largada.transform.position, out _, out float d, out _, out _)
+            ? d
+            : 0f;
+
+        _ = comprimento;
+        return distanciaDaLargada;
+    }
+
     private static float ForwardDistance(float from, float to, float length, bool looped)
     {
         if (!looped || length <= 0.01f)
@@ -171,6 +240,7 @@ public static class RaceProgress
         cachedCheckpoints = null;
         cachedCheckpointFrame = -1;
         checkpointRouteDistance.Clear();
+        distanciaDaLargada = -1f;
         UnityEngine.SceneManagement.SceneManager.activeSceneChanged += (_, __) =>
         {
             cachedCheckpoints = null;

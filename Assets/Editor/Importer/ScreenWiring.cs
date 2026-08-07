@@ -265,9 +265,19 @@ namespace PartyRacers.UI.Importer
             Atribuir(so, "textoUltimaVolta", Tmp(m.Texto("ÚLT", false)));
             Atribuir(so, "textoMelhorVolta", Tmp(m.Texto("MELH", false)));
 
-            RectTransform chipUlt = Alvo(m, "ÚLT", false);
-            if (chipUlt != null)
-                Atribuir(so, "chipUltimaVolta", chipUlt.gameObject);
+            // O bloco de posição não estava ligado a nada: o "4" e o "+2 POSIÇÕES" eram o texto do
+            // protótipo, parado na tela a corrida inteira.
+            Atribuir(so, "textoPosicao", Tmp(m.Texto("4")));
+            Atribuir(so, "textoTotalDeCorredores", Tmp(m.Texto("DE 12")));
+            Atribuir(so, "textoIntervalo", Intervalo(m));
+
+            // "ÚLT" é o TEMPO DA ÚLTIMA VOLTA; "última volta" é o aviso de que esta é a volta final.
+            // Ligar um no outro fazia o binder esconder o tempo da última volta em toda volta que
+            // não fosse a derradeira — ou seja, quase sempre. O aviso ganha chapinha própria.
+            Atribuir(so, "chipUltimaVolta", ChapinhaDeUltimaVolta(m));
+
+            Fundo(m.Caixa(36f, 32f, 227.6f, 81f), 20f, 14f, 8f);
+            RealcarTotal(m);
 
             so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -277,38 +287,351 @@ namespace PartyRacers.UI.Importer
             Toasts(raiz, m);
         }
 
+        /// <summary>
+        /// A chapinha "+2 POSIÇÕES" vira o mostrador de intervalo.
+        ///
+        /// O texto do protótipo era um saldo do que já aconteceu; o valor que o piloto precisa é
+        /// quantos segundos faltam para o carro da frente. Como o número é maior e muda toda hora,
+        /// a caixa ganha corpo próprio e passa a caber "LÍDER" sem quebrar linha.
+        /// </summary>
+        /// <summary>Placa escura por trás de um bloco solto, para ele não boiar sobre o cenário.</summary>
+        private static void Fundo(RectTransform bloco, float raio, float folgaX, float folgaY)
+        {
+            if (bloco == null)
+                return;
+
+            var go = new GameObject("Fundo", typeof(RectTransform));
+            go.transform.SetParent(bloco, false);
+            go.transform.SetSiblingIndex(0);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = Vector2.zero;
+            r.anchorMax = Vector2.one;
+            r.offsetMin = new Vector2(-folgaX, -folgaY);
+            r.offsetMax = new Vector2(folgaX, folgaY);
+
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(new Color(0.04f, 0.05f, 0.13f, 0.72f), raio);
+            f.DefinirContorno(Fio, 1.5f);
+            f.DefinirRaio(raio, raio);
+        }
+
+        /// <summary>O "DE 12" vinha quase invisível; sobre o cenário ele sumia de vez.</summary>
+        private static void RealcarTotal(ProtoBuilder.Mapa m)
+        {
+            TextMeshProUGUI t = Tmp(m.Caixa(142.6f, 52.5f, 121f, 13f));
+            if (t == null)
+                return;
+
+            t.color = new Color(0.79f, 0.82f, 0.96f, 0.85f);
+            t.fontSize = 13f;
+            t.characterSpacing = 10f;
+        }
+
+        /// <summary>
+        /// Chapinha vermelha de ÚLTIMA VOLTA, abaixo da placa de tempo.
+        ///
+        /// O documento não desenhou este aviso — ele existe no §8 do handoff e é a única coisa que
+        /// muda o jeito de correr a volta final. Nasce desligada; quem a acende é o binder.
+        /// </summary>
+        private static GameObject ChapinhaDeUltimaVolta(ProtoBuilder.Mapa m)
+        {
+            RectTransform placa = m.Caixa(720.5f, 32f, 479f, 116f);
+            if (placa == null)
+                return null;
+
+            var go = new GameObject("Chip_UltimaVolta", typeof(RectTransform));
+            go.transform.SetParent(placa, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0.5f, 0f);
+            r.anchorMax = new Vector2(0.5f, 0f);
+            r.pivot = new Vector2(0.5f, 1f);
+            r.anchoredPosition = new Vector2(0f, -8f);
+            r.sizeDelta = new Vector2(232f, 34f);
+
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(new Color(1f, 0.30f, 0.43f, 0.92f), 17f);
+            f.DefinirContorno(new Color(1f, 1f, 1f, 0.35f), 1.5f);
+            f.DefinirRaio(17f, 17f);
+
+            var rotulo = new GameObject("Label", typeof(RectTransform));
+            rotulo.transform.SetParent(r, false);
+            Esticar((RectTransform)rotulo.transform);
+
+            var t = rotulo.AddComponent<TextMeshProUGUI>();
+            t.text = "ÚLTIMA VOLTA";
+            t.fontSize = 16f;
+            t.characterSpacing = 12f;
+            t.color = Color.white;
+            t.alignment = TextAlignmentOptions.Center;
+            t.raycastTarget = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Archivo", 800);
+            if (fonte != null)
+                t.font = fonte;
+
+            go.AddComponent<UIPulse>();
+            go.SetActive(false);
+            return go;
+        }
+
+        private static TextMeshProUGUI Intervalo(ProtoBuilder.Mapa m)
+        {
+            // A coluna à direita do emblema: "DE 12" em cima, intervalo embaixo. As duas caixas são
+            // reancoradas porque o valor novo é mais largo que o do desenho — sem isso, "LÍDER"
+            // escorregava para cima do número da posição.
+            RectTransform coluna = m.Caixa(142.6f, 52.5f, 121f, 40f);
+            RectTransform total = m.Caixa(142.6f, 52.5f, 121f, 13f);
+            RectTransform intervalo = m.Caixa(142.6f, 69.5f, 121f, 23f);
+
+            if (coluna != null)
+                coluna.sizeDelta = new Vector2(150f, coluna.sizeDelta.y);
+
+            Fixar(total, 0f, 0f, 150f, 15f);
+            Fixar(intervalo, 0f, -19f, 150f, 26f);
+
+            TextMeshProUGUI t = Tmp(intervalo);
+            if (t == null)
+                return null;
+
+            t.text = "LÍDER";
+            t.fontSize = 22f;
+            t.characterSpacing = 4f;
+            t.alignment = TextAlignmentOptions.MidlineLeft;
+            t.enableWordWrapping = false;
+
+            TextMeshProUGUI rotulo = Tmp(total);
+            if (rotulo != null)
+            {
+                rotulo.alignment = TextAlignmentOptions.MidlineLeft;
+                rotulo.enableWordWrapping = false;
+            }
+
+            return t;
+        }
+
+        /// <summary>Prende uma caixa ao canto superior esquerdo do pai, com tamanho fixo.</summary>
+        private static void Fixar(RectTransform alvo, float x, float y, float largura, float altura)
+        {
+            if (alvo == null)
+                return;
+
+            alvo.anchorMin = new Vector2(0f, 1f);
+            alvo.anchorMax = new Vector2(0f, 1f);
+            alvo.pivot = new Vector2(0f, 1f);
+            alvo.anchoredPosition = new Vector2(x, y);
+            alvo.sizeDelta = new Vector2(largura, altura);
+
+            foreach (Transform filho in alvo)
+                if (filho is RectTransform r && filho.GetComponent<TextMeshProUGUI>() != null)
+                    Esticar(r);
+        }
+
+        /// <summary>
+        /// Classificação: cinco faixas de topo e a do jogador, cada uma com quatro colunas.
+        ///
+        /// O protótipo desenhou três colunas (posição, nome, um número solto). O jogo precisa de
+        /// quatro: melhor volta AO LADO DO NOME e intervalo na borda. A caixa do nome encolhe e as
+        /// duas colunas de tempo entram no espaço que sobrou — as duas são numéricas e alinhadas à
+        /// direita, então lêem-se em coluna sem precisar de régua.
+        ///
+        /// O bloco também ganha um fundo. Sem ele o texto ficava sobre o céu da pista, e "branco
+        /// sobre azul claro" é o mesmo que não ter classificação nenhuma.
+        /// </summary>
         private static void Classificacao(GameObject raiz, ProtoBuilder.Mapa m)
         {
             var ui = raiz.AddComponent<PartyRacers.UI.Race.StandingsV2UI>();
             var so = new SerializedObject(ui);
 
-            // Cinco linhas comuns (328×31) e a do jogador (340×54), que é mais alta de propósito:
-            // "esta linha é a minha" precisa ser vista sem ler.
-            var linhas = m.Caixas(328f, 31f, 3f).Concat(m.Caixas(340f, 54f, 3f))
-                          .OrderBy(r => -r.anchoredPosition.y).ToList();
+            RectTransform bloco = m.Caixa(1556f, 32f, 328f, 230f);
+            if (bloco == null)
+                return;
+
+            Atribuir(so, "painel", FundoDaClassificacao(bloco));
+
+            // As seis faixas nas coordenadas do documento: y, altura, e se é a do jogador. A ordem
+            // aqui é a que o BINDER usa — cinco do topo e, por último, a do jogador. No desenho a
+            // faixa dele é a quarta porque o exemplo mostra um jogador em 4º; no jogo ele pode
+            // estar em 16º, e uma faixa "top 5" no meio da lista mentiria sobre a ordem.
+            (float y, float h, bool local)[] fileiras =
+            {
+                ( 32f, 31f, false),
+                ( 68f, 31f, false),
+                (104f, 31f, false),
+                (195f, 31f, false),
+                (231f, 31f, false),
+                (140f, 50f, true),
+            };
 
             SerializedProperty lista = so.FindProperty("linhas");
-            lista.arraySize = linhas.Count;
+            lista.arraySize = fileiras.Length;
 
-            for (int i = 0; i < linhas.Count; i++)
+            for (int i = 0; i < fileiras.Length; i++)
             {
-                RectTransform linha = linhas[i];
+                (float dy, float dh, bool local) = fileiras[i];
+
+                RectTransform linha = m.Caixa(1556f, dy, 328f, dh);
+                if (linha == null)
+                    continue;
+
+                // Reempilhadas: 36 px por faixa comum, e a do jogador logo abaixo das cinco.
+                float novoY = local ? 5 * 36f + 4f : i * 36f;
+                Fileira(linha, novoY, dh);
+
                 SerializedProperty item = lista.GetArrayElementAtIndex(i);
                 item.FindPropertyRelative("raiz").objectReferenceValue = linha.gameObject;
 
-                bool local = linha.rect.height > 40f;
-                GameObject atual = Agrupar(linha, local ? "IsLocal" : "Other");
+                GameObject estado = Agrupar(linha, local ? "IsLocal" : "Other");
+                item.FindPropertyRelative(local ? "estadoLocal" : "estadoOutro")
+                    .objectReferenceValue = estado;
 
-                RectTransform[] textos = m.TextosEm(linha);
+                // Só as faixas do topo precisam da moldura: a de baixo já É a variante âmbar.
+                if (!local)
+                {
+                    GameObject destaque = Contorno(linha, "Destaque", Ambar, 2f, 14f);
+                    destaque.transform.SetAsLastSibling();
+                    destaque.SetActive(false);
+                    item.FindPropertyRelative("destaque").objectReferenceValue = destaque;
+                }
+
+                // Cada coluna é achada pela caixa que ela tem no documento. Pegar "o primeiro
+                // texto da faixa" dependia de uma ordenação que não é a da leitura — foi assim que
+                // o número da posição foi parar na borda direita e o nome por cima dele.
+                RectTransform pos = local ? m.Caixa(1573f, dy + 14f, 30f, 22f)
+                                          : m.Caixa(1569f, dy + 8f, 30f, 15f);
+                RectTransform nome = local ? m.Caixa(1614f, dy + 17f, 182f, 16f)
+                                           : m.Caixa(1610f, dy + 8.5f, 218.2f, 14f);
+                RectTransform velho = local ? m.Caixa(1807f, dy + 18f, 60f, 14f)
+                                            : m.Caixa(1839.2f, dy + 9f, 31.8f, 13f);
+
                 string sufixo = local ? "Local" : "Outro";
-                if (textos.Length > 0) item.FindPropertyRelative("posicao" + sufixo).objectReferenceValue = Tmp(textos[0]);
-                if (textos.Length > 1) item.FindPropertyRelative("nome" + sufixo).objectReferenceValue = Tmp(textos[1]);
-                if (textos.Length > 2) item.FindPropertyRelative("tempo" + sufixo).objectReferenceValue = Tmp(textos[2]);
+                float corpo = local ? 2f : 0f;
 
-                item.FindPropertyRelative(local ? "estadoLocal" : "estadoOutro").objectReferenceValue = atual;
+                // A caixa da posição vem do documento com 30 px, medida para um dígito. Em 16º o
+                // texto não cabia e o TMP, em modo Ellipsis, preferia não desenhar nada — a faixa
+                // do jogador aparecia sem número justamente para quem mais precisa dele.
+                item.FindPropertyRelative("posicao" + sufixo).objectReferenceValue =
+                    Coluna(pos, 8f, 42f, TextAlignmentOptions.Midline, false);
+                item.FindPropertyRelative("nome" + sufixo).objectReferenceValue =
+                    Coluna(nome, 54f, 112f, TextAlignmentOptions.MidlineLeft, true);
+
+                // O número solto da direita era o intervalo desenhado à mão; quem escreve agora é o
+                // binder, e ele precisa de DUAS colunas — melhor volta ao lado do nome e intervalo
+                // na borda.
+                Apagar(velho);
+
+                // A faixa do jogador é ÂMBAR: âmbar sobre âmbar não se lê. Nela as duas colunas de
+                // tempo viram tinta escura, como o resto do texto daquela linha.
+                Color corVolta = local ? new Color(Tinta.r, Tinta.g, Tinta.b, 0.62f) : Apagado;
+                Color corIntervalo = local ? Tinta : Ambar;
+
+                item.FindPropertyRelative("volta" + sufixo).objectReferenceValue =
+                    ColunaNova(estado.transform, "MelhorVolta", 170f, 74f, 14f + corpo, corVolta);
+                item.FindPropertyRelative("intervalo" + sufixo).objectReferenceValue =
+                    ColunaNova(estado.transform, "Intervalo", 250f, 66f, 15f + corpo, corIntervalo);
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Prende a faixa ao topo do bloco da classificação, na altura pedida.</summary>
+        private static void Fileira(RectTransform linha, float y, float altura)
+        {
+            linha.anchorMin = new Vector2(0f, 1f);
+            linha.anchorMax = new Vector2(1f, 1f);
+            linha.pivot = new Vector2(0.5f, 1f);
+            linha.offsetMin = new Vector2(0f, -y - altura);
+            linha.offsetMax = new Vector2(0f, -y);
+        }
+
+        /// <summary>
+        /// Placa escura atrás da classificação, para o texto não boiar sobre o céu.
+        ///
+        /// Cresce do TOPO para baixo, com altura que o binder ajusta: quando o jogador está no top
+        /// 5 a faixa dele some, e um painel de altura fixa ficaria com um terço vazio pendurado.
+        /// </summary>
+        private static RectTransform FundoDaClassificacao(RectTransform bloco)
+        {
+            var go = new GameObject("Fundo", typeof(RectTransform));
+            go.transform.SetParent(bloco, false);
+            go.transform.SetSiblingIndex(0);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0f, 1f);
+            r.anchorMax = new Vector2(1f, 1f);
+            r.pivot = new Vector2(0.5f, 1f);
+            r.anchoredPosition = new Vector2(0f, 14f);
+            r.sizeDelta = new Vector2(24f, 268f);
+
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(new Color(0.04f, 0.05f, 0.13f, 0.76f), 18f);
+            f.DefinirContorno(Fio, 1.5f);
+            f.DefinirRaio(18f, 18f);
+            return r;
+        }
+
+        /// <summary>Reancora uma coluna de texto do documento na grade da faixa.</summary>
+        private static TextMeshProUGUI Coluna(RectTransform caixa, float x, float largura,
+                                              TextAlignmentOptions alinhamento, bool cortar)
+        {
+            TextMeshProUGUI t = Tmp(caixa);
+            if (caixa == null || t == null)
+                return t;
+
+            caixa.anchorMin = new Vector2(0f, 0.5f);
+            caixa.anchorMax = new Vector2(0f, 0.5f);
+            caixa.pivot = new Vector2(0f, 0.5f);
+            caixa.anchoredPosition = new Vector2(x, 0f);
+            caixa.sizeDelta = new Vector2(largura, 24f);
+
+            var rt = (RectTransform)t.transform;
+            if (rt != caixa)
+                Esticar(rt);
+
+            t.alignment = alinhamento;
+            t.enableWordWrapping = false;
+
+            // Nome longo pode virar reticências; NÚMERO, não. Cortar um número é pior que
+            // apertá-lo, porque "1…" e "16" leem igual de relance.
+            t.overflowMode = cortar ? TextOverflowModes.Ellipsis : TextOverflowModes.Overflow;
+            if (!cortar)
+                t.characterSpacing = 0f;
+
+            return t;
+        }
+
+        /// <summary>Cria uma coluna de tempo dentro da faixa.</summary>
+        private static TextMeshProUGUI ColunaNova(Transform pai, string nome, float x,
+                                                  float largura, float corpo, Color cor)
+        {
+            var go = new GameObject("Col_" + nome, typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(0f, 0.5f);
+            r.anchorMax = new Vector2(0f, 0.5f);
+            r.pivot = new Vector2(0f, 0.5f);
+            r.anchoredPosition = new Vector2(x, 0f);
+            r.sizeDelta = new Vector2(largura, 20f);
+
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.text = "--";
+            t.fontSize = corpo;
+            t.color = cor;
+            t.characterSpacing = 2f;
+            t.raycastTarget = false;
+            t.alignment = TextAlignmentOptions.MidlineRight;
+            t.enableWordWrapping = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            return t;
         }
 
         private static void ClusterVital(GameObject raiz, ProtoBuilder.Mapa m)
@@ -318,23 +641,32 @@ namespace PartyRacers.UI.Importer
 
             // Vida: 5 blocos de 20 HP. Blocos porque são CONTÁVEIS de relance — barra contínua
             // exige medir, e a 150 km/h ninguém mede.
+            //
+            // Cada bloco é REFEITO: o que o protótipo deixou ali era um retângulo pintado por um
+            // `UIRoundedRect`, e `UIRoundedRect` não é `Image`. O binder guardava null no campo,
+            // então a barra nunca descia — ela ficava verde e cheia levando dano até o carro
+            // quebrar. Aqui nascem três camadas de verdade: trilho apagado, verde e âmbar, as duas
+            // últimas como `Image` do tipo Filled.
             RectTransform[] blocos = m.Caixas(78f, 32f, 4f);
             SerializedProperty segmentos = so.FindProperty("segmentosDeVida");
             segmentos.arraySize = blocos.Length;
 
             for (int i = 0; i < blocos.Length; i++)
             {
-                SerializedProperty item = segmentos.GetArrayElementAtIndex(i);
-                Graphic cheio = blocos[i].GetComponentInChildren<Graphic>(true);
-                item.FindPropertyRelative("cheio").objectReferenceValue = cheio as Image;
+                RectTransform bloco = blocos[i];
+                Despintar(new[] { bloco });
 
-                // Ferido e vazio não existem no protótipo: são o mesmo bloco em outra cor.
-                GameObject ferido = Preenchido(blocos[i], "Ferido", new Color(1f, 176 / 255f, 32 / 255f, 1f));
-                GameObject vazio = Preenchido(blocos[i], "Vazio", new Color(1f, 1f, 1f, 0.10f));
-                item.FindPropertyRelative("ferido").objectReferenceValue = ferido.GetComponent<Graphic>() as Image;
+                GameObject vazio = Preenchido(bloco, "Vazio", new Color(1f, 1f, 1f, 0.09f));
+                Image cheio = BarraQueEnche(bloco, "Cheio", Verde);
+                Image ferido = BarraQueEnche(bloco, "Ferido", Ambar);
+
+                SerializedProperty item = segmentos.GetArrayElementAtIndex(i);
                 item.FindPropertyRelative("vazio").objectReferenceValue = vazio;
-                ferido.SetActive(false);
-                vazio.SetActive(false);
+                item.FindPropertyRelative("cheio").objectReferenceValue = cheio;
+                item.FindPropertyRelative("ferido").objectReferenceValue = ferido;
+
+                vazio.SetActive(true);
+                ferido.gameObject.SetActive(false);
             }
 
             Atribuir(so, "valorDeVida", Tmp(m.Texto("100")));
@@ -343,31 +675,89 @@ namespace PartyRacers.UI.Importer
             if (rotuloVida != null && rotuloVida.parent != null)
                 Atribuir(so, "raizVida", rotuloVida.parent.gameObject);
 
-            // Escudo: a barra É o indicador. Sem botão e sem ícone — a ausência de brilho é o
-            // sinal de indisponível, e ausência de movimento se percebe pela visão periférica.
-            RectTransform rotuloEscudo = m.Texto("ESCUDO");
-            if (rotuloEscudo != null && rotuloEscudo.parent != null)
-            {
-                var barra = (RectTransform)rotuloEscudo.parent;
-                Atribuir(so, "raizEscudo", barra.gameObject);
-
-                GameObject pronto = Agrupar(barra, "Ready");
-                GameObject ativo = Object.Instantiate(pronto, barra);
-                ativo.name = "Active";
-                ativo.SetActive(false);
-
-                GameObject recarga = Object.Instantiate(pronto, barra);
-                recarga.name = "Cooling";
-                recarga.SetActive(false);
-
-                Atribuir(so, "estadoPronto", pronto);
-                Atribuir(so, "estadoAtivo", ativo);
-                Atribuir(so, "estadoRecarga", recarga);
-
-                Atribuir(so, "textoDaChapinhaAtivo", Tmp(m.Texto("PRONTO")));
-            }
-
+            EscudoDoCluster(so, m);
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// A barra do escudo, refeita como UMA barra contínua.
+        ///
+        /// O protótipo desenhou três segmentos, e o binder antigo tentou lê-los como quatro linhas
+        /// de estado inteiras — nada disso existe no jogo, que tem UM escudo com duração e recarga.
+        /// O resultado era uma barra imóvel: nem drenava ao ativar, nem enchia ao recarregar.
+        ///
+        /// Aqui os segmentos viram trilho, e por cima entra um preenchimento do tipo Filled com um
+        /// risquinho na ponta. A cor diz o estado; o SENTIDO do movimento diz se está acabando ou
+        /// voltando.
+        /// </summary>
+        private static void EscudoDoCluster(SerializedObject so, ProtoBuilder.Mapa m)
+        {
+            RectTransform barra = m.Caixa(105f, 964.5f, 305.5f, 24f);
+            RectTransform rotulo = m.Texto("ESCUDO");
+
+            if (rotulo != null && rotulo.parent != null)
+                Atribuir(so, "raizEscudo", rotulo.parent.gameObject);
+
+            if (barra == null)
+                return;
+
+            foreach (Transform filho in barra.Cast<Transform>().ToList())
+                Object.DestroyImmediate(filho.gameObject);
+
+            Despintar(new[] { barra });
+
+            GameObject trilho = Nó(barra, "Trilho");
+            var fundo = trilho.AddComponent<UIRoundedRect>();
+            fundo.raycastTarget = false;
+            fundo.Definir(new Color(1f, 1f, 1f, 0.09f), 6f);
+            fundo.DefinirContorno(Fio, 1f);
+            fundo.DefinirRaio(6f, 6f);
+
+            Image preenchimento = BarraQueEnche(barra, "Preenchimento", new Color(0.21f, 0.65f, 1f));
+
+            var ponta = new GameObject("Ponta", typeof(RectTransform));
+            ponta.transform.SetParent(barra, false);
+
+            var pr = (RectTransform)ponta.transform;
+            pr.anchorMin = new Vector2(0f, 0.5f);
+            pr.anchorMax = new Vector2(0f, 0.5f);
+            pr.pivot = new Vector2(0.5f, 0.5f);
+            pr.sizeDelta = new Vector2(3f, 22f);
+
+            var risco = ponta.AddComponent<UIRoundedRect>();
+            risco.raycastTarget = false;
+            risco.Definir(Color.white, 1.5f);
+            risco.DefinirRaio(1.5f, 1.5f);
+
+            Atribuir(so, "preenchimentoEscudo", preenchimento);
+            Atribuir(so, "pontaDoEscudo", pr);
+            Atribuir(so, "textoDoEscudo", Tmp(m.Texto("PRONTO")));
+
+            RectTransform chapinha = m.Caixa(421.5f, 962f, 100.5f, 29f);
+            if (chapinha != null)
+                Atribuir(so, "fundoDaChapinha", chapinha.GetComponent<Graphic>());
+        }
+
+        /// <summary>
+        /// Retângulo que preenche da esquerda para a direita — `Image` com `type = Filled`.
+        ///
+        /// Tem de ser `Image`: o `UIRoundedRect` do projeto desenha malha própria e não tem
+        /// `fillAmount`, então toda barra montada com ele fica parada por construção.
+        /// </summary>
+        private static Image BarraQueEnche(RectTransform pai, string nome, Color cor)
+        {
+            var go = new GameObject(nome, typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+            Esticar((RectTransform)go.transform);
+
+            var img = go.AddComponent<Image>();
+            img.color = cor;
+            img.raycastTarget = false;
+            img.type = Image.Type.Filled;
+            img.fillMethod = Image.FillMethod.Horizontal;
+            img.fillOrigin = (int)Image.OriginHorizontal.Left;
+            img.fillAmount = 1f;
+            return img;
         }
 
         private static void SlotDePoder(GameObject raiz, ProtoBuilder.Mapa m)
