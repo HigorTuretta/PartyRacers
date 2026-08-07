@@ -214,8 +214,26 @@ namespace PartyRacers.UI.Importer
             if (menu != null)
             {
                 menu.transform.SetAsLastSibling();
-                menu.SetActive(false);
-                log.AppendLine("      + Screen_RaceMenu (fechado)");
+
+                // A tela fica ATIVA. Quem escuta o ESC é o `Update` do `RaceMenuUI`, e componente
+                // em objeto desligado não roda Update — com a raiz desativada o menu era
+                // impossível de abrir, e o jogador ficava preso na corrida sem como sair da sala.
+                // Quem nasce fechado são as PEÇAS dele (véu, gaveta, pop-up), pelo próprio Awake.
+                menu.SetActive(true);
+
+                var menuUI = menu.GetComponent<RaceMenuUI>();
+                if (menuUI != null && hud != null)
+                {
+                    var grupo = hud.GetComponent<CanvasGroup>() ?? hud.AddComponent<CanvasGroup>();
+                    Referencia(menuUI, "hudDaCorrida", grupo);
+                }
+
+                Transform carregando = raizes.Select(g => Achar(g.transform, "Screen_Loading"))
+                                             .FirstOrDefault(t => t != null);
+                if (menuUI != null && carregando != null)
+                    Referencia(menuUI, "telaDeCarregamento", carregando.GetComponent<LoadingScreenUI>());
+
+                log.AppendLine("      + Screen_RaceMenu (ativo; ESC abre a gaveta)");
             }
 
             EditorSceneManager.MarkSceneDirty(cena);
@@ -344,6 +362,20 @@ namespace PartyRacers.UI.Importer
 
             if (postos > 0)
                 log.AppendLine($"      {postos} bola(s) de golfe agora tiram vida (teto 30, por velocidade)");
+        }
+
+        private static void Referencia(Object alvo, string campo, Object valor)
+        {
+            if (alvo == null)
+                return;
+
+            var so = new SerializedObject(alvo);
+            SerializedProperty p = so.FindProperty(campo);
+            if (p != null && p.propertyType == SerializedPropertyType.ObjectReference)
+            {
+                p.objectReferenceValue = valor;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         /// <summary>Procura um filho pelo nome em toda a árvore.</summary>

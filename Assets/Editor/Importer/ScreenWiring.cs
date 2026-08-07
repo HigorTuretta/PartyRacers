@@ -1431,16 +1431,45 @@ namespace PartyRacers.UI.Importer
             Atribuir(so, "btnSairAgora", ClicavelPorTexto(m, "SAIR AGORA"));
             Atribuir(so, "btnFicar", ClicavelPorTexto(m, "FICAR NA CORRIDA"));
 
-            RectTransform gaveta = m.Dono("MENU", 2);
-            if (gaveta != null)
-                Atribuir(so, "gaveta", gaveta.gameObject);
+            // As três peças vêm pelas caixas do documento: véu de tela cheia, gaveta à direita e
+            // pop-up de confirmação. Procurar pelo TEXTO acertava a gaveta por acidente e nunca
+            // achava o véu, que não tem rótulo nenhum.
+            RectTransform gaveta = m.Caixa(1260f, 0f, 660f, 1080f);
+            RectTransform popup = m.Caixa(120f, 299.7f, 560f, 480.7f);
 
-            RectTransform popup = m.Dono("SAIR DA PARTIDA?", 2);
+            // O véu é CRIADO. O nó de tela cheia do documento é a própria raiz da tela — usá-lo
+            // como véu escondia o menu inteiro junto. Ele vai como primeiro filho, atrás de tudo,
+            // e come os cliques: sem isso o jogador acerta a corrida através do menu aberto.
+            var veu = new GameObject("Veu", typeof(RectTransform));
+            veu.transform.SetParent(raiz.transform, false);
+            veu.transform.SetAsFirstSibling();
+            Esticar((RectTransform)veu.transform);
+
+            var tinta = veu.AddComponent<UIRoundedRect>();
+            tinta.raycastTarget = true;
+            tinta.Definir(new Color(0.02f, 0.03f, 0.08f, 0.62f), 0f);
+            tinta.DefinirRaio(0f, 0f);
+
+            Atribuir(so, "veu", veu);
+            veu.SetActive(false);
+
+            if (gaveta != null)
+            {
+                Atribuir(so, "gaveta", gaveta.gameObject);
+                gaveta.gameObject.SetActive(false);
+            }
+
             if (popup != null)
             {
                 Atribuir(so, "popupSair", popup.gameObject);
                 popup.gameObject.SetActive(false);
             }
+
+            // O documento repete volta, tempo e posição dentro do menu para ilustrar que a corrida
+            // continua. No jogo a HUD DE VERDADE fica atrás, só apagada — repetir os números aqui
+            // seria pôr três mostradores congelados na frente dos que funcionam.
+            Apagar(Envolve(m.Texto("SUA POSIÇÃO 9/16", false), 240f, 40f));
+            Apagar(Envolve(m.Texto("VOLTA 2/3", false), 400f, 60f));
 
             Esconder(m, "POP-UP DE CONFIRMAÇÃO");
             so.ApplyModifiedPropertiesWithoutUndo();
