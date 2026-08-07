@@ -21,6 +21,9 @@ using UnityEngine;
 public class KartDamagePopup : MonoBehaviour
 {
     [Header("Aparência")]
+    [Tooltip("Fonte do número. A do jogo é a Titan One — a mesma dos números grandes do HUD; " +
+             "a fonte padrão do TMP entrega um número de planilha no meio de um jogo de kart.")]
+    [SerializeField] private TMP_FontAsset fonte;
     [SerializeField] private float corpo = 3.2f;
     [SerializeField] private Color corDeDano = new Color(1f, 0.36f, 0.42f);
     [SerializeField] private Color corDeCura = new Color(0.24f, 0.86f, 0.59f);
@@ -48,6 +51,7 @@ public class KartDamagePopup : MonoBehaviour
         public float Nasceu;
         public Vector3 Origem;
         public float Fase;
+        public float Inclinacao;
         public bool Livre = true;
     }
 
@@ -98,6 +102,7 @@ public class KartDamagePopup : MonoBehaviour
 
         r.No.position = r.Origem;
         r.Fase = Random.Range(0f, Mathf.PI * 2f);
+        r.Inclinacao = Random.Range(-16f, 16f);
         r.Nasceu = Time.time;
         r.Livre = false;
         r.No.gameObject.SetActive(true);
@@ -111,9 +116,12 @@ public class KartDamagePopup : MonoBehaviour
 
         var go = new GameObject("DanoPopup") { hideFlags = HideFlags.DontSave };
         var t = go.AddComponent<TextMeshPro>();
+
+        if (fonte != null)
+            t.font = fonte;
+
         t.fontSize = corpo;
         t.alignment = TextAlignmentOptions.Center;
-        t.fontStyle = FontStyles.Bold;
         t.enableWordWrapping = false;
         t.sortingOrder = 200;
 
@@ -144,25 +152,33 @@ public class KartDamagePopup : MonoBehaviour
             }
 
             float k = Mathf.Clamp01(t / total);
+
+            // Sobe rápido no começo e desacelera — sai do carro com pressa e "flutua" no fim.
             float altura = subida * PartyRacers.UI.Motion.UIEase.OutQuad(k);
             float lateral = Mathf.Sin(r.Fase + k * 3.2f) * deriva * k;
 
-            r.No.position = r.Origem + Vector3.up * altura
-                          + (camera3D != null ? camera3D.transform.right : Vector3.right) * lateral;
+            Vector3 direita = camera3D != null ? camera3D.transform.right : Vector3.right;
+            r.No.position = r.Origem + Vector3.up * altura + direita * lateral;
 
             // Sempre de frente para a câmera: um número em perspectiva não se lê de relance.
             if (camera3D != null)
                 r.No.forward = camera3D.transform.forward;
 
-            // Entra crescendo com um leve exagero e sai encolhendo — o exagero é o que faz o
-            // número "chegar" em vez de simplesmente aparecer.
+            // Entrada com ESTOURO: dispara acima do tamanho final e assenta. É o exagero que faz o
+            // número "chegar" em vez de simplesmente aparecer — e num kart a 150 km/h aparecer sem
+            // chegar passa despercebido.
             float escala = t < entrada
-                ? PartyRacers.UI.Motion.UIEase.OutBack(t / entrada, 1.7f)
+                ? PartyRacers.UI.Motion.UIEase.OutBack(t / entrada, 3.2f) * 1.15f
                 : t > entrada + vida
-                    ? 1f - PartyRacers.UI.Motion.UIEase.OutQuad((t - entrada - vida) / saida)
-                    : 1f;
+                    ? Mathf.LerpUnclamped(1f, 0.55f, PartyRacers.UI.Motion.UIEase.OutQuad((t - entrada - vida) / saida))
+                    : 1f + Mathf.Sin((t - entrada) * 11f) * 0.05f * (1f - (t - entrada) / vida);
 
             r.No.localScale = Vector3.one * Mathf.Max(0.01f, escala);
+
+            // Balanço: entra torto e se endireita. Um número perfeitamente reto parece impresso.
+            float giro = Mathf.LerpUnclamped(r.Inclinacao, 0f,
+                             PartyRacers.UI.Motion.UIEase.OutBack(Mathf.Clamp01(t / (entrada * 3f)), 1.4f));
+            r.No.Rotate(r.No.forward, giro, Space.World);
 
             float alfa = t > entrada + vida
                 ? 1f - Mathf.Clamp01((t - entrada - vida) / saida)

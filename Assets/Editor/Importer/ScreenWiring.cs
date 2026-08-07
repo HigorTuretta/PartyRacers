@@ -277,7 +277,8 @@ namespace PartyRacers.UI.Importer
             Atribuir(so, "chipUltimaVolta", ChapinhaDeUltimaVolta(m));
 
             Fundo(m.Caixa(36f, 32f, 227.6f, 81f), 20f, 14f, 8f);
-            RealcarTotal(m);
+            BlocoDePosicao(m);
+            PlacaDeVolta(m);
 
             Atribuir(so, "chuteDaPosicao", Chute(m.Caixa(34.6f, 30.4f, 95.4f, 84.2f), 1.2f, false));
             Atribuir(so, "chuteDaVolta", Chute(m.Caixa(720.5f, 32f, 212f, 74f), 1.1f, false));
@@ -338,16 +339,150 @@ namespace PartyRacers.UI.Importer
             f.DefinirRaio(raio, raio);
         }
 
-        /// <summary>O "DE 12" vinha quase invisível; sobre o cenário ele sumia de vez.</summary>
-        private static void RealcarTotal(ProtoBuilder.Mapa m)
+        /// <summary>
+        /// Emblema da posição + "DE N" + intervalo, remontados dentro do bloco.
+        ///
+        /// O documento mediu o emblema para UM dígito: em 16º o número transbordava a placa branca
+        /// e cobria o "º" ao lado. E as duas linhas da direita começavam em x=142, encostadas no
+        /// emblema — "+24,7" nascia por cima dele. Aqui as três peças são reancoradas com folga,
+        /// e o número passa a encolher em vez de vazar.
+        /// </summary>
+        private static void BlocoDePosicao(ProtoBuilder.Mapa m)
         {
-            TextMeshProUGUI t = Tmp(m.Caixa(142.6f, 52.5f, 121f, 13f));
-            if (t == null)
+            RectTransform bloco = m.Caixa(36f, 32f, 227.6f, 81f);
+            RectTransform emblema = m.Caixa(34.6f, 30.4f, 95.4f, 84.2f);
+
+            if (bloco == null || emblema == null)
                 return;
 
-            t.color = new Color(0.79f, 0.82f, 0.96f, 0.85f);
-            t.fontSize = 13f;
-            t.characterSpacing = 10f;
+            // O "º" some: com dois dígitos não sobra espaço, e "DE 16" logo ao lado já diz que o
+            // número é uma posição. Mantê-lo espremido era o que fazia o emblema parecer estourado.
+            Apagar(m.Texto("º", false));
+
+            emblema.anchorMin = new Vector2(0f, 0.5f);
+            emblema.anchorMax = new Vector2(0f, 0.5f);
+            emblema.pivot = new Vector2(0f, 0.5f);
+            emblema.anchoredPosition = new Vector2(4f, 0f);
+            emblema.sizeDelta = new Vector2(74f, 66f);
+
+            TextMeshProUGUI numero = Tmp(m.Texto("4"));
+            if (numero != null)
+            {
+                Esticar((RectTransform)numero.transform);
+                numero.alignment = TextAlignmentOptions.Center;
+                numero.characterSpacing = 0f;
+                numero.enableWordWrapping = false;
+                numero.overflowMode = TextOverflowModes.Overflow;
+                numero.enableAutoSizing = true;
+                numero.fontSizeMax = 46f;
+                numero.fontSizeMin = 26f;
+            }
+
+            // A COLUNA é que se desloca; as duas linhas ficam em x=0 dentro dela. Deslocar as
+            // linhas diretamente somava o offset duas vezes — elas são filhas da coluna, não do
+            // bloco, e iam parar fora da moldura pela direita.
+            RectTransform coluna = m.Caixa(142.6f, 52.5f, 121f, 40f);
+            RectTransform total = m.Caixa(142.6f, 52.5f, 121f, 13f);
+            RectTransform intervalo = m.Caixa(142.6f, 69.5f, 121f, 23f);
+
+            if (coluna != null)
+            {
+                coluna.anchorMin = new Vector2(0f, 0.5f);
+                coluna.anchorMax = new Vector2(0f, 0.5f);
+                coluna.pivot = new Vector2(0f, 0.5f);
+                coluna.anchoredPosition = new Vector2(86f, 0f);
+                coluna.sizeDelta = new Vector2(132f, 48f);
+            }
+
+            Fixar(total, 0f, 0f, 132f, 16f);
+            Fixar(intervalo, 0f, -20f, 132f, 30f);
+
+            TextMeshProUGUI rotulo = Tmp(total);
+            if (rotulo != null)
+            {
+                rotulo.color = new Color(0.79f, 0.82f, 0.96f, 0.85f);
+                rotulo.fontSize = 13f;
+                rotulo.characterSpacing = 10f;
+                rotulo.alignment = TextAlignmentOptions.MidlineLeft;
+                rotulo.enableWordWrapping = false;
+            }
+        }
+
+        /// <summary>
+        /// Placa de volta, cronômetro e as duas chapinhas de tempo.
+        ///
+        /// As caixas de texto vieram medidas para as frases do documento ("VOLTA 2/3",
+        /// "MELH 01:11.302"). O jogo escreve outras, e o texto sobrava para fora: o V de VOLTA era
+        /// cortado pela borda da chapinha âmbar e o M de MELH desaparecia na esquerda. Cada rótulo
+        /// passa a preencher a própria chapinha, centrado, encolhendo se precisar.
+        /// </summary>
+        private static void PlacaDeVolta(ProtoBuilder.Mapa m)
+        {
+            EncaixarNoChip(Alvo(m, "VOLTA 2/3"), 18f, 30f, 16f);
+            EncaixarNoChip(Alvo(m, "01:12.480"), 20f, 36f, 16f);
+
+            // As duas chapinhas de tempo ficam com a mesma largura e o mesmo fundo. No documento
+            // uma é escura e a outra verde porque ilustram estados diferentes; no jogo elas
+            // convivem, e dois fundos diferentes leem como dois tipos de informação.
+            RectTransform ultimo = Alvo(m, "ÚLT", false);
+            RectTransform melhor = Alvo(m, "MELH", false);
+
+            Chapinha(ultimo, 0f, 176f, new Color(0.04f, 0.05f, 0.13f, 0.82f), Fio);
+            Chapinha(melhor, 184f, 176f, new Color(0.14f, 0.62f, 0.44f, 0.9f),
+                     new Color(0.24f, 0.86f, 0.59f, 0.7f));
+
+            EncaixarNoChip(ultimo, 13f, 17f, 12f);
+            EncaixarNoChip(melhor, 13f, 17f, 12f);
+        }
+
+        /// <summary>Reancora uma chapinha de tempo sob a placa, com fundo próprio.</summary>
+        private static void Chapinha(RectTransform chip, float x, float largura, Color fundo, Color fio)
+        {
+            if (chip == null)
+                return;
+
+            chip.anchorMin = new Vector2(0f, 1f);
+            chip.anchorMax = new Vector2(0f, 1f);
+            chip.pivot = new Vector2(0f, 1f);
+            chip.anchoredPosition = new Vector2(x, 0f);
+            chip.sizeDelta = new Vector2(largura, 33f);
+
+            var f = chip.GetComponent<UIRoundedRect>() ?? chip.gameObject.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(fundo, 10f);
+            f.DefinirContorno(fio, 1.5f);
+            f.DefinirRaio(10f, 10f);
+        }
+
+        /// <summary>
+        /// Faz o rótulo preencher a própria chapinha, centrado e com corpo elástico.
+        ///
+        /// É o antídoto para caixa de texto medida no documento: o jogo escreve strings de tamanhos
+        /// diferentes ao longo da corrida ("VOLTA 1/5" e "VOLTA 10/10", "--:--.---" e "01:14.902"),
+        /// e caixa fixa ou corta ou desloca.
+        /// </summary>
+        private static void EncaixarNoChip(RectTransform chip, float minimo, float maximo, float folga)
+        {
+            TextMeshProUGUI t = Tmp(chip);
+            if (chip == null || t == null)
+                return;
+
+            var r = (RectTransform)t.transform;
+            if (r != chip)
+            {
+                r.anchorMin = Vector2.zero;
+                r.anchorMax = Vector2.one;
+                r.pivot = new Vector2(0.5f, 0.5f);
+                r.offsetMin = new Vector2(folga, 0f);
+                r.offsetMax = new Vector2(-folga, 0f);
+            }
+
+            t.alignment = TextAlignmentOptions.Center;
+            t.enableWordWrapping = false;
+            t.overflowMode = TextOverflowModes.Overflow;
+            t.enableAutoSizing = true;
+            t.fontSizeMin = minimo;
+            t.fontSizeMax = maximo;
         }
 
         /// <summary>
@@ -401,36 +536,22 @@ namespace PartyRacers.UI.Importer
 
         private static TextMeshProUGUI Intervalo(ProtoBuilder.Mapa m)
         {
-            // A coluna à direita do emblema: "DE 12" em cima, intervalo embaixo. As duas caixas são
-            // reancoradas porque o valor novo é mais largo que o do desenho — sem isso, "LÍDER"
-            // escorregava para cima do número da posição.
-            RectTransform coluna = m.Caixa(142.6f, 52.5f, 121f, 40f);
-            RectTransform total = m.Caixa(142.6f, 52.5f, 121f, 13f);
+            // Quem posiciona a coluna é o `BlocoDePosicao`; aqui só se define como o valor é escrito.
             RectTransform intervalo = m.Caixa(142.6f, 69.5f, 121f, 23f);
-
-            if (coluna != null)
-                coluna.sizeDelta = new Vector2(150f, coluna.sizeDelta.y);
-
-            Fixar(total, 0f, 0f, 150f, 15f);
-            Fixar(intervalo, 0f, -19f, 150f, 26f);
-
             TextMeshProUGUI t = Tmp(intervalo);
             if (t == null)
                 return null;
 
             t.text = "LÍDER";
-            t.fontSize = 22f;
             t.characterSpacing = 4f;
             t.alignment = TextAlignmentOptions.MidlineLeft;
             t.enableWordWrapping = false;
+            t.overflowMode = TextOverflowModes.Overflow;
 
-            TextMeshProUGUI rotulo = Tmp(total);
-            if (rotulo != null)
-            {
-                rotulo.alignment = TextAlignmentOptions.MidlineLeft;
-                rotulo.enableWordWrapping = false;
-            }
-
+            // "LÍDER" é mais largo que "+9,9": o corpo cede em vez de a palavra vazar.
+            t.enableAutoSizing = true;
+            t.fontSizeMax = 23f;
+            t.fontSizeMin = 16f;
             return t;
         }
 
@@ -619,8 +740,19 @@ namespace PartyRacers.UI.Importer
             // Nome longo pode virar reticências; NÚMERO, não. Cortar um número é pior que
             // apertá-lo, porque "1…" e "16" leem igual de relance.
             t.overflowMode = cortar ? TextOverflowModes.Ellipsis : TextOverflowModes.Overflow;
+
             if (!cortar)
+            {
                 t.characterSpacing = 0f;
+                return t;
+            }
+
+            // Nome grande ENCOLHE antes de ser cortado: "nitroking_2007" cabe inteiro em corpo
+            // menor, e o nome do adversário é a informação da linha — reticências são o último
+            // recurso, não o primeiro.
+            t.enableAutoSizing = true;
+            t.fontSizeMax = t.fontSize;
+            t.fontSizeMin = Mathf.Max(9f, t.fontSize - 5f);
 
             return t;
         }

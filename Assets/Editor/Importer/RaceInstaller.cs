@@ -40,6 +40,8 @@ namespace PartyRacers.UI.Importer
         private const string FumacaDeAvaria =
             "Assets/Hovl Studio/Magic effects pack/Prefabs/Smoke effects/Smoke loop.prefab";
 
+        private const string FonteDoNumero = "Assets/_Projeto/Art/Fonts/TitanOne/TitanOne SDF.asset";
+
         [MenuItem("Party Racers/UI v2/7 · Instalar vida e HUD nas pistas", priority = 22)]
         public static void Instalar()
         {
@@ -85,11 +87,24 @@ namespace PartyRacers.UI.Importer
 
             // O número de dano sobe AO LADO DO CARRO. A HUD diz quanto sobrou; ela não diz quanto
             // acabou de sair, e quem corre não desvia o olho da pista para descobrir.
-            if (raiz.GetComponent<KartDamagePopup>() == null)
+            KartDamagePopup popup = raiz.GetComponent<KartDamagePopup>();
+            if (popup == null)
             {
-                raiz.AddComponent<KartDamagePopup>();
+                popup = raiz.AddComponent<KartDamagePopup>();
                 mudou = true;
                 log.AppendLine($"  + KartDamagePopup em {System.IO.Path.GetFileName(caminho)}");
+            }
+
+            // A fonte do jogo, não a padrão do TMP: o número vive no meio da pista e precisa ser
+            // da mesma família dos números grandes do HUD.
+            var soPopup = new SerializedObject(popup);
+            SerializedProperty campoDaFonte = soPopup.FindProperty("fonte");
+            if (campoDaFonte != null && campoDaFonte.objectReferenceValue == null)
+            {
+                campoDaFonte.objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(FonteDoNumero);
+                soPopup.ApplyModifiedPropertiesWithoutUndo();
+                mudou = true;
             }
 
             // Fumaça de avaria: o estado quebrado só existia na HUD, e quem corre nessa hora está
