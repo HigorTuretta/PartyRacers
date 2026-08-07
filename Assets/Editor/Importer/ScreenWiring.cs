@@ -874,19 +874,41 @@ namespace PartyRacers.UI.Importer
             return pulso;
         }
 
-        /// <summary>Faixa de luz que atravessa a barra — o `prShine` do protótipo.</summary>
+        /// <summary>
+        /// Faixa de luz que atravessa a barra — o `prShine` do protótipo.
+        ///
+        /// Duas correções que o desenho exige e a montagem anterior não dava:
+        ///
+        /// • O recorte é ARREDONDADO. `RectMask2D` corta em retângulo, então a faixa aparecia nos
+        ///   cantos, fora da barra. Uma `Mask` sobre um `UIRoundedRect` usa a malha da própria
+        ///   forma como estêncil, e a luz passa a respeitar a curva das pontas.
+        ///
+        /// • A faixa é ancorada no CENTRO. O <see cref="UIShineSweep"/> move o rect entre
+        ///   −largura/2 e +largura/2; ancorada à esquerda, essa conta levava a faixa do lado de
+        ///   fora até o meio da barra e ela parava ali — nunca chegava ao fim.
+        /// </summary>
         private static UIShineSweep Varredura(RectTransform barra)
         {
-            RectMask2D mascara = barra.GetComponent<RectMask2D>() ?? barra.gameObject.AddComponent<RectMask2D>();
-            _ = mascara;
+            var recorte = new GameObject("Recorte", typeof(RectTransform));
+            recorte.transform.SetParent(barra, false);
+            recorte.transform.SetAsLastSibling();
+            Esticar((RectTransform)recorte.transform);
+            Estreitar((RectTransform)recorte.transform, 3f, 4f);
+
+            var forma = recorte.AddComponent<UIRoundedRect>();
+            forma.raycastTarget = false;
+            forma.Definir(Color.white, 9f);
+            forma.DefinirRaio(9f, 9f);
+
+            var mascara = recorte.AddComponent<Mask>();
+            mascara.showMaskGraphic = false;
 
             var go = new GameObject("Varredura", typeof(RectTransform));
-            go.transform.SetParent(barra, false);
-            go.transform.SetAsLastSibling();
+            go.transform.SetParent(recorte.transform, false);
 
             var r = (RectTransform)go.transform;
-            r.anchorMin = new Vector2(0f, 0f);
-            r.anchorMax = new Vector2(0f, 1f);
+            r.anchorMin = new Vector2(0.5f, 0f);
+            r.anchorMax = new Vector2(0.5f, 1f);
             r.pivot = new Vector2(0.5f, 0.5f);
             r.sizeDelta = new Vector2(70f, 0f);
 
