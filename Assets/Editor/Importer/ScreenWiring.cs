@@ -1424,6 +1424,13 @@ namespace PartyRacers.UI.Importer
             var ui = raiz.AddComponent<PartyRacers.UI.Race.RaceMenuUI>();
             var so = new SerializedObject(ui);
 
+            // O documento desenha o menu sobre um FUNDO de tela cheia, porque ali ele é uma
+            // página. No jogo ele é uma gaveta sobre a corrida: esse fundo escurecia a pista
+            // permanentemente, inclusive com o menu fechado — o que só apareceu quando a raiz da
+            // tela passou a ficar ativa para escutar o ESC. Quem escurece é o véu, e só enquanto o
+            // menu está aberto.
+            Despintar(m.Caixas(1920f, 1080f, 4f));
+
             Atribuir(so, "btnVoltar", ClicavelPorTexto(m, "VOLTAR À CORRIDA"));
             Atribuir(so, "btnConfiguracoes", ClicavelPorTexto(m, "CONFIGURAÇÕES"));
             Atribuir(so, "btnCopiarCodigo", ClicavelPorTexto(m, "COPIAR CÓDIGO DA SALA"));
