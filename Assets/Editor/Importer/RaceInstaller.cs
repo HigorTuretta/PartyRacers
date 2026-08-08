@@ -234,12 +234,43 @@ namespace PartyRacers.UI.Importer
                 if (menuUI != null && carregando != null)
                     Referencia(menuUI, "telaDeCarregamento", carregando.GetComponent<LoadingScreenUI>());
 
+                // O resumo do rodapé lê o MESMO provider da HUD, e traduz o nome da cena pelo
+                // catálogo de pistas — que é asset de editor e não se resolve em runtime sozinho.
+                if (menuUI != null)
+                {
+                    Referencia(menuUI, "dados", provider);
+                    Catalogo(menuUI, log);
+                }
+
                 log.AppendLine("      + Screen_RaceMenu (ativo; ESC abre a gaveta)");
             }
 
             EditorSceneManager.MarkSceneDirty(cena);
             EditorSceneManager.SaveScene(cena);
             EditorSceneManager.CloseScene(cena, true);
+        }
+
+        /// <summary>Preenche a lista de pistas do menu com o catálogo do projeto.</summary>
+        private static void Catalogo(RaceMenuUI menu, StringBuilder log)
+        {
+            var so = new SerializedObject(menu);
+            SerializedProperty lista = so.FindProperty("pistas");
+            if (lista == null || !lista.isArray)
+                return;
+
+            string[] guids = AssetDatabase.FindAssets("t:TrackDefinition",
+                                                      new[] { "Assets/_Projeto/Settings/Tracks" });
+            lista.arraySize = guids.Length;
+
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string caminho = AssetDatabase.GUIDToAssetPath(guids[i]);
+                lista.GetArrayElementAtIndex(i).objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<PartyRacers.UI.Settings.TrackDefinition>(caminho);
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            log.AppendLine($"      catálogo de pistas: {guids.Length}");
         }
 
         /// <summary>

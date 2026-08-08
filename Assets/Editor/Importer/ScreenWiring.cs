@@ -235,6 +235,13 @@ namespace PartyRacers.UI.Importer
                 p.floatValue = valor;
         }
 
+        private static void Definir(SerializedObject so, string campo, Vector2 valor)
+        {
+            SerializedProperty p = so.FindProperty(campo);
+            if (p != null && p.propertyType == SerializedPropertyType.Vector2)
+                p.vector2Value = valor;
+        }
+
         // ================================================================== HUD de corrida
 
         /// <summary>
@@ -1454,7 +1461,10 @@ namespace PartyRacers.UI.Importer
 
             var tinta = veu.AddComponent<UIRoundedRect>();
             tinta.raycastTarget = true;
-            tinta.Definir(new Color(0.02f, 0.03f, 0.08f, 0.62f), 0f);
+            // 0,78 e não 0,62: o projeto renderiza em espaço LINEAR, e a mistura acontece antes da
+            // conversão para sRGB. Medido em play, 0,62 derrubava a grama de 219 para 142 — 35% de
+            // escurecimento onde o número prometia 62%, e a corrida continuava com cara de acesa.
+            tinta.Definir(new Color(0.02f, 0.03f, 0.08f, 0.78f), 0f);
             tinta.DefinirRaio(0f, 0f);
 
             Atribuir(so, "veu", veu);
@@ -1469,9 +1479,17 @@ namespace PartyRacers.UI.Importer
 
             if (popup != null)
             {
+                ArrumarConfirmacao(m, popup);
                 Atribuir(so, "popupSair", popup.gameObject);
                 popup.gameObject.SetActive(false);
             }
+
+            // A gaveta entra deslizando da direita e o véu escurece junto: sem isso o menu aparecia
+            // estalado sobre a corrida, e a troca brusca de luminância lê como falha de renderização.
+            if (gaveta != null)
+                Entrar(gaveta.gameObject, 0.2f, new Vector2(90f, 0f), 1f, false);
+
+            Entrar(veu, 0.18f, Vector2.zero, 1f, false);
 
             // O documento repete volta, tempo e posição dentro do menu para ilustrar que a corrida
             // continua. No jogo a HUD DE VERDADE fica atrás, só apagada — repetir os números aqui
@@ -1479,8 +1497,100 @@ namespace PartyRacers.UI.Importer
             Apagar(Envolve(m.Texto("SUA POSIÇÃO 9/16", false), 240f, 40f));
             Apagar(Envolve(m.Texto("VOLTA 2/3", false), 400f, 60f));
 
+            RodapeDoMenu(so, m);
             Esconder(m, "POP-UP DE CONFIRMAÇÃO");
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Entrada padrão de um bloco que aparece por SetActive.</summary>
+        private static void Entrar(GameObject alvo, float duracao, Vector2 de, float escala, bool recuo)
+        {
+            if (alvo == null || alvo.GetComponent<UIAppear>() != null)
+                return;
+
+            var a = alvo.AddComponent<UIAppear>();
+            var so = new SerializedObject(a);
+            Definir(so, "duracao", duracao);
+            Definir(so, "deslocamento", de);
+            Definir(so, "escalaInicial", escala);
+
+            SerializedProperty p = so.FindProperty("comRecuo");
+            if (p != null) p.boolValue = recuo;
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Conserta o cartão de confirmação: centro da tela, texto que quebra e faixa no lugar.
+        ///
+        /// No documento o cartão mora na esquerda porque ali ele divide a página com a gaveta. No
+        /// jogo ele é um modal sobre a corrida — encostado na borda esquerda parecia um painel
+        /// solto, não uma pergunta. O corpo vinha com quebra desligada e vazava para fora da moldura.
+        /// </summary>
+        private static void ArrumarConfirmacao(ProtoBuilder.Mapa m, RectTransform popup)
+        {
+            // Centro do que SOBRA da tela, não da tela inteira: a gaveta ocupa 660 px fixos à
+            // direita, então o centro geométrico cai colado nela e a pergunta fica desequilibrada,
+            // com 690 px de vazio de um lado e 110 do outro.
+            popup.anchorMin = new Vector2(0.5f, 0.5f);
+            popup.anchorMax = new Vector2(0.5f, 0.5f);
+            popup.pivot = new Vector2(0.5f, 0.5f);
+            popup.anchoredPosition = new Vector2(-330f, 0f);
+
+            // Por ESTRUTURA, não por coordenada do dump: as peças de dentro do cartão são netas de
+            // contêineres intermediários e reencontrá-las por (x,y) só acerta por sorte.
+            foreach (TextMeshProUGUI t in popup.GetComponentsInChildren<TextMeshProUGUI>(true))
+            {
+                if (t.text.Length < 40)
+                    continue;
+
+                t.enableWordWrapping = true;
+                t.overflowMode = TextOverflowModes.Truncate;
+                t.alignment = TextAlignmentOptions.Top;
+            }
+
+            foreach (RectTransform filho in popup)
+            {
+                // A faixa de destaque do topo saía por cima do canto arredondado do cartão,
+                // parecendo pedaço de outro elemento colado ali por engano.
+                bool ehFaixa = filho.rect.height <= 14f
+                            && filho.rect.width < popup.rect.width * 0.5f
+                            && filho.GetComponent<Graphic>() != null;
+
+                if (ehFaixa)
+                {
+                    filho.anchorMin = new Vector2(0.5f, 1f);
+                    filho.anchorMax = new Vector2(0.5f, 1f);
+                    filho.pivot = new Vector2(0.5f, 1f);
+                    filho.anchoredPosition = new Vector2(0f, -18f);
+                    filho.sizeDelta = new Vector2(120f, 6f);
+
+                    var f = filho.GetComponent<UIRoundedRect>();
+                    if (f != null) f.DefinirRaio(3f, 3f);
+                    continue;
+                }
+
+                // O cabeçalho reserva uma caixa vazia para um ícone que o dump não trouxe; o buraco
+                // empurrava o título para a direita do centro.
+                TextMeshProUGUI titulo = filho.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (titulo == null || titulo.transform == filho || filho.childCount < 2)
+                    continue;
+
+                foreach (RectTransform neto in filho)
+                {
+                    if (neto == titulo.transform)
+                    {
+                        Esticar(neto);
+                        titulo.alignment = TextAlignmentOptions.Center;
+                    }
+                    else if (neto.childCount == 0 && neto.GetComponent<Graphic>() == null)
+                    {
+                        neto.gameObject.SetActive(false);
+                    }
+                }
+            }
+
+            Entrar(popup.gameObject, 0.2f, new Vector2(0f, -18f), 0.9f, true);
         }
 
         /// <summary>
@@ -1536,15 +1646,392 @@ namespace PartyRacers.UI.Importer
             }
 
             // O texto de apoio vinha cortado na borda direita da gaveta.
-            TextMeshProUGUI aviso = Tmp(m.Caixa(1313f, 124f, 561f, 91.3f));
-            if (aviso != null)
+            TextMeshProUGUI apoio = Tmp(m.Caixa(1313f, 124f, 561f, 91.3f));
+            if (apoio != null)
             {
-                aviso.enableWordWrapping = true;
-                aviso.overflowMode = TextOverflowModes.Truncate;
-                aviso.enableAutoSizing = true;
-                aviso.fontSizeMax = aviso.fontSize;
-                aviso.fontSizeMin = 13f;
+                apoio.enableWordWrapping = true;
+                apoio.overflowMode = TextOverflowModes.Truncate;
+                apoio.enableAutoSizing = true;
+                apoio.fontSizeMax = apoio.fontSize;
+                apoio.fontSizeMin = 13f;
             }
+
+            // Os três botões neutros ganham a mesma moldura. Vinham como placas chapadas, sem
+            // contorno, e ao lado do VOLTAR (verde cheio) e do SAIR (vermelho) pareciam desativados.
+            foreach (float y in new[] { 343.3f, 435.3f })
+            {
+                RectTransform b = m.Caixa(1313f, y, 561f, 80f);
+                var f = b != null ? b.GetComponent<UIRoundedRect>() : null;
+                if (f == null)
+                    continue;
+
+                float raio = f.Raio > 1f ? f.Raio : 16f;
+                f.Definir(new Color(0.09f, 0.11f, 0.24f, 0.92f), raio);
+                f.DefinirContorno(Fio, 2f);
+            }
+        }
+
+        /// <summary>
+        /// Rodapé e ajuste rápido: o que é real fica, o que é desenho de exemplo é apagado.
+        ///
+        /// O documento acende AO VIVO e escreve "28 ms" sempre. Offline isso é mentira dupla — não
+        /// está ao vivo e não há latência para medir —, então quem decide é o binder.
+        /// </summary>
+        private static void RodapeDoMenu(SerializedObject so, ProtoBuilder.Mapa m)
+        {
+            RectTransform chip = m.Caixa(1751.9f, 65f, 100.1f, 22f);
+            if (chip != null && chip.parent != null)
+                Atribuir(so, "chipAoVivo", chip.parent.gameObject);
+
+            RectTransform ping = m.Caixa(1738.9f, 978f, 135.1f, 50f);
+            if (ping != null)
+                Atribuir(so, "blocoDePing", ping.gameObject);
+
+            // Ajuste rápido: uma linha só, e ela é de verdade.
+            Atribuir(so, "linhaDeMusica", Objeto(m.Caixa(1313f, 669.3f, 561f, 20f)));
+            Atribuir(so, "linhaDeVibracao", Objeto(m.Caixa(1313f, 741.3f, 561f, 48f)));
+
+            RectTransform trilho = m.Caixa(1449f, 708.3f, 425f, 14f);
+            RectTransform preenchido = m.Caixa(1452f, 711.3f, 352f, 8f);
+            RectTransform botao = m.Caixa(1789f, 698.3f, 30f, 32f);
+
+            if (trilho != null && preenchido != null && botao != null)
+            {
+                var s = trilho.gameObject.AddComponent<Slider>();
+                s.transition = Selectable.Transition.None;
+                s.fillRect = preenchido;
+                s.handleRect = botao;
+                s.targetGraphic = botao.GetComponent<Graphic>();
+                s.direction = Slider.Direction.LeftToRight;
+
+                // O preenchimento e o punho passam a ser dirigidos pelo Slider: presos nas
+                // coordenadas do desenho, a barra ficava sempre nos 83% do exemplo.
+                Esticar(preenchido);
+                preenchido.anchorMax = new Vector2(1f, 1f);
+                preenchido.offsetMin = new Vector2(0f, 3f);
+                preenchido.offsetMax = new Vector2(0f, -3f);
+
+                botao.anchorMin = new Vector2(0.5f, 0.5f);
+                botao.anchorMax = new Vector2(0.5f, 0.5f);
+                botao.pivot = new Vector2(0.5f, 0.5f);
+                botao.anchoredPosition = Vector2.zero;
+                botao.sizeDelta = new Vector2(30f, 32f);
+
+                var area = new GameObject("Fill Area", typeof(RectTransform));
+                area.transform.SetParent(trilho, false);
+                Esticar((RectTransform)area.transform);
+                preenchido.SetParent(area.transform, true);
+                Esticar(preenchido);
+
+                var areaDoPunho = new GameObject("Handle Slide Area", typeof(RectTransform));
+                areaDoPunho.transform.SetParent(trilho, false);
+                var ar = (RectTransform)areaDoPunho.transform;
+                ar.anchorMin = Vector2.zero;
+                ar.anchorMax = Vector2.one;
+                ar.offsetMin = new Vector2(15f, 0f);
+                ar.offsetMax = new Vector2(-15f, 0f);
+                botao.SetParent(areaDoPunho.transform, true);
+
+                Atribuir(so, "volume", s);
+            }
+
+            // Rótulo honesto: hoje ele governa TODO o som do jogo, não só os efeitos.
+            TextMeshProUGUI rotulo = Tmp(m.Caixa(1313f, 705.3f, 120f, 20f));
+            if (rotulo != null)
+                rotulo.text = "VOLUME";
+
+            // Todo slider mostra o NÚMERO — ler o valor pela posição do punho obriga a estimar.
+            if (trilho != null)
+                Atribuir(so, "valorDoVolume", NumeroDoVolume(trilho));
+
+            TextMeshProUGUI aviso = AvisoDoMenu(m);
+            Atribuir(so, "aviso", aviso);
+            Atribuir(so, "avisoFundo", aviso != null ? aviso.transform.parent.gameObject : null);
+            Atribuir(so, "marcaEmBreve", EmBreve(m.Caixa(1313f, 343.3f, 561f, 80f)));
+            ResumoDaPartida(so, m);
+        }
+
+        /// <summary>
+        /// Cartão com pista, volta e tamanho da grade, no rodapé da gaveta.
+        ///
+        /// Aquele espaço ficou vazio quando MÚSICA e VIBRAÇÃO saíram por não terem o que controlar.
+        /// Em vez de esticar o que sobrou para disfarçar, ele passa a responder o que se pergunta ao
+        /// abrir o menu no meio de uma corrida: onde estou, em que volta e contra quantos.
+        /// </summary>
+        private static void ResumoDaPartida(SerializedObject so, ProtoBuilder.Mapa m)
+        {
+            RectTransform gaveta = m.Caixa(1260f, 0f, 660f, 1080f);
+            if (gaveta == null)
+                return;
+
+            var cartao = new GameObject("Resumo", typeof(RectTransform));
+            cartao.transform.SetParent(gaveta, false);
+
+            var r = (RectTransform)cartao.transform;
+            r.anchorMin = new Vector2(0.5f, 0f);
+            r.anchorMax = new Vector2(0.5f, 0f);
+            r.pivot = new Vector2(0.5f, 0f);
+            r.anchoredPosition = new Vector2(0f, 148f);
+            r.sizeDelta = new Vector2(561f, 84f);
+
+            var f = cartao.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(new Color(0.09f, 0.11f, 0.24f, 0.55f), 16f);
+            f.DefinirContorno(new Color(Fio.r, Fio.g, Fio.b, 0.55f), 1.5f);
+            f.DefinirRaio(16f, 16f);
+
+            (string rotulo, string campo, float centro, float largura)[] colunas =
+            {
+                ("PISTA",      "valorPista",      0.26f, 0.46f),
+                ("VOLTA",      "valorVoltas",     0.60f, 0.20f),
+                ("CORREDORES", "valorCorredores", 0.85f, 0.26f),
+            };
+
+            foreach ((string rotulo, string campo, float centro, float largura) c in colunas)
+            {
+                Atribuir(so, c.campo, ColunaDoResumo(r, c.rotulo, c.centro, c.largura));
+
+                // Filete separando as colunas: sem ele os três números viram uma linha só de texto.
+                if (c.centro < 0.8f)
+                    Filete(r, c.centro + c.largura * 0.5f + 0.02f);
+            }
+        }
+
+        /// <summary>Uma coluna do resumo: rótulo pequeno em cima, valor grande embaixo.</summary>
+        private static TextMeshProUGUI ColunaDoResumo(RectTransform pai, string rotulo,
+                                                      float centro, float largura)
+        {
+            var col = new GameObject(rotulo, typeof(RectTransform));
+            col.transform.SetParent(pai, false);
+
+            var r = (RectTransform)col.transform;
+            r.anchorMin = new Vector2(centro - largura * 0.5f, 0f);
+            r.anchorMax = new Vector2(centro + largura * 0.5f, 1f);
+            r.offsetMin = Vector2.zero;
+            r.offsetMax = Vector2.zero;
+
+            TextMeshProUGUI topo = Escrever(r, rotulo, 10f, new Color(0.55f, 0.60f, 0.82f, 1f),
+                                            new Vector2(0f, 1f), new Vector2(1f, 1f), 0f, -12f, 14f);
+            topo.characterSpacing = 8f;
+
+            TextMeshProUGUI valor = Escrever(r, "—", 22f, new Color(0.95f, 0.96f, 1f, 1f),
+                                             new Vector2(0f, 0f), new Vector2(1f, 0f), 0f, 16f, 28f);
+            // Nome de pista é livre: sem encolhimento, "MINI GOLFE RUN" estoura a coluna.
+            valor.enableAutoSizing = true;
+            valor.fontSizeMax = 22f;
+            valor.fontSizeMin = 11f;
+            valor.enableWordWrapping = false;
+            valor.overflowMode = TextOverflowModes.Ellipsis;
+
+            return valor;
+        }
+
+        /// <summary>Texto centrado, preso a uma borda horizontal do pai.</summary>
+        private static TextMeshProUGUI Escrever(RectTransform pai, string texto, float tamanho,
+                                                Color cor, Vector2 ancoraMin, Vector2 ancoraMax,
+                                                float x, float y, float altura)
+        {
+            var go = new GameObject("Txt", typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = ancoraMin;
+            r.anchorMax = ancoraMax;
+            r.pivot = new Vector2(0.5f, ancoraMax.y > 0.5f ? 1f : 0f);
+            r.offsetMin = new Vector2(0f, r.offsetMin.y);
+            r.offsetMax = new Vector2(0f, r.offsetMax.y);
+            r.anchoredPosition = new Vector2(x, y);
+            r.sizeDelta = new Vector2(0f, altura);
+
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.text = texto;
+            t.fontSize = tamanho;
+            t.color = cor;
+            t.raycastTarget = false;
+            t.alignment = TextAlignmentOptions.Center;
+            t.enableWordWrapping = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            return t;
+        }
+
+        /// <summary>Filete vertical divisor, na fração horizontal pedida.</summary>
+        private static void Filete(RectTransform pai, float fracao)
+        {
+            var go = new GameObject("Filete", typeof(RectTransform));
+            go.transform.SetParent(pai, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(fracao, 0.5f);
+            r.anchorMax = new Vector2(fracao, 0.5f);
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.anchoredPosition = Vector2.zero;
+            r.sizeDelta = new Vector2(1.5f, 40f);
+
+            var f = go.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            f.Definir(new Color(Fio.r, Fio.g, Fio.b, 0.5f), 0f);
+            f.DefinirRaio(0f, 0f);
+        }
+
+        /// <summary>
+        /// Abre espaço à DIREITA do trilho e escreve o número ali.
+        ///
+        /// O trilho tem pivô central: encolher a largura recua as duas pontas metade cada uma, então
+        /// o recuo de 58 px só abre 29 px à direita — e o número, colocado a partir da largura
+        /// cheia, saía da tela. Encolher e ANDAR meia diferença para a esquerda tira os 58 px de um
+        /// lado só, que é onde o número mora.
+        /// </summary>
+        private static TextMeshProUGUI NumeroDoVolume(RectTransform trilho)
+        {
+            const float Espaco = 62f;
+
+            trilho.sizeDelta = new Vector2(trilho.sizeDelta.x - Espaco, trilho.sizeDelta.y);
+            trilho.anchoredPosition -= new Vector2(Espaco * 0.5f, 0f);
+
+            var go = new GameObject("Valor", typeof(RectTransform));
+            go.transform.SetParent(trilho.parent, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(1f, 0.5f);
+            r.anchorMax = new Vector2(1f, 0.5f);
+            r.pivot = new Vector2(1f, 0.5f);
+            r.anchoredPosition = Vector2.zero;
+            r.sizeDelta = new Vector2(50f, 24f);
+
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.text = "70";
+            t.fontSize = 17f;
+            t.color = new Color(0.86f, 0.89f, 1f, 1f);
+            t.raycastTarget = false;
+            t.alignment = TextAlignmentOptions.MidlineRight;
+            t.enableWordWrapping = false;
+            t.overflowMode = TextOverflowModes.Overflow;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            return t;
+        }
+
+        /// <summary>
+        /// Marca um botão como indisponível: apaga a moldura e cola uma etiqueta.
+        ///
+        /// `interactable = false` sozinho não muda nada quando a transição do Button é None — o
+        /// botão continua parecendo clicável e o jogador fica tentando.
+        /// </summary>
+        private static GameObject EmBreve(RectTransform botao)
+        {
+            if (botao == null)
+                return null;
+
+            foreach (UIRoundedRect f in botao.GetComponentsInChildren<UIRoundedRect>(true))
+            {
+                Color c = f.CorDoPreenchimento;
+                f.Definir(new Color(c.r, c.g, c.b, c.a * 0.45f), f.Raio);
+                f.DefinirContorno(new Color(Fio.r, Fio.g, Fio.b, 0.14f), 1.5f);
+            }
+
+            foreach (TextMeshProUGUI t in botao.GetComponentsInChildren<TextMeshProUGUI>(true))
+                t.color = new Color(t.color.r, t.color.g, t.color.b, 0.4f);
+
+            var go = new GameObject("EmBreve", typeof(RectTransform));
+            go.transform.SetParent(botao, false);
+
+            var r = (RectTransform)go.transform;
+            r.anchorMin = new Vector2(1f, 0.5f);
+            r.anchorMax = new Vector2(1f, 0.5f);
+            r.pivot = new Vector2(1f, 0.5f);
+            r.anchoredPosition = new Vector2(-18f, 0f);
+            r.sizeDelta = new Vector2(96f, 24f);
+
+            var f2 = go.AddComponent<UIRoundedRect>();
+            f2.raycastTarget = false;
+            f2.Definir(new Color(1f, 0.69f, 0.13f, 0.16f), 12f);
+            f2.DefinirContorno(new Color(1f, 0.69f, 0.13f, 0.5f), 1.5f);
+            f2.DefinirRaio(12f, 12f);
+
+            var rotulo = new GameObject("Label", typeof(RectTransform));
+            rotulo.transform.SetParent(r, false);
+            Esticar((RectTransform)rotulo.transform);
+
+            var t2 = rotulo.AddComponent<TextMeshProUGUI>();
+            t2.text = "EM BREVE";
+            t2.fontSize = 11f;
+            t2.characterSpacing = 8f;
+            t2.color = new Color(1f, 0.69f, 0.13f, 0.85f);
+            t2.alignment = TextAlignmentOptions.Center;
+            t2.raycastTarget = false;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t2.font = fonte;
+
+            return go;
+        }
+
+        /// <summary>
+        /// Chapinha de retorno das ações, no vão livre do rodapé da gaveta.
+        ///
+        /// Ela nasceu colada embaixo dos botões e caía em cima do punho do slider — dois elementos
+        /// disputando a mesma faixa de 20 px. O vão entre o AJUSTE RÁPIDO e a dica do ESC estava
+        /// vazio desde que MÚSICA e VIBRAÇÃO saíram, e é onde o aviso cabe sem empurrar nada.
+        /// </summary>
+        private static TextMeshProUGUI AvisoDoMenu(ProtoBuilder.Mapa m)
+        {
+            RectTransform gaveta = m.Caixa(1260f, 0f, 660f, 1080f);
+            if (gaveta == null)
+                return null;
+
+            var chip = new GameObject("Aviso", typeof(RectTransform));
+            chip.transform.SetParent(gaveta, false);
+
+            var r = (RectTransform)chip.transform;
+            r.anchorMin = new Vector2(0.5f, 0f);
+            r.anchorMax = new Vector2(0.5f, 0f);
+            r.pivot = new Vector2(0.5f, 0f);
+            r.anchoredPosition = new Vector2(0f, 111f);
+            r.sizeDelta = new Vector2(470f, 30f);
+
+            var f = chip.AddComponent<UIRoundedRect>();
+            f.raycastTarget = false;
+            // 0,05 e não 0,12, pelo mesmo motivo do véu: em espaço linear um alfa baixo de âmbar
+            // sobre azul-escuro sai marrom sólido, e a chapinha competia com os botões.
+            f.Definir(new Color(1f, 0.69f, 0.13f, 0.05f), 15f);
+            f.DefinirContorno(new Color(1f, 0.69f, 0.13f, 0.45f), 1.5f);
+            f.DefinirRaio(15f, 15f);
+
+            var go = new GameObject("Texto", typeof(RectTransform));
+            go.transform.SetParent(r, false);
+            Esticar((RectTransform)go.transform);
+
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.text = string.Empty;
+            t.fontSize = 13f;
+            t.color = Ambar;
+            t.characterSpacing = 3f;
+            t.raycastTarget = false;
+            t.alignment = TextAlignmentOptions.Center;
+            t.enableWordWrapping = false;
+            t.overflowMode = TextOverflowModes.Overflow;
+
+            TMP_FontAsset fonte = CssKit.Fonte("Space Mono", 700);
+            if (fonte != null)
+                t.font = fonte;
+
+            // A chapinha só existe quando há o que dizer; quem a acende é o binder.
+            var entrada = chip.AddComponent<UIAppear>();
+            var soEntrada = new SerializedObject(entrada);
+            Definir(soEntrada, "duracao", 0.18f);
+            Definir(soEntrada, "deslocamento", new Vector2(0f, -14f));
+            soEntrada.ApplyModifiedPropertiesWithoutUndo();
+
+            chip.SetActive(false);
+            return t;
         }
 
         // ================================================================== Lobby
