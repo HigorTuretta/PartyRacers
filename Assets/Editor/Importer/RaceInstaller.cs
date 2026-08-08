@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using PartyRacers.UI.Frontend;
 using PartyRacers.UI.HUD;
 using PartyRacers.UI.Race;
 

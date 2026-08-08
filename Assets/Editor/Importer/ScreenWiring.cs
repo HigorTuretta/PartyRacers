@@ -1455,6 +1455,7 @@ namespace PartyRacers.UI.Importer
 
             if (gaveta != null)
             {
+                ArrumarGaveta(m, gaveta);
                 Atribuir(so, "gaveta", gaveta.gameObject);
                 gaveta.gameObject.SetActive(false);
             }
@@ -1473,6 +1474,70 @@ namespace PartyRacers.UI.Importer
 
             Esconder(m, "POP-UP DE CONFIRMAÇÃO");
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Prende cada bloco da gaveta ao TOPO dela, nas alturas do documento.
+        ///
+        /// A gaveta foi desenhada com 1080 px de altura; numa janela mais baixa ela encolhe e os
+        /// blocos, cada um pendurado numa borda diferente, se comprimem uns sobre os outros —
+        /// "SAIR DA PARTIDA" ia parar em cima de "AJUSTE RÁPIDO". Presos no topo, eles guardam a
+        /// distância entre si em qualquer altura de tela.
+        /// </summary>
+        private static void ArrumarGaveta(ProtoBuilder.Mapa m, RectTransform gaveta)
+        {
+            // caixa do documento (x, y, w, h) → altura local dentro da gaveta (y − 0)
+            (float x, float y, float w, float h)[] blocos =
+            {
+                (1313f, 124f,   561f, 91.3f),   // "seu carro continua correndo..."
+                (1313f, 239.3f, 561f, 92f),     // VOLTAR À CORRIDA
+                (1313f, 343.3f, 561f, 80f),     // CONFIGURAÇÕES
+                (1313f, 435.3f, 561f, 80f),     // COPIAR CÓDIGO DA SALA
+                (1313f, 527.3f, 561f, 80f),     // SAIR DA PARTIDA
+            };
+
+            // `AncorarNoTopo` calcula a distância a partir do PAI QUE O DUMP CONHECE. Escrever o
+            // deslocamento à mão somava o offset duas vezes — os botões são filhos de um contêiner
+            // interno, não da gaveta, e desciam 220 px em cima do bloco de ajustes.
+            foreach ((float x, float y, float w, float h) b in blocos)
+            {
+                RectTransform r = m.Caixa(b.x, b.y, b.w, b.h);
+                if (r != null)
+                    m.AncorarNoTopo(r, b.h);
+            }
+
+            // O bloco de AJUSTE RÁPIDO inteiro, de uma vez: prendendo as linhas soltas uma a uma
+            // elas se soltariam do próprio contêiner.
+            RectTransform ajustes = m.Caixa(1313f, 637.3f, 561f, 16f);
+            if (ajustes != null && ajustes.parent is RectTransform caixaDeAjustes)
+                m.AncorarNoTopo(caixaDeAjustes, caixaDeAjustes.sizeDelta.y > 1f
+                                              ? caixaDeAjustes.sizeDelta.y
+                                              : 150f);
+
+            // "SAIR DA PARTIDA" perdeu o fundo no caminho e virou texto vermelho solto sobre a
+            // gaveta. Ele é a ação mais definitiva do menu: precisa de moldura para não ser
+            // clicado por engano nem confundido com um aviso.
+            RectTransform sair = m.Caixa(1313f, 527.3f, 561f, 80f);
+            if (sair != null && sair.GetComponent<UIRoundedRect>() == null)
+            {
+                var f = sair.gameObject.AddComponent<UIRoundedRect>();
+                f.raycastTarget = true;
+                f.Definir(new Color(0.22f, 0.07f, 0.12f, 0.85f), 16f);
+                f.DefinirContorno(new Color(1f, 0.30f, 0.43f, 0.75f), 2f);
+                f.DefinirRaio(16f, 16f);
+                ((Graphic)f).transform.SetAsFirstSibling();
+            }
+
+            // O texto de apoio vinha cortado na borda direita da gaveta.
+            TextMeshProUGUI aviso = Tmp(m.Caixa(1313f, 124f, 561f, 91.3f));
+            if (aviso != null)
+            {
+                aviso.enableWordWrapping = true;
+                aviso.overflowMode = TextOverflowModes.Truncate;
+                aviso.enableAutoSizing = true;
+                aviso.fontSizeMax = aviso.fontSize;
+                aviso.fontSizeMin = 13f;
+            }
         }
 
         // ================================================================== Lobby
