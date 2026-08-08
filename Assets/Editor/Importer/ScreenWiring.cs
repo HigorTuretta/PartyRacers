@@ -1590,7 +1590,32 @@ namespace PartyRacers.UI.Importer
                 }
             }
 
+            BotoesDaConfirmacao(m);
             Entrar(popup.gameObject, 0.2f, new Vector2(0f, -18f), 0.9f, true);
+        }
+
+        /// <summary>
+        /// Os dois botões do pop-up entram no mesmo padrão da gaveta.
+        ///
+        /// Deixá-los de fora manteria 84 e 74 px de altura com raio 22 ao lado de uma gaveta toda
+        /// em 58 e raio 16 — a mesma inconsistência, só que uma tela mais tarde.
+        /// </summary>
+        private static void BotoesDaConfirmacao(ProtoBuilder.Mapa m)
+        {
+            RectTransform sair = Alvo(m, "SAIR AGORA");
+            RectTransform ficar = Alvo(m, "FICAR NA CORRIDA");
+            if (sair == null || ficar == null)
+                return;
+
+            Vestir(sair, Peso.PerigoCheio, 22f, 16f, 3.5f, 5f);
+            Vestir(ficar, Peso.Neutro, 20f, 16f, 3.5f, 5f);
+
+            // A folga que sobra do encolhimento é dividida entre cima e baixo: empilhar a partir do
+            // topo antigo empurraria os dois para cima e deixaria o cartão pesado embaixo.
+            float folga = (sair.rect.height + ficar.rect.height) - (62f + 62f) - 12f;
+            var pilha = new List<RectTransform> { sair, ficar };
+
+            Empilhar(pilha, new List<float> { 62f, 62f }, 12f, -folga * 0.5f);
         }
 
         /// <summary>
@@ -1624,50 +1649,172 @@ namespace PartyRacers.UI.Importer
             }
 
             // O bloco de AJUSTE RÁPIDO inteiro, de uma vez: prendendo as linhas soltas uma a uma
-            // elas se soltariam do próprio contêiner.
+            // elas se soltariam do próprio contêiner. Sobe 55 px porque a pilha de botões encolheu
+            // 68: subir os 68 inteiros empurrava todo o vão para baixo do VOLUME, e o buraco só
+            // mudava de lugar. Nesta altura os três respiros da gaveta ficam em torno de 55 px.
             RectTransform ajustes = m.Caixa(1313f, 637.3f, 561f, 16f);
             if (ajustes != null && ajustes.parent is RectTransform caixaDeAjustes)
                 m.AncorarNoTopo(caixaDeAjustes, caixaDeAjustes.sizeDelta.y > 1f
                                               ? caixaDeAjustes.sizeDelta.y
-                                              : 150f);
+                                              : 150f, -55f);
 
-            // "SAIR DA PARTIDA" perdeu o fundo no caminho e virou texto vermelho solto sobre a
-            // gaveta. Ele é a ação mais definitiva do menu: precisa de moldura para não ser
-            // clicado por engano nem confundido com um aviso.
-            RectTransform sair = m.Caixa(1313f, 527.3f, 561f, 80f);
-            if (sair != null && sair.GetComponent<UIRoundedRect>() == null)
-            {
-                var f = sair.gameObject.AddComponent<UIRoundedRect>();
-                f.raycastTarget = true;
-                f.Definir(new Color(0.22f, 0.07f, 0.12f, 0.85f), 16f);
-                f.DefinirContorno(new Color(1f, 0.30f, 0.43f, 0.75f), 2f);
-                f.DefinirRaio(16f, 16f);
-                ((Graphic)f).transform.SetAsFirstSibling();
-            }
-
-            // O texto de apoio vinha cortado na borda direita da gaveta.
+            // O texto de apoio vinha cortado na borda direita da gaveta — e prometia coisa que não
+            // acontece: não existe piloto automático para o kart local. `BotDriverController` se
+            // recusa a assumir o kart do jogador, então o carro simplesmente segue à deriva.
             TextMeshProUGUI apoio = Tmp(m.Caixa(1313f, 124f, 561f, 91.3f));
             if (apoio != null)
             {
+                apoio.text = "A corrida não para: o relógio corre e os outros seguem enquanto "
+                           + "você lê isto.";
                 apoio.enableWordWrapping = true;
                 apoio.overflowMode = TextOverflowModes.Truncate;
                 apoio.enableAutoSizing = true;
-                apoio.fontSizeMax = apoio.fontSize;
+                apoio.fontSizeMax = 19f;
                 apoio.fontSizeMin = 13f;
             }
 
-            // Os três botões neutros ganham a mesma moldura. Vinham como placas chapadas, sem
-            // contorno, e ao lado do VOLTAR (verde cheio) e do SAIR (vermelho) pareciam desativados.
-            foreach (float y in new[] { 343.3f, 435.3f })
+            Botoes(m);
+        }
+
+        /// <summary>Estilos possíveis de um botão da gaveta.</summary>
+        private enum Peso { Principal, Neutro, Perigo, PerigoCheio }
+
+        /// <summary>
+        /// Um padrão só para os quatro botões: mesma altura, mesmo raio, mesmo contorno.
+        ///
+        /// Cada um vinha do documento com a sua medida — 92 e 80 px de altura, raio 22 e 20,
+        /// contorno de 5 px em uns e 1,5 em outro. Lado a lado isso não lê como quatro botões da
+        /// mesma família, lê como quatro pedaços de telas diferentes. E todos eram grandes demais:
+        /// a gaveta é lateral, não uma página.
+        /// </summary>
+        private static void Botoes(ProtoBuilder.Mapa m)
+        {
+            const float Raio = 16f;
+            const float Contorno = 3.5f;
+            const float Sombra = 5f;
+
+            (float y, float altura, float fonte, Peso peso)[] estilo =
             {
-                RectTransform b = m.Caixa(1313f, y, 561f, 80f);
-                var f = b != null ? b.GetComponent<UIRoundedRect>() : null;
+                (239.3f, 68f, 25f, Peso.Principal),   // VOLTAR À CORRIDA
+                (343.3f, 58f, 20f, Peso.Neutro),      // CONFIGURAÇÕES
+                (435.3f, 58f, 20f, Peso.Neutro),      // COPIAR CÓDIGO DA SALA
+                (527.3f, 58f, 20f, Peso.Perigo),      // SAIR DA PARTIDA
+            };
+
+            var pilha = new List<RectTransform>();
+            var alturas = new List<float>();
+
+            foreach ((float y, float altura, float fonte, Peso peso) e in estilo)
+            {
+                RectTransform b = m.Caixa(1313f, e.y, 561f, e.y < 300f ? 92f : 80f);
+                if (b == null)
+                    continue;
+
+                pilha.Add(b);
+                alturas.Add(e.altura);
+                Vestir(b, e.peso, e.fonte, Raio, Contorno, Sombra);
+            }
+
+            Empilhar(pilha, alturas, 12f);
+        }
+
+        /// <summary>Pinta um botão no peso pedido, sem duplicar moldura.</summary>
+        private static void Vestir(RectTransform botao, Peso peso, float fonte,
+                                   float raio, float contorno, float sombra)
+        {
+            Color fundo, borda, letra;
+            switch (peso)
+            {
+                case Peso.Principal:
+                    fundo = new Color(0.239f, 0.863f, 0.592f, 1f);
+                    borda = new Color(0.039f, 0.047f, 0.133f, 1f);
+                    letra = new Color(0.039f, 0.047f, 0.133f, 1f);
+                    break;
+
+                case Peso.PerigoCheio:
+                    // Confirmação de saída: aqui o vermelho é a ação PEDIDA, não um aviso. Na
+                    // gaveta ele é discreto porque ninguém abre o menu querendo desistir.
+                    fundo = new Color(1f, 0.30f, 0.43f, 1f);
+                    borda = new Color(0.039f, 0.047f, 0.133f, 1f);
+                    letra = new Color(0.039f, 0.047f, 0.133f, 1f);
+                    break;
+
+                case Peso.Perigo:
+                    // O contorno rosa foi posto num nó NOVO por cima do bloco, e o `Shape` que já
+                    // existia desenhava por cima dele: sobrava um arco rosa espiando pelos cantos.
+                    // Quem veste o botão é o próprio `Shape` — não uma segunda moldura.
+                    fundo = new Color(0.20f, 0.07f, 0.13f, 1f);
+                    borda = new Color(1f, 0.30f, 0.43f, 0.85f);
+                    letra = new Color(1f, 0.42f, 0.52f, 1f);
+                    break;
+
+                default:
+                    fundo = new Color(0.106f, 0.125f, 0.314f, 1f);
+                    borda = new Color(0.039f, 0.047f, 0.133f, 1f);
+                    letra = new Color(0.95f, 0.96f, 1f, 1f);
+                    break;
+            }
+
+            // A moldura que eu mesmo pendurei no bloco vira ruído agora que o `Shape` é vestido.
+            var extra = botao.GetComponent<UIRoundedRect>();
+            if (extra != null)
+                Object.DestroyImmediate(extra, true);
+
+            foreach (RectTransform filho in botao)
+            {
+                var f = filho.GetComponent<UIRoundedRect>();
                 if (f == null)
                     continue;
 
-                float raio = f.Raio > 1f ? f.Raio : 16f;
-                f.Definir(new Color(0.09f, 0.11f, 0.24f, 0.92f), raio);
-                f.DefinirContorno(Fio, 2f);
+                bool ehSombra = filho.name.StartsWith("Shadow");
+                if (ehSombra)
+                {
+                    f.Definir(new Color(0.02f, 0.025f, 0.08f, 0.85f), raio);
+                    f.DefinirRaio(raio, raio);
+                    filho.anchoredPosition = new Vector2(filho.anchoredPosition.x, -sombra);
+                    continue;
+                }
+
+                f.Definir(fundo, raio);
+                f.DefinirContorno(borda, contorno);
+                f.DefinirRaio(raio, raio);
+            }
+
+            TextMeshProUGUI rotulo = botao.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (rotulo == null)
+                return;
+
+            rotulo.fontSize = fonte;
+            rotulo.color = letra;
+            rotulo.alignment = TextAlignmentOptions.Center;
+            rotulo.enableWordWrapping = false;
+            rotulo.overflowMode = TextOverflowModes.Overflow;
+        }
+
+        /// <summary>
+        /// Redimensiona e reempilha, travando a borda de cima do primeiro.
+        ///
+        /// Mexer em `sizeDelta` move o retângulo de um jeito diferente conforme o pivô, e cada
+        /// bloco vindo do dump tem o seu. Medir a borda superior antes e depois e devolver a
+        /// diferença funciona para todos sem precisar saber qual é qual.
+        /// </summary>
+        private static void Empilhar(List<RectTransform> itens, List<float> alturas, float espaco,
+                                     float deslocarTopo = 0f)
+        {
+            if (itens.Count == 0)
+                return;
+
+            float topo = itens[0].localPosition.y + itens[0].rect.yMax + deslocarTopo;
+
+            for (int i = 0; i < itens.Count; i++)
+            {
+                RectTransform r = itens[i];
+                r.sizeDelta = new Vector2(r.sizeDelta.x, alturas[i]);
+
+                float agora = r.localPosition.y + r.rect.yMax;
+                r.localPosition += new Vector3(0f, topo - agora, 0f);
+
+                topo -= alturas[i] + espaco;
             }
         }
 
@@ -1749,6 +1896,57 @@ namespace PartyRacers.UI.Importer
             Atribuir(so, "avisoFundo", aviso != null ? aviso.transform.parent.gameObject : null);
             Atribuir(so, "marcaEmBreve", EmBreve(m.Caixa(1313f, 343.3f, 561f, 80f)));
             ResumoDaPartida(so, m);
+            DicaDeEsc(m);
+        }
+
+        /// <summary>
+        /// A tecla ESC desenhada: a legenda estava encostada na borda esquerda da tecla.
+        ///
+        /// O nó do rótulo veio do documento esticado sobre a tecla inteira, mas alinhado à
+        /// esquerda: com contorno de 4 px o "E" ficava por baixo da moldura. Uma tecla mal
+        /// desenhada é o tipo de detalhe que faz o resto parecer improvisado.
+        /// </summary>
+        private static void DicaDeEsc(ProtoBuilder.Mapa m)
+        {
+            RectTransform tecla = Alvo(m, "ESC");
+            if (tecla == null)
+                return;
+
+            tecla.sizeDelta = new Vector2(74f, 40f);
+
+            var f = tecla.GetComponent<UIRoundedRect>();
+            if (f != null)
+            {
+                f.Definir(new Color(1f, 0.969f, 0.91f, 1f), 11f);
+                f.DefinirContorno(new Color(0.039f, 0.047f, 0.133f, 1f), 3f);
+                f.DefinirRaio(11f, 11f);
+            }
+
+            TextMeshProUGUI rotulo = Tmp(tecla);
+            if (rotulo == null)
+                return;
+
+            Esticar((RectTransform)rotulo.transform);
+            rotulo.fontSize = 17f;
+            rotulo.characterSpacing = 0f;
+            rotulo.alignment = TextAlignmentOptions.Center;
+            rotulo.enableWordWrapping = false;
+            rotulo.overflowMode = TextOverflowModes.Overflow;
+            rotulo.margin = Vector4.zero;
+
+            // A legenda ao lado tem de acompanhar a tecla, senão sobra um buraco entre as duas.
+            TextMeshProUGUI legenda = Tmp(m.Texto("fecha e volta na hora", false));
+            if (legenda == null || tecla.parent == null)
+                return;
+
+            var lr = (RectTransform)legenda.transform;
+            lr.anchorMin = new Vector2(0f, 0.5f);
+            lr.anchorMax = new Vector2(0f, 0.5f);
+            lr.pivot = new Vector2(0f, 0.5f);
+            lr.anchoredPosition = new Vector2(tecla.anchoredPosition.x
+                                            + tecla.sizeDelta.x * (1f - tecla.pivot.x) + 14f, 0f);
+            legenda.fontSize = 17f;
+            legenda.alignment = TextAlignmentOptions.MidlineLeft;
         }
 
         /// <summary>
@@ -1929,15 +2127,16 @@ namespace PartyRacers.UI.Importer
             if (botao == null)
                 return null;
 
+            // Só o ALFA cai. Mexer no raio ou na espessura aqui desfaria o padrão que `Vestir`
+            // acabou de aplicar, e o botão desativado voltaria a ser o estranho da fileira.
             foreach (UIRoundedRect f in botao.GetComponentsInChildren<UIRoundedRect>(true))
             {
                 Color c = f.CorDoPreenchimento;
                 f.Definir(new Color(c.r, c.g, c.b, c.a * 0.45f), f.Raio);
-                f.DefinirContorno(new Color(Fio.r, Fio.g, Fio.b, 0.14f), 1.5f);
             }
 
             foreach (TextMeshProUGUI t in botao.GetComponentsInChildren<TextMeshProUGUI>(true))
-                t.color = new Color(t.color.r, t.color.g, t.color.b, 0.4f);
+                t.color = new Color(t.color.r, t.color.g, t.color.b, 0.45f);
 
             var go = new GameObject("EmBreve", typeof(RectTransform));
             go.transform.SetParent(botao, false);
@@ -1946,14 +2145,14 @@ namespace PartyRacers.UI.Importer
             r.anchorMin = new Vector2(1f, 0.5f);
             r.anchorMax = new Vector2(1f, 0.5f);
             r.pivot = new Vector2(1f, 0.5f);
-            r.anchoredPosition = new Vector2(-18f, 0f);
-            r.sizeDelta = new Vector2(96f, 24f);
+            r.anchoredPosition = new Vector2(-16f, 0f);
+            r.sizeDelta = new Vector2(88f, 22f);
 
             var f2 = go.AddComponent<UIRoundedRect>();
             f2.raycastTarget = false;
-            f2.Definir(new Color(1f, 0.69f, 0.13f, 0.16f), 12f);
+            f2.Definir(new Color(1f, 0.69f, 0.13f, 0.16f), 11f);
             f2.DefinirContorno(new Color(1f, 0.69f, 0.13f, 0.5f), 1.5f);
-            f2.DefinirRaio(12f, 12f);
+            f2.DefinirRaio(11f, 11f);
 
             var rotulo = new GameObject("Label", typeof(RectTransform));
             rotulo.transform.SetParent(r, false);
