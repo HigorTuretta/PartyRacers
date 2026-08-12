@@ -1,0 +1,134 @@
+/* ============================================================
+   RaceHUDMobile.uss — HTML linhas 977-1073. Referencia 2340 x 1080.
+   ============================================================ */
+
+/* ---------- topo ---------- */
+.hudm__lap-block { position: absolute; left: 0; right: 0; top: 22px; justify-content: center; }
+.hudm__plate-shadow { border-radius: 12px; }
+.hudm__lap {
+    padding: 10px 18px;
+    border-width: 4px; border-color: var(--ink); border-radius: 12px;
+    background-color: var(--amber);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 24px; color: var(--ink-15); -unity-text-align: middle-center;
+}
+.hudm__time {
+    padding: 10px 20px;
+    border-width: 4px; border-color: var(--ink); border-radius: 12px;
+    background-color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 30px; color: var(--cream); -unity-text-align: middle-center;
+}
+
+.hudm__pos-wrap  { position: absolute; left: 28px; top: 22px; rotate: -2deg; }
+.hudm__pos-shadow { border-radius: 14px; }
+.hudm__pos-plate {
+    padding: 10px 16px 12px 16px;
+    border-width: 4px; border-color: var(--ink); border-radius: 14px;
+    background-color: var(--cream);
+    align-items: flex-end;
+}
+.hudm__pos-num {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 40px; color: var(--ink-15);
+}
+.hudm__pos-ord {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 17px; color: var(--ink-15); margin-left: 3px; margin-bottom: 4px;
+}
+
+/* 3 linhas so, e mais estreitas que no PC */
+.hudm__standings { position: absolute; right: 100px; top: 22px; width: 250px; }
+.hudm__standings .stand__other     { padding: 7px 11px; border-radius: 9px; }
+.hudm__standings .stand__other-pos { width: 22px; font-size: 13px; }
+.hudm__standings .stand__other-name { font-size: 13px; }
+.hudm__standings .stand__other-gap  { display: none; }
+
+.hudm__menu {
+    position: absolute; right: 28px; top: 22px;
+    width: 56px; height: 56px;
+    border-width: 4px; border-color: var(--ink); border-radius: 14px;
+    background-color: rgba(10, 12, 34, 0.80);
+}
+.hudm__menu-icon { width: 24px; height: 18px; }
+
+/* ---------- cluster vital compacto ---------- */
+.hudm__vital { position: absolute; left: 0; right: 0; bottom: 30px; align-items: center; }
+.hudm__vital > * { width: 420px; }
+
+.hudm__shield {
+    height: 14px;
+    border-width: 3px; border-color: var(--ink); border-radius: 8px;
+    padding: 2px;
+    margin-right: -3px;
+}
+.hudm__shield > * { margin-right: 3px; }
+.hudm__shield-seg {
+    border-radius: 4px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_Shield_Mobile.png");
+}
+.hudm__shield-seg-empty { border-radius: 4px; background-color: var(--hp-empty); }
+
+.hudm__hp {
+    height: 32px;
+    border-width: 4px; border-color: var(--ink); border-radius: 11px;
+    padding: 3px;
+    margin-right: -3px;
+}
+.hudm__hp > * { margin-right: 3px; }
+.hudm__hp-seg { border-radius: 5px; }
+.hudm__hp-value {
+    position: absolute; right: 11px; top: 0; bottom: 0;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 20px; color: var(--cream); -unity-text-align: middle-right;
+    text-shadow: 0 2px 0 var(--ink);
+}
+
+/* ---------- controles touch ----------
+   Nenhum alvo abaixo de 96px. Estes valores vem do HTML e ja respeitam. */
+.hudm__controls-left  { position: absolute; left: 44px; bottom: 44px; }
+.hudm__controls-right { position: absolute; right: 44px; bottom: 44px; }
+
+.hudm__dpad {
+    width: 112px; height: 112px;
+    border-width: 4px; border-color: var(--ink); border-radius: 26px;
+    background-color: var(--glass-66);
+}
+.hudm__dpad-icon { width: 30px; height: 44px; }
+
+.hudm__shield-btn {
+    width: 96px; height: 96px;
+    border-width: 4px; border-color: var(--ink); border-radius: 24px;
+    background-color: rgb(64, 160, 220);
+}
+.hudm__shield-btn-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 20px; color: var(--cream); letter-spacing: 0.8px;
+}
+/* anel pulsante (1.6s) = escudo disponivel. Em recarga, o controller
+   esconde o anel — nunca troca o icone. */
+.hudm__shield-ring {
+    position: absolute; left: -7px; top: -7px; right: -7px; bottom: -7px;
+    border-radius: 28px;
+    border-width: 3px; border-color: rgba(90, 200, 245, 0.55);
+}
+
+.hudm__item-btn {
+    width: 130px; height: 130px;
+    border-width: 4px; border-color: var(--ink); border-radius: 30px;
+    background-color: var(--amber);
+    overflow: hidden;
+}
+.hudm__item-icon {
+    width: 72px; height: 86px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Powers/Power_Rocket_Color.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hudm__gas {
+    width: 150px; height: 150px;
+    border-width: 4px; border-color: var(--ink); border-radius: 34px;
+    background-color: var(--green);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 30px; color: var(--ink);
+}

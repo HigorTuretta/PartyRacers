@@ -1,0 +1,32 @@
+/* Card_Mode.uss — HTML linhas 275-286 */
+.mode-host    { flex-grow: 1; flex-basis: 0; flex-shrink: 1; }
+.mode__card   { flex-grow: 1; }
+.mode__wrap   { align-items: stretch; }
+.mode__shadow { border-radius: 14px; }
+.mode__face   { padding: 15px 6px 13px 6px; border-radius: 14px; }
+.mode__face--on  { border-width: 3px; border-color: var(--ink); background-color: var(--amber); }
+.mode__face--off { border-width: 2px; border-color: rgba(155, 165, 215, 0.26); background-color: var(--fill-blue-50); }
+.mode__face--off:hover { border-color: rgba(255, 176, 32, 0.70); background-color: rgba(42, 52, 128, 0.60); }
+
+/* pips = a string "\u25CF" repetida (1 por vaga). O caractere PRECISA estar
+   no atlas TextCore do Archivo: inclua 0x25CF no character set. */
+.mode__pips {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Bold SDF.asset");
+    font-size: 15px; height: 15px; letter-spacing: 3px;
+}
+.mode__pips--on  { color: var(--ink-15); }
+.mode__pips--off { color: var(--text-soft); }
+
+.mode__label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 19px; letter-spacing: 0.57px;
+}
+.mode__label--on  { color: var(--ink-15); }
+.mode__label--off { color: var(--text-soft); }
+
+.mode__cap {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px;
+}
+.mode__cap--on  { color: rgba(21, 22, 28, 0.66); }
+.mode__cap--off { color: var(--dim-2); }

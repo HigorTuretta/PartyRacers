@@ -1,0 +1,23 @@
+/* Card_MatchSlot.uss — HTML linhas 494-527. Celula 8 por linha, 2 linhas. */
+.mmslot { flex-grow: 1; flex-basis: 0; height: 99px; flex-shrink: 0; }
+.mmslot__box { padding: 14px 8px; border-radius: 14px; flex-grow: 1; }
+.mmslot__box--human { border-width: 3px; border-color: var(--ink);  background-color: var(--fill-royal-80); }
+.mmslot__box--mate  { border-width: 3px; border-color: var(--amber); background-color: var(--tint-amber-14); }
+.mmslot__box--bot   { border-width: 3px; border-color: var(--ink);  background-color: var(--tint-violet-16); }
+.mmslot__box--empty { border-width: 0; }
+
+.mmslot__name {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 12px; color: var(--cream); letter-spacing: 0.36px; max-width: 100%;
+}
+.mmslot__name--mate { color: var(--amber); }
+.mmslot__name--bot  { color: var(--violet); letter-spacing: 0.72px; }
+
+.mmslot__bot-avatar { background-color: rgb(93, 79, 195); }
+.mmslot__bot-visor  { width: 18px; height: 14px; border-radius: 3px; background-color: var(--ink); }
+
+.mmslot__empty-avatar { width: 44px; height: 44px; }
+.mmslot__dots {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--faint-2); letter-spacing: 0.66px;
+}

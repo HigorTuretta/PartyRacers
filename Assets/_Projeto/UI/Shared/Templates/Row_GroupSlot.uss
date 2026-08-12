@@ -1,0 +1,39 @@
+/* Row_GroupSlot.uss — HTML linhas 300-340 */
+
+/* A borda muda com o estado de pronto: verde .6 quando pronto,
+   ambar .55 quando aguardando. O controller troca a CLASSE, nao a cor. */
+.pr-slot--filled { border-color: rgba(255, 176, 32, 0.55); }
+.slot--ready     { border-color: rgba(61, 220, 151, 0.60); }
+
+/* O nome nao pode crescer livre: com sizeDelta solto ele passa por cima do
+   badge LIDER. Caixa limitada + elipse. */
+.slot__text { min-width: 0; flex-shrink: 1; }
+.slot__name { max-width: 150px; flex-shrink: 1; }
+
+.slot__empty {
+    padding: 11px 14px;
+    border-width: 0;
+    border-radius: 13px;
+    background-color: var(--fill-deep-34);
+    align-items: center;
+}
+.slot__empty-avatar { width: 42px; height: 42px; flex-shrink: 0; align-items: center; justify-content: center; }
+.slot__plus {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-SemiBold SDF.asset");
+    font-size: 22px; color: var(--faint);
+}
+.slot__invite {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 14px; color: var(--dim-2); letter-spacing: 1.4px;
+}
+
+.slot__lock-avatar {
+    width: 42px; height: 42px; flex-shrink: 0; border-radius: 11px;
+    background-color: var(--tint-mute-06);
+    align-items: center; justify-content: center;
+}
+.slot__lock-icon { width: 16px; height: 16px; }
+.slot__lock-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 13px; color: var(--faint-2); letter-spacing: 1.04px;
+}

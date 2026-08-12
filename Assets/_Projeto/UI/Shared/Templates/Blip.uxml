@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Blip.uss" />
+
+    <!-- Piloto captado no dial. Entrada: prBlip 0.5s easeOut
+         (escala 0.4 -> 1.15 -> 1, opacidade 0 -> 1). -->
+    <ui:VisualElement name="Blip" class="pr-col pr-center gy-6 blip">
+        <ui:VisualElement class="blip__dot-wrap">
+            <ui:VisualElement class="blip__glow blip__glow--far" />
+            <ui:VisualElement class="blip__glow blip__glow--near" />
+            <ui:VisualElement name="Dot" class="blip__dot" />
+        </ui:VisualElement>
+        <ui:Label name="Name" text="LEO_99" class="blip__name" />
+    </ui:VisualElement>
+</ui:UXML>

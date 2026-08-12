@@ -1,0 +1,152 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Frontend/CustomMatch/CustomMatch.uss" />
+    <ui:Template name="Row_CustomSlot" src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_CustomSlot.uxml" />
+
+    <!-- Sala privada. Tambem e um overlay: a cena 3D do lobby continua atras. -->
+    <ui:VisualElement name="Screen_CustomMatch" class="pr-screen">
+        <ui:VisualElement name="Content" class="pr-row-stretch gx-16 custom__content">
+
+            <!-- ══════════ ESQUERDA: SALA ══════════ -->
+            <ui:VisualElement name="Panel_Room" class="pr-panel pr-panel--88 pr-col gy-14 pr-grow">
+
+                <ui:VisualElement class="pr-row gx-16">
+                    <ui:Label text="SALA PRIVADA" class="custom__title" />
+
+                    <!-- Codigo: 6 caracteres alfanumericos MAIUSCULOS.
+                         O espacamento vem do letter-spacing (6.16px), nunca de
+                         espacos digitados. Inclua 0-9 e A-Z no atlas TMP. -->
+                    <ui:VisualElement name="Chip_RoomCode" class="pr-row gx-10 custom__code-chip">
+                        <ui:Label name="Room_Code" text="7KQ2XM" class="custom__code" />
+                        <ui:Button name="Btn_Copy" class="pr-icon pr-icon--copy custom__copy" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="pr-spacer" />
+                    <ui:Label name="Room_Count" text="9 / 16" class="custom__count" />
+                </ui:VisualElement>
+
+                <!-- 16 vagas: 2 colunas x 8 linhas. As linhas dividem a altura
+                     em partes iguais (flex-grow), como o grid-auto-rows:1fr. -->
+                <ui:VisualElement name="Slots" class="pr-col gy-8 pr-grow">
+                        <ui:VisualElement name="Slot_Row_0" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_0" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_1" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_1" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_2" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_3" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_2" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_4" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_5" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_3" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_6" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_7" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_4" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_8" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_9" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_5" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_10" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_11" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_6" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_12" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_13" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_7" class="pr-row-stretch gx-8 custom__grid-row">
+                            <ui:Instance template="Row_CustomSlot" name="Slot_14" />
+                            <ui:Instance template="Row_CustomSlot" name="Slot_15" />
+                        </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ══════════ DIREITA: MAPA + REGRAS ══════════ -->
+            <ui:VisualElement name="Col_Right" class="pr-col gy-14 custom__col-right">
+
+                <ui:VisualElement name="Panel_Map" class="pr-panel pr-panel--88 pr-col gy-13">
+                    <ui:VisualElement class="pr-row gx-12">
+                        <ui:Label text="MAPA" class="pr-section-label" />
+                        <ui:VisualElement class="pr-hair-h" />
+                        <ui:Label text="ESCOLHA MANUAL" class="pr-badge pr-badge--amber" />
+                    </ui:VisualElement>
+
+                    <!-- Preview: RawImage alimentada por RenderTexture da pista,
+                         ou textura de arte. Nunca retangulo vazio. -->
+                    <ui:VisualElement name="Map_Preview" class="pr-center custom__map-preview">
+                        <ui:Label text="RENDER DA PISTA" class="custom__map-placeholder" />
+                        <ui:Label name="Map_Rules" text="3 VOLTAS &#183; MEDIA" class="custom__map-chip" />
+                    </ui:VisualElement>
+
+                    <ui:Label name="Map_Name" text="MINI GOLFE RUN" class="custom__map-name" />
+                    <ui:Label name="Map_Desc" text="Dois niveis, dois saltos e atalhos no gramado. Armadilha de moinho na volta final." class="custom__map-desc" />
+
+                    <!-- Carrossel de mapa: aqui setas e pontos SAO permitidos.
+                         Lista de cosmetico e que nao pode ter paginacao. -->
+                    <ui:VisualElement name="Map_Dots" class="pr-row-stretch gx-7 custom__dots">
+                        <ui:VisualElement class="custom__dot custom__dot--on" />
+                        <ui:VisualElement class="custom__dot" /><ui:VisualElement class="custom__dot" />
+                        <ui:VisualElement class="custom__dot" /><ui:VisualElement class="custom__dot" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement name="Panel_Rules" class="pr-panel pr-panel--88 pr-col gy-11">
+                    <ui:Label text="REGRAS" class="pr-section-label" />
+                    <ui:VisualElement name="Rule_Laps" class="pr-row gx-12 custom__rule">
+                        <ui:Label text="Voltas" class="custom__rule-label pr-grow" />
+                        <ui:VisualElement class="pr-row gx-10 custom__stepper">
+                            <ui:Button name="Laps_Minus" class="custom__step-btn" />
+                            <ui:Label name="Laps_Value" text="3" class="custom__step-value" />
+                            <ui:Button name="Laps_Plus" class="custom__step-btn" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="Rule_Items" class="pr-row gx-12 custom__rule">
+                        <ui:Label text="Itens" class="custom__rule-label pr-grow" />
+                        <ui:VisualElement class="pr-row gx-10 custom__stepper">
+                            <ui:Button name="Items_Minus" class="custom__step-btn" />
+                            <ui:Label name="Items_Value" text="Todos" class="custom__step-value" />
+                            <ui:Button name="Items_Plus" class="custom__step-btn" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="Rule_Bots" class="pr-row gx-12 custom__rule">
+                        <ui:Label text="Bots preenchem" class="custom__rule-label pr-grow" />
+                        <ui:VisualElement class="pr-row gx-10 custom__stepper">
+                            <ui:Button name="Bots_Minus" class="custom__step-btn" />
+                            <ui:Label name="Bots_Value" text="Sim" class="custom__step-value" />
+                            <ui:Button name="Bots_Plus" class="custom__step-btn" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="pr-spacer" />
+
+                <ui:VisualElement class="pr-row-stretch gx-12">
+                    <ui:VisualElement name="Btn_AddBots" class="pr-hs pr-hs--6 pr-btn pr-none">
+                        <ui:VisualElement class="pr-hs__layer custom__btn-shadow" />
+                        <ui:Button name="Btn_AddBots_Face" text="+ BOTS" class="pr-btn__face pr-btn--dark custom__btn-bots" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="Btn_Start" class="pr-hs pr-hs--6 pr-btn pr-grow">
+                        <ui:VisualElement class="pr-hs__layer custom__btn-shadow" />
+                        <ui:Button name="Btn_Start_Face" text="INICIAR" class="pr-btn__face pr-btn--green custom__btn-start" />
+                    </ui:VisualElement>
+                    <!-- Sem prontos suficientes: tracejado + motivo. INICIAR nunca
+                         fica verde-desabilitado, e SAIR nunca e vermelho. -->
+                    <ui:VisualElement name="Btn_Start_Blocked" class="pr-col pr-center gy-5 pr-grow custom__btn-blocked">
+                        <ui:VisualElement class="pr-dashed pr-dashed--r16 pr-dashed--mute-24" picking-mode="Ignore">
+                            <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                            <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                            <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                            <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+                        </ui:VisualElement>
+                        <ui:Label text="INICIAR" class="custom__btn-blocked-text" />
+                        <ui:Label name="Start_Block_Reason" text="AGUARDANDO PRONTOS" class="custom__btn-blocked-reason" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

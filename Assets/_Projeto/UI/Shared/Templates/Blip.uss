@@ -1,0 +1,28 @@
+/* Blip.uss — HTML linhas 449-454.
+   O controller posiciona por porcentagem (left/top) e centra com
+   translate: -50% -50%. */
+.blip-host { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.blip { position: absolute; translate: -50% -50%; }
+.blip__dot-wrap { width: 14px; height: 14px; }
+.blip__glow { position: absolute; background-color: var(--green); }
+.blip__glow--far { left: -11px; top: -11px; width: 36px; height: 36px; border-radius: 18px; opacity: 0.10; }
+.blip__glow--near { left: -6px; top: -6px; width: 26px; height: 26px; border-radius: 13px; opacity: 0.18; }
+.blip__dot {
+    position: absolute; left: 0; top: 0;
+    width: 14px; height: 14px; border-radius: 7px;
+    border-width: 3px; border-color: var(--ink);
+    background-color: var(--green);
+}
+.blip__name {
+    padding: 3px 8px; border-radius: 5px;
+    background-color: var(--glass-90);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 10px; color: var(--green); letter-spacing: 0.6px;
+    white-space: nowrap;
+}
+.blip--sky    .blip__dot { background-color: var(--sky); }
+.blip--sky    .blip__glow { background-color: var(--sky); }
+.blip--sky    .blip__name { color: var(--sky); }
+.blip--violet .blip__dot { background-color: var(--violet); }
+.blip--violet .blip__glow { background-color: var(--violet); }
+.blip--violet .blip__name { color: var(--violet); }

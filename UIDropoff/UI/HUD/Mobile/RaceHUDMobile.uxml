@@ -1,0 +1,85 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/HUD/Mobile/RaceHUDMobile.uss" />
+    <ui:Template name="Row_Standing" src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_Standing.uxml" />
+
+    <!-- HUD de corrida, celular. Referencia 2340 x 1080, PAISAGEM.
+         Diferencas em relacao ao PC (todas vindas do HTML, linhas 977-1073):
+         · cluster vital compacto e CENTRADO no rodape, nao no canto
+         · sem toasts, sem classificacao completa (3 linhas), sem chips de tempo
+         · controles touch nos dois cantos inferiores
+         · alvo de toque nunca abaixo de 96px -->
+    <ui:VisualElement name="Screen_RaceHUD_Mobile" class="pr-screen">
+
+        <!-- ══════════ topo-centro: volta e tempo ══════════ -->
+        <ui:VisualElement name="LapBlock" class="pr-row gx-9 hudm__lap-block">
+            <ui:VisualElement class="pr-hs pr-hs--5">
+                <ui:VisualElement class="pr-hs__layer hudm__plate-shadow" />
+                <ui:Label name="Lap_Value" text="2/3" class="hudm__lap" />
+            </ui:VisualElement>
+            <ui:Label name="Time_Value" text="01:12.480" class="hudm__time" />
+        </ui:VisualElement>
+
+        <!-- ══════════ topo-esquerda: posicao ══════════ -->
+        <ui:VisualElement name="PositionPlate" class="pr-hs pr-hs--5 hudm__pos-wrap">
+            <ui:VisualElement class="pr-hs__layer hudm__pos-shadow" />
+            <ui:VisualElement class="pr-row hudm__pos-plate">
+                <ui:Label name="Pos_Value" text="4" class="hudm__pos-num" />
+                <ui:Label text="&#186;" class="hudm__pos-ord" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ══════════ topo-direita: 3 posicoes + menu ══════════ -->
+        <ui:VisualElement name="Standings" class="pr-col gy-4 hudm__standings">
+            <ui:Instance template="Row_Standing" name="Stand_0" />
+            <ui:Instance template="Row_Standing" name="Stand_1" />
+            <ui:Instance template="Row_Standing" name="Stand_2" />
+        </ui:VisualElement>
+
+        <ui:Button name="Btn_Menu" class="pr-center hudm__menu">
+            <ui:VisualElement class="pr-icon pr-icon--menu pr-icon--cream hudm__menu-icon" />
+        </ui:Button>
+
+        <!-- ══════════ cluster vital compacto, centrado no rodape ══════════ -->
+        <ui:VisualElement name="VitalCluster" class="pr-col gy-6 hudm__vital">
+            <ui:VisualElement name="Shield_Bar" class="pr-bar hudm__shield">
+                <ui:VisualElement class="pr-bar__seg hudm__shield-seg" />
+                <ui:VisualElement class="pr-bar__seg hudm__shield-seg" />
+                <ui:VisualElement class="pr-bar__seg hudm__shield-seg-empty" />
+            </ui:VisualElement>
+            <ui:VisualElement name="HP_Bar" class="pr-bar hudm__hp">
+                <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hudm__hp-seg" />
+                <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hudm__hp-seg" />
+                <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hudm__hp-seg" />
+                <ui:VisualElement class="pr-bar__seg pr-bar__seg--hurt hudm__hp-seg" />
+                <ui:VisualElement class="pr-bar__seg pr-bar__seg--gone hudm__hp-seg" />
+                <ui:Label name="HP_Value" text="72" class="hudm__hp-value" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ══════════ controles: direcao (esquerda) ══════════ -->
+        <ui:VisualElement name="Controls_Left" class="pr-row gx-14 hudm__controls-left">
+            <ui:Button name="Btn_Left" class="pr-center hudm__dpad">
+                <ui:VisualElement class="pr-icon pr-icon--left pr-icon--cream hudm__dpad-icon" />
+            </ui:Button>
+            <ui:Button name="Btn_Right" class="pr-center hudm__dpad">
+                <ui:VisualElement class="pr-icon pr-icon--right pr-icon--cream hudm__dpad-icon" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <!-- ══════════ controles: acao (direita) ══════════ -->
+        <ui:VisualElement name="Controls_Right" class="pr-row-base gx-14 hudm__controls-right">
+            <ui:Button name="Btn_Shield" class="pr-center hudm__shield-btn">
+                <ui:Label text="ESCUDO" class="hudm__shield-btn-text" />
+                <!-- anel pulsante = escudo disponivel (1.6s) -->
+                <ui:VisualElement name="Shield_Ring" class="hudm__shield-ring" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="Btn_Item" class="pr-center hudm__item-btn">
+                <ui:VisualElement name="Item_Icon" class="hudm__item-icon" />
+            </ui:Button>
+            <ui:Button name="Btn_Gas" text="GAS" class="pr-center hudm__gas" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

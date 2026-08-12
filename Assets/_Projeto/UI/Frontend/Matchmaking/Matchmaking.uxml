@@ -1,0 +1,137 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Frontend/Matchmaking/Matchmaking.uss" />
+    <ui:Template name="Card_MatchSlot" src="project://database/Assets/_Projeto/UI/Shared/Templates/Card_MatchSlot.uxml" />
+    <ui:Template name="Chip_Stage" src="project://database/Assets/_Projeto/UI/Shared/Templates/Chip_Stage.uxml" />
+
+    <!-- ATENCAO: esta tela e um OVERLAY, nao uma cena nova.
+         A cena 3D do lobby e a TopBar continuam renderizando atras.
+         O que muda: Panel_Mode, Panel_Group, Panel_Friends e ActionBar
+         somem; este scrim entra por cima. Nao troque de cena. -->
+    <ui:VisualElement name="Screen_Matchmaking" class="pr-screen pr-center pr-scrim-mm">
+
+        <ui:VisualElement name="Modal" class="pr-hs pr-hs--16 mm__modal-wrap">
+            <ui:VisualElement class="pr-hs__layer mm__modal-shadow" />
+            <ui:VisualElement name="Modal_Body" class="pr-col mm__modal">
+
+                <ui:VisualElement name="Stripe" class="pr-stripes-brand mm__stripe" picking-mode="Ignore" />
+
+                <!-- ── cabecalho ── -->
+                <ui:VisualElement class="pr-row gx-20 mm__header">
+                    <ui:VisualElement class="pr-col gy-8 pr-grow">
+                        <ui:Label text="CANAL DE CORRIDA &#183; 88.4 FM" class="mm__channel" />
+                        <ui:Label name="Title" text="SINTONIZANDO CANAL" class="mm__title" />
+                        <ui:Label name="Subtitle" text="Varrendo a frequencia atras de outros pilotos na fila." class="mm__sub" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="pr-col gy-7 mm__timer-block">
+                        <ui:Label text="TEMPO DE BUSCA" class="mm__timer-label" />
+                        <!-- Mostra SO o tempo decorrido. O limite de 40s e regra
+                             interna e nunca aparece na tela. -->
+                        <ui:Label name="Timer" text="08s" class="mm__timer" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- ── dial de radio ── -->
+                <ui:VisualElement name="Dial" class="mm__dial">
+                    <ui:VisualElement class="pr-dial-lines pr-fill" picking-mode="Ignore" />
+                    <ui:VisualElement class="mm__dial-axis" picking-mode="Ignore" />
+                    <ui:VisualElement name="Dial_Ticks" class="pr-row mm__dial-ticks" picking-mode="Ignore">
+                        <ui:Label text="88.0" class="mm__tick" /><ui:Label text="88.2" class="mm__tick" />
+                        <ui:Label text="88.4" class="mm__tick" /><ui:Label text="88.6" class="mm__tick" />
+                        <ui:Label text="88.8" class="mm__tick" /><ui:Label text="89.0" class="mm__tick" />
+                        <ui:Label text="89.2" class="mm__tick" /><ui:Label text="89.4" class="mm__tick" />
+                        <ui:Label text="89.6" class="mm__tick" />
+                    </ui:VisualElement>
+
+                    <!-- blips: o controller instancia Blip.uxml aqui -->
+                    <ui:VisualElement name="Blips" class="pr-fill" picking-mode="Ignore" />
+
+                    <!-- agulha varrendo (2.6s easeInOutSine, ida e volta) -->
+                    <ui:VisualElement name="Needle_Scan" class="mm__needle mm__needle--scan">
+                        <ui:VisualElement class="mm__needle-glow mm__needle-glow--wide mm__needle-glow--scan" />
+                        <ui:VisualElement class="mm__needle-glow mm__needle-glow--near mm__needle-glow--scan" />
+                        <ui:VisualElement class="mm__needle-head mm__needle-head--scan" />
+                    </ui:VisualElement>
+                    <!-- agulha travada (sinal encontrado, 66%) -->
+                    <ui:VisualElement name="Needle_Lock" class="mm__needle mm__needle--lock">
+                        <ui:VisualElement class="mm__needle-glow mm__needle-glow--wide mm__needle-glow--lock" />
+                        <ui:VisualElement class="mm__needle-glow mm__needle-glow--near mm__needle-glow--lock" />
+                        <ui:VisualElement class="mm__needle-head mm__needle-head--lock" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="Signal" class="pr-row-base gx-4 mm__signal mm__signal--idle">
+                        <ui:VisualElement name="Signal_0" class="mm__signal-bar mm__signal-bar--0" />
+                        <ui:VisualElement name="Signal_1" class="mm__signal-bar mm__signal-bar--1" />
+                        <ui:VisualElement name="Signal_2" class="mm__signal-bar mm__signal-bar--2" />
+                        <ui:VisualElement name="Signal_3" class="mm__signal-bar mm__signal-bar--3" />
+                        <ui:VisualElement name="Signal_4" class="mm__signal-bar mm__signal-bar--4" />
+                        <ui:VisualElement name="Signal_5" class="mm__signal-bar mm__signal-bar--5" />
+                        <ui:VisualElement name="Signal_6" class="mm__signal-bar mm__signal-bar--6" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- ── vagas: 16, sempre. 8 colunas x 2 linhas. ── -->
+                <ui:VisualElement class="pr-col gy-14 mm__room">
+                    <ui:VisualElement class="pr-row gx-12">
+                        <ui:Label text="SALA" class="pr-section-label" />
+                        <ui:VisualElement class="pr-hair-h" />
+                        <ui:Label name="Room_Count" text="11 / 16" class="mm__room-count" />
+                        <ui:Label name="Room_Bots" text="5 BOTS" class="pr-badge pr-badge--violet" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="Slots" class="pr-col gy-10">
+                        <ui:VisualElement name="Slot_Row_0" class="pr-row-stretch gx-10">
+            <ui:Instance template="Card_MatchSlot" name="Slot_0" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_1" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_2" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_3" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_4" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_5" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_6" class="mmslot-host" />
+            <ui:Instance template="Card_MatchSlot" name="Slot_7" class="mmslot-host" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="Slot_Row_1" class="pr-row-stretch gx-10">
+                            <ui:Instance template="Card_MatchSlot" name="Slot_8" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_9" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_10" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_11" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_12" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_13" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_14" class="mmslot-host" />
+                            <ui:Instance template="Card_MatchSlot" name="Slot_15" class="mmslot-host" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- ── trilha de etapas ── -->
+                <ui:VisualElement name="Stages" class="pr-row-stretch mm__stages">
+                    <ui:Instance template="Chip_Stage" name="Stage_0" class="stage-host" />
+                    <ui:Instance template="Chip_Stage" name="Stage_1" class="stage-host" />
+                    <ui:Instance template="Chip_Stage" name="Stage_2" class="stage-host" />
+                    <ui:Instance template="Chip_Stage" name="Stage_3" class="stage-host" />
+                    <ui:Instance template="Chip_Stage" name="Stage_4" class="stage-host" />
+                </ui:VisualElement>
+
+                <!-- ── rodape ── -->
+                <ui:VisualElement class="pr-row gx-20 mm__footer">
+                    <ui:VisualElement class="pr-col gy-9 pr-grow">
+                        <ui:VisualElement class="mm__progress">
+                            <ui:VisualElement name="Progress_Fill" class="mm__progress-fill" />
+                        </ui:VisualElement>
+                        <ui:Label name="Hint" text="Encontrando pilotos com ping compativel..." class="mm__hint" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="Btn_Cancel" class="pr-hs pr-hs--5 pr-btn pr-btn--sh5">
+                        <ui:VisualElement class="pr-hs__layer mm__btn-shadow" />
+                        <ui:Button name="Btn_Cancel_Face" text="CANCELAR BUSCA" class="pr-btn__face pr-btn--danger mm__btn-cancel" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="Btn_Race" class="pr-hs pr-hs--5 pr-btn pr-btn--sh5">
+                        <ui:VisualElement class="pr-hs__layer mm__btn-shadow" />
+                        <ui:Button name="Btn_Race_Face" text="ENTRAR NA PISTA" class="pr-btn__face pr-btn--green mm__btn-race" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

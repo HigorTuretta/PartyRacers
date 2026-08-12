@@ -223,6 +223,14 @@ namespace PartyRacers.AI
             if (!hasColor)
                 return;
 
+            // Pecas sorteadas diretamente no CarCustomizer ainda nao receberam o atlas neutro
+            // usado pela pintura real. Delega ao customizador para preservar recortes e volume.
+            if (customizer != null)
+            {
+                customizer.RefreshPaint();
+                return;
+            }
+
             mpb ??= new MaterialPropertyBlock();
             Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
 

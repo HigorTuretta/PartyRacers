@@ -15,6 +15,10 @@ namespace PartyRacers.UI.Motion
     [DisallowMultipleComponent]
     public class CarStage : MonoBehaviour
     {
+        [Header("Exibicao do frontend")]
+        [SerializeField] private bool exibicaoEstatica = true;
+        [SerializeField] private Vector3 anguloDeRepouso = new Vector3(0f, -28f, 0f);
+
         [Header("Giro automático")]
         [SerializeField] private float velocidadeAutomatica = 12f;
         [Tooltip("Segundos parado depois de arrastar antes de voltar a girar sozinho.")]
@@ -32,6 +36,7 @@ namespace PartyRacers.UI.Motion
         [SerializeField] private float encolhimentoDaTroca = 0.55f;
 
         public bool Arrastando { get; private set; }
+        public Quaternion RotacaoDeRepouso => Quaternion.Euler(anguloDeRepouso);
 
         /// <summary>
         /// Liga e desliga o giro automático.
@@ -43,6 +48,7 @@ namespace PartyRacers.UI.Motion
         /// </summary>
         public void DefinirGiroAutomatico(bool ligado)
         {
+            ligado &= !exibicaoEstatica;
             if (giroLigado == ligado)
                 return;
 
@@ -67,9 +73,18 @@ namespace PartyRacers.UI.Motion
 
         private void Awake()
         {
-            velocidade = velocidadeAutomatica;
             alvo = transform;
             escalaBase = transform.localScale;
+            if (exibicaoEstatica)
+            {
+                alvo.localRotation = RotacaoDeRepouso;
+                velocidade = 0f;
+                giroLigado = false;
+            }
+            else
+            {
+                velocidade = velocidadeAutomatica;
+            }
         }
 
         private void Update()
@@ -98,7 +113,7 @@ namespace PartyRacers.UI.Motion
 
         private void LerArraste()
         {
-            if (!permitirArraste)
+            if (exibicaoEstatica || !permitirArraste)
                 return;
 
             bool pressionado = PonteiroPressionado(out Vector2 posicao);
@@ -204,17 +219,18 @@ namespace PartyRacers.UI.Motion
             trocar?.Invoke();
 
             Quaternion entrada = saida * Quaternion.Euler(0f, giroDaTroca * sentido, 0f);
+            Quaternion fim = exibicaoEstatica ? RotacaoDeRepouso : saida;
             alvo.localRotation = entrada;
 
             for (float t = 0f; t < metade; t += Time.unscaledDeltaTime)
             {
                 float k = UIEase.OutBack(t / metade, 1.2f);
-                alvo.localRotation = Quaternion.Slerp(entrada, saida, k);
+                alvo.localRotation = Quaternion.Slerp(entrada, fim, k);
                 alvo.localScale = escalaBase * Mathf.LerpUnclamped(encolhimentoDaTroca, 1f, k);
                 yield return null;
             }
 
-            alvo.localRotation = saida;
+            alvo.localRotation = fim;
             alvo.localScale = escalaBase;
             ocioso = esperaAposArraste;
             troca = null;

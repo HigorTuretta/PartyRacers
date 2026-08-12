@@ -1,0 +1,78 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Frontend/Garage/Garage.uss" />
+    <ui:Template name="Chip_Tab" src="project://database/Assets/_Projeto/UI/Shared/Templates/Chip_Tab.uxml" />
+    <ui:Template name="Card_Item" src="project://database/Assets/_Projeto/UI/Shared/Templates/Card_Item.uxml" />
+
+    <ui:VisualElement name="Screen_Garage" class="pr-screen">
+
+        <!-- ══════════════════════════════════════════════════════════════
+             O kart da garagem fica centrado em x=1341 (centro do vao livre
+             a direita do painel, que termina em x=762) — NAO em 960.
+             O kart, a plataforma, o anel tracejado e o glow sao 3D e todos
+             compartilham esse mesmo centro. Se o chao ficar em 960 o kart
+             parece flutuar: foi o defeito do porte anterior.
+             ══════════════════════════════════════════════════════════════ -->
+
+        <!-- Unica UI dessa area: a chapinha de camera. Aparece na troca de
+             pose e desaparece 1,2s depois do blend terminar. Nunca fica
+             parada e vazia. -->
+        <ui:VisualElement name="CameraChip" class="pr-row gx-10 garage__cam-chip">
+            <ui:VisualElement name="CameraChip_Dot" class="garage__cam-dot" />
+            <ui:Label name="CameraChip_Label" text="CAMERA &#183; ORBITAL 3/4" class="garage__cam-label" />
+        </ui:VisualElement>
+
+        <!-- ══════════ PAINEL DE ITENS ══════════ -->
+        <ui:VisualElement name="Panel_Items" class="pr-panel pr-panel--88 pr-col gy-14 garage__panel">
+
+            <!-- Catalogo completo do rig: as familias sem variacao no carro
+                 atual ficam ocultas pelo controller. A estrutura permanece
+                 editavel e fixa no UI Builder. -->
+            <ui:VisualElement name="CategoryTabs" class="pr-row gx-6 gy-6 garage__tabs">
+                <ui:Instance template="Chip_Tab" name="Tab_Modelo" />
+                <ui:Instance template="Chip_Tab" name="Tab_Cor" />
+                <ui:Instance template="Chip_Tab" name="Tab_Rodas" />
+                <ui:Instance template="Chip_Tab" name="Tab_Frente" />
+                <ui:Instance template="Chip_Tab" name="Tab_Traseira" />
+                <ui:Instance template="Chip_Tab" name="Tab_Escape" />
+                <ui:Instance template="Chip_Tab" name="Tab_Farois" />
+                <ui:Instance template="Chip_Tab" name="Tab_Neblina" />
+                <ui:Instance template="Chip_Tab" name="Tab_Motor" />
+                <ui:Instance template="Chip_Tab" name="Tab_Teto" />
+                <ui:Instance template="Chip_Tab" name="Tab_Adesivos" />
+                <ui:Instance template="Chip_Tab" name="Tab_Piloto" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="Legend" class="pr-row gx-12">
+                <ui:Label name="Grid_Count" text="12 ITENS" class="garage__count" />
+                <ui:VisualElement class="pr-hair-h2" />
+                <ui:Label text="EQUIPADO" class="pr-badge pr-badge--green" />
+                <ui:Label text="NOVO" class="pr-badge pr-badge--amber" />
+                <ui:Label text="BLOQUEADO" class="pr-badge pr-badge--muted" />
+            </ui:VisualElement>
+
+            <!-- Grade 4 colunas. PAGINACAO E PROIBIDA: sem setas, sem 1/2.
+                 A lista inteira rola verticalmente. -->
+            <ui:ScrollView name="Item_Grid" class="pr-scroll garage__grid" horizontal-scroller-visibility="Hidden">
+                <ui:Instance template="Card_Item" name="Item_0" />
+                <ui:Instance template="Card_Item" name="Item_1" />
+                <ui:Instance template="Card_Item" name="Item_2" />
+                <ui:Instance template="Card_Item" name="Item_3" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+
+        <!-- ══════════ ACOES ══════════ -->
+        <ui:VisualElement name="Actions" class="pr-row gx-12 garage__actions">
+            <ui:VisualElement name="Btn_Undo" class="pr-hs pr-hs--6 pr-btn garage__action">
+                <ui:VisualElement class="pr-hs__layer garage__btn-shadow" />
+                <ui:Button name="Btn_Undo_Face" text="DESFAZER" class="pr-btn__face pr-btn--dark garage__btn-undo" />
+            </ui:VisualElement>
+            <ui:VisualElement name="Btn_Equip" class="pr-hs pr-hs--6 pr-btn garage__action">
+                <ui:VisualElement class="pr-hs__layer garage__btn-shadow" />
+                <ui:Button name="Btn_Equip_Face" text="EQUIPAR" class="pr-btn__face pr-btn--green garage__btn-equip" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

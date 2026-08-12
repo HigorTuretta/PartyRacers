@@ -1,0 +1,28 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Card_Mode.uss" />
+
+    <!-- SOLO / DUO / SQUAD. Os dois estados existem como irmaos; o controller
+         liga um e desliga o outro. Nunca troque cor por codigo. -->
+    <ui:VisualElement name="Card_Mode" class="pr-grow">
+
+        <ui:VisualElement name="State_On" class="pr-hs pr-hs--5 mode__wrap">
+            <ui:VisualElement class="pr-hs__layer mode__shadow" />
+            <ui:Button name="State_On_Btn" class="pr-col pr-center gy-7 mode__face mode__face--on">
+                <ui:Label name="On_Pips" text="&#9679;&#9679;&#9679;&#9679;" class="mode__pips mode__pips--on" />
+                <ui:Label name="On_Label" text="SQUAD" class="mode__label mode__label--on" />
+                <ui:Label name="On_Cap" text="ate 4" class="mode__cap mode__cap--on" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Off" class="mode__wrap">
+            <ui:Button name="State_Off_Btn" class="pr-col pr-center gy-7 mode__face mode__face--off">
+                <ui:Label name="Off_Pips" text="&#9679;&#9679;&#9679;&#9679;" class="mode__pips mode__pips--off" />
+                <ui:Label name="Off_Label" text="SQUAD" class="mode__label mode__label--off" />
+                <ui:Label name="Off_Cap" text="ate 4" class="mode__cap mode__cap--off" />
+            </ui:Button>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,20 @@
+/* Blip.uss — HTML linhas 449-454.
+   O controller posiciona por porcentagem (left/top) e centra com
+   translate: -50% -50%. */
+.blip { position: absolute; translate: -50% -50%; }
+.blip__dot {
+    width: 14px; height: 14px; border-radius: 7px;
+    border-width: 3px; border-color: var(--ink);
+    background-color: var(--green);
+}
+.blip__name {
+    padding: 3px 8px; border-radius: 5px;
+    background-color: var(--glass-90);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 10px; color: var(--green); letter-spacing: 0.6px;
+    white-space: nowrap;
+}
+.blip--sky    .blip__dot { background-color: var(--sky); }
+.blip--sky    .blip__name { color: var(--sky); }
+.blip--violet .blip__dot { background-color: var(--violet); }
+.blip--violet .blip__name { color: var(--violet); }

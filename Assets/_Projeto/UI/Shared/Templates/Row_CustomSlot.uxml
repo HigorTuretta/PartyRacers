@@ -1,0 +1,53 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_CustomSlot.uss" />
+
+    <!-- Linha da sala privada. TRES estados: player / bot / empty.
+         O indice 01..16 e tabular e tem largura fixa. -->
+    <ui:VisualElement name="Row_CustomSlot" class="pr-grow cslot">
+
+        <ui:VisualElement name="State_Player" class="pr-row gx-11 cslot__box cslot__box--player">
+            <ui:Label name="Player_Index" text="01" class="cslot__index" />
+            <ui:VisualElement name="Player_KartFrame" class="cslot__kart-frame" picking-mode="Ignore">
+                <ui:VisualElement class="cslot__kart-glow" />
+                <ui:VisualElement name="Player_Avatar" class="cslot__kart-preview" />
+            </ui:VisualElement>
+            <ui:Label name="Player_Name" text="HIGOR" class="cslot__name pr-nowrap pr-grow" />
+            <ui:Label name="Badge_Host" text="ANFITRIAO" class="pr-badge--solid" />
+            <ui:VisualElement name="Mark_Ready" class="pr-icon pr-icon--check pr-icon--green cslot__mark" />
+            <ui:VisualElement name="Mark_Waiting" class="cslot__waiting" />
+            <ui:Button name="Btn_Kick" class="pr-center cslot__kick">
+                <ui:VisualElement class="pr-icon pr-icon--minus cslot__kick-icon" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Bot" class="pr-row gx-11 cslot__box cslot__box--bot">
+            <ui:Label name="Bot_Index" text="12" class="cslot__index" />
+            <ui:VisualElement class="pr-avatar pr-avatar--xs cslot__bot-avatar" />
+            <ui:Label name="Bot_Name" text="BOT VELOZ" class="cslot__name cslot__name--bot pr-grow" />
+            <ui:Label text="BOT" class="cslot__bot-badge" />
+        </ui:VisualElement>
+
+        <ui:Button name="State_Empty" class="pr-row gx-11 cslot__box cslot__box--empty">
+            <ui:VisualElement class="pr-dashed pr-dashed--r12 pr-dashed--mute-18" picking-mode="Ignore">
+                <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+            </ui:VisualElement>
+            <ui:Label name="Empty_Index" text="16" class="cslot__index cslot__index--empty" />
+            <ui:VisualElement class="pr-center cslot__empty-avatar">
+                <ui:VisualElement class="pr-dashed pr-dashed--r9 pr-dashed--mute-24" picking-mode="Ignore">
+                    <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                    <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                    <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                    <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+                </ui:VisualElement>
+                <ui:Label text="+" class="cslot__plus" />
+            </ui:VisualElement>
+            <ui:Label text="CONVIDAR" class="cslot__invite" />
+        </ui:Button>
+    </ui:VisualElement>
+</ui:UXML>

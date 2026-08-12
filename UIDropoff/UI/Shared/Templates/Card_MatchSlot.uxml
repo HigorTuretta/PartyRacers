@@ -1,0 +1,47 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Card_MatchSlot.uss" />
+
+    <!-- Uma vaga da sala. QUATRO estados, sempre exatamente um visivel.
+         human = piloto encontrado · mate = do seu grupo (moldura ambar)
+         bot   = preenchimento     · empty = vaga livre (tracejado) -->
+    <ui:VisualElement name="Card_MatchSlot" class="pr-grow mmslot">
+
+        <ui:VisualElement name="State_Human" class="pr-col pr-center gy-9 mmslot__box mmslot__box--human">
+            <ui:VisualElement name="Human_Avatar" class="pr-avatar pr-avatar--lg" />
+            <ui:Label name="Human_Name" text="LEO_99" class="mmslot__name pr-nowrap" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Mate" class="pr-col pr-center gy-9 mmslot__box mmslot__box--mate">
+            <ui:VisualElement name="Mate_Avatar" class="pr-avatar pr-avatar--lg" />
+            <ui:Label name="Mate_Name" text="BIANCA" class="mmslot__name mmslot__name--mate pr-nowrap" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Bot" class="pr-col pr-center gy-9 mmslot__box mmslot__box--bot">
+            <ui:VisualElement class="pr-avatar pr-avatar--lg pr-center mmslot__bot-avatar">
+                <ui:VisualElement class="mmslot__bot-visor" />
+            </ui:VisualElement>
+            <ui:Label text="BOT" class="mmslot__name mmslot__name--bot" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Empty" class="pr-col pr-center gy-9 mmslot__box mmslot__box--empty">
+            <ui:VisualElement class="pr-dashed pr-dashed--r14 pr-dashed--mute-20" picking-mode="Ignore">
+                <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+            </ui:VisualElement>
+            <ui:VisualElement class="mmslot__empty-avatar">
+                <ui:VisualElement class="pr-dashed pr-dashed--r11 pr-dashed--mute-24" picking-mode="Ignore">
+                    <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                    <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                    <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                    <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label text="&#183;&#183;&#183;" class="mmslot__dots" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

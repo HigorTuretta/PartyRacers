@@ -1,0 +1,479 @@
+/* ============================================================
+   base.uss — COMPONENTES COMPARTILHADOS
+   Uma definição por componente. Nenhuma tela redefine estes valores;
+   telas só posicionam e compõem.
+
+   Depende de: theme.uss (tokens) + gaps.uss (espaçamento).
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   0 · LEMBRETES DO UI TOOLKIT QUE MUDAM O RESULTADO
+   ------------------------------------------------------------
+   · flex-direction PADRÃO é COLUMN (no CSS é row). Toda linha do
+     HTML precisa de .pr-row explícito.
+   · não existe "gap": ver gaps.uss.
+   · não existe box-shadow: ver .pr-hs (sombra dura por irmão).
+   · não existe gradiente: use as texturas de Art/Generated.
+   · não existe border-style: dashed: use .pr-dashed (composto).
+   · não existe backdrop-filter: o vidro é só alpha. Não tente blur.
+   · não existe line-height: entrelinha vem do font asset.
+   · letter-spacing é em PX (theme.uss tem a tabela de conversão).
+   · filho SEMPRE desenha acima do pai; ordem de irmãos = ordem de
+     desenho. Não existe z-index.
+   ------------------------------------------------------------ */
+
+/* ---------- 1 · LAYOUT ---------- */
+
+.pr-screen      { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.pr-row         { flex-direction: row; align-items: center; }
+.pr-row-top     { flex-direction: row; align-items: flex-start; }
+.pr-row-base    { flex-direction: row; align-items: flex-end; }
+.pr-row-stretch { flex-direction: row; align-items: stretch; }
+.pr-col         { flex-direction: column; }
+.pr-center      { align-items: center; justify-content: center; }
+.pr-grow        { flex-grow: 1; }
+.pr-none        { flex-grow: 0; flex-shrink: 0; }
+.pr-spacer      { flex-grow: 1; }
+.pr-fill        { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.pr-hidden      { display: none; }
+.pr-clip        { overflow: hidden; }
+
+/* Elipse com nome único, para poder ser encontrada pelo controller */
+.pr-nowrap      { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+
+/* ---------- 2 · VIDRO (painéis sobre a cena 3D) ---------- */
+
+.pr-panel {
+    background-color: var(--glass);
+    border-width: 2px;
+    border-color: var(--panel-stroke);
+    border-radius: 18px;
+    padding: 20px;
+}
+.pr-panel--88 { background-color: var(--glass-88); border-radius: 20px; padding: 22px; }
+.pr-panel--90 { background-color: var(--glass-90); border-radius: 20px; }
+
+/* Divisores */
+.pr-hair-h  { height: 1px; background-color: var(--hairline); flex-grow: 1; }
+.pr-hair-h2 { height: 1px; background-color: var(--hairline-soft); flex-grow: 1; }
+.pr-rule-v  { width: 2px; height: 52px; background-color: rgba(155, 165, 215, 0.16); }
+
+
+/* ---------- 3 · SOMBRA DURA  (substitui box-shadow: 0 Npx 0 ink) ----------
+   Estrutura obrigatória — a sombra é um IRMÃO desenhado antes, porque
+   filho nunca fica atrás do pai:
+
+   <VisualElement class="pr-hs pr-hs--6">
+       <VisualElement class="pr-hs__layer" />
+       <VisualElement class="pr-hs__face"  />   <- conteúdo real
+   </VisualElement>
+------------------------------------------------------------------------ */
+
+.pr-hs            { align-items: stretch; flex-shrink: 0; }
+.pr-hs__layer     { position: absolute; left: 0; right: 0; background-color: var(--ink); }
+.pr-hs--3 .pr-hs__layer { top: 3px;  bottom: -3px;  }
+.pr-hs--4 .pr-hs__layer { top: 4px;  bottom: -4px;  }
+.pr-hs--5 .pr-hs__layer { top: 5px;  bottom: -5px;  }
+.pr-hs--6 .pr-hs__layer { top: 6px;  bottom: -6px;  }
+.pr-hs--7 .pr-hs__layer { top: 7px;  bottom: -7px;  }
+.pr-hs--16 .pr-hs__layer{ top: 16px; bottom: -16px; background-color: rgb(6, 8, 26); }
+/* O raio da camada acompanha o raio da face — declare os dois juntos. */
+
+
+/* ---------- 4 · BOTÕES ----------
+   <VisualElement class="pr-hs pr-hs--6 pr-btn">
+       <VisualElement class="pr-hs__layer pr-btn__shadow" />
+       <Button class="pr-btn__face pr-btn--green" text="BUSCAR PARTIDA" />
+   </VisualElement>
+   O pressionar move a FACE 6px para baixo, cobrindo a sombra —
+   equivale exatamente ao transform:translateY(6px) do HTML.
+------------------------------------------------------------------ */
+
+.pr-btn__face {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-width: 3px;
+    border-color: var(--ink);
+    border-radius: 16px;
+    margin: 0;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    transition-property: translate;
+    transition-duration: 0.08s;
+}
+.pr-btn__face:active   { translate: 0 6px; }
+.pr-btn--sh5 .pr-btn__face:active { translate: 0 5px; }
+.pr-btn--sh4 .pr-btn__face:active { translate: 0 4px; }
+.pr-btn--sh3 .pr-btn__face:active { translate: 0 3px; }
+.pr-btn__shadow { border-radius: 16px; }
+
+/* variantes de cor */
+.pr-btn--green        { background-color: var(--green);  color: var(--ink); }
+.pr-btn--green:hover  { background-color: var(--green-light); }
+.pr-btn--amber        { background-color: var(--amber);  color: var(--ink-15); }
+.pr-btn--amber:hover  { background-color: var(--amber-light); }
+.pr-btn--dark         { background-color: rgba(27, 32, 80, 0.90); color: var(--text-soft); }
+.pr-btn--cream        { background-color: var(--cream);  color: var(--ink-15); }
+.pr-btn--danger       { background-color: rgba(27, 32, 80, 0.90); color: var(--red-light); }
+
+/* borda 4px (placas do HUD e modal) */
+.pr-btn--b4 .pr-btn__face { border-width: 4px; }
+
+
+/* ---------- 5 · ABA DO TOPO (LOBBY / GARAGEM / LOJA / PASSE) ---------- */
+
+.pr-tab {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    letter-spacing: 0.63px;
+}
+.pr-tab--on {
+    padding: 14px 34px;
+    border-width: 3px; border-color: var(--ink);
+    background-color: var(--amber);
+    font-size: 22px; color: var(--ink-15);
+}
+.pr-tab--off {
+    padding: 14px 30px;
+    border-width: 2px; border-color: rgba(155, 165, 215, 0.28);
+    background-color: rgba(16, 19, 52, 0.62);
+    font-size: 21px; color: var(--muted);
+}
+.pr-tab--off:hover { color: var(--cream); border-color: rgba(255, 176, 32, 0.60); }
+
+
+/* ---------- 6 · CHIP DE CATEGORIA (garagem) ---------- */
+
+.pr-chip {
+    flex-direction: row; align-items: center; justify-content: center;
+    padding: 11px 20px;
+    border-radius: 12px;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 17px;
+    letter-spacing: 0.51px;
+}
+.pr-chip--on  { border-width: 3px; border-color: var(--ink); background-color: var(--amber); color: var(--ink-15); }
+.pr-chip--off { border-width: 2px; border-color: var(--dash-24); background-color: var(--fill-blue-50); color: var(--muted); }
+.pr-chip--off:hover { color: var(--cream); border-color: rgba(255, 176, 32, 0.55); }
+
+
+/* ---------- 7 · CHAPINHAS / BADGES ---------- */
+
+.pr-badge {
+    flex-direction: row; align-items: center; justify-content: center;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 10px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+}
+.pr-badge--green   { background-color: var(--tint-green-14);  color: var(--green); }
+.pr-badge--amber   { background-color: var(--tint-amber-14);  color: var(--amber); }
+.pr-badge--violet  { background-color: var(--tint-violet-16); color: var(--violet); }
+.pr-badge--muted   { background-color: var(--tint-mute-10);   color: var(--dim-2); }
+.pr-badge--solid   { background-color: var(--amber); color: var(--ink-15); border-radius: 5px; padding: 3px 7px; font-size: 9px; letter-spacing: 1.1px; }
+.pr-badge--ready   { background-color: var(--tint-green); color: var(--green); font-size: 11px; padding: 7px 12px; border-radius: 9px; letter-spacing: 0.99px; }
+.pr-badge--waiting { background-color: var(--tint-amber-14); color: var(--amber); font-size: 11px; padding: 7px 12px; border-radius: 9px; letter-spacing: 0.99px; }
+
+/* pílula de moeda / diamante da barra superior */
+.pr-wallet {
+    flex-direction: row; align-items: center;
+    padding: 11px 20px;
+    border-width: 2px; border-color: rgba(155, 165, 215, 0.24);
+    border-radius: 13px;
+    background-color: var(--glass-72);
+}
+.pr-wallet__value {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 21px; color: var(--cream);
+}
+
+
+/* ---------- 8 · AVATAR ---------- */
+
+.pr-avatar {
+    flex-shrink: 0;
+    border-radius: 11px;
+    border-width: 3px; border-color: var(--ink);
+    background-color: var(--royal);
+    overflow: hidden;
+}
+
+/* Identidade de jogador. O controller escolhe somente a classe pelo nome. */
+.pr-avatar--tint-0 { background-color: rgb(54, 166, 255); }
+.pr-avatar--tint-1 { background-color: rgb(242, 71, 107); }
+.pr-avatar--tint-2 { background-color: rgb(61, 219, 150); }
+.pr-avatar--tint-3 { background-color: rgb(255, 176, 33); }
+.pr-avatar--tint-4 { background-color: rgb(140, 122, 255); }
+.pr-avatar--tint-5 { background-color: rgb(89, 217, 217); }
+.pr-avatar--tint-6 { background-color: rgb(255, 140, 191); }
+.pr-avatar--tint-7 { background-color: rgb(250, 242, 224); }
+.pr-avatar--sm { width: 38px; height: 38px; border-radius: 10px; border-width: 2px; }
+.pr-avatar--md { width: 42px; height: 42px; }
+.pr-avatar--lg { width: 44px; height: 44px; }
+.pr-avatar--xs { width: 34px; height: 34px; border-radius: 9px; border-width: 2px; }
+/* Ponto de presença, ancorado no canto do avatar */
+.pr-presence {
+    position: absolute; right: -3px; bottom: -3px;
+    width: 12px; height: 12px; border-radius: 6px;
+    border-width: 2px; border-color: var(--ink);
+}
+
+
+/* ---------- 9 · CARD DE COSMÉTICO (garagem) ----------
+   O estado é a MOLDURA. Um card está sempre em exatamente um estado. */
+
+.pr-card {
+    flex-direction: column;
+    border-radius: 15px;
+    overflow: hidden;
+}
+.pr-card--equipped { border-width: 4px; border-color: var(--green); background-color: var(--tint-green-10); }
+.pr-card--selected { border-width: 4px; border-color: var(--amber); background-color: var(--tint-amber-10); }
+.pr-card--free     { border-width: 2px; border-color: var(--dash-22); background-color: var(--fill-blue-44); }
+.pr-card--free:hover { border-color: rgba(255, 247, 232, 0.50); }
+.pr-card--locked   { border-width: 2px; border-color: var(--dash-12); background-color: rgba(16, 19, 52, 0.60); }
+
+.pr-card__preview { height: 118px; align-items: center; justify-content: center; background-color: var(--royal); }
+.pr-card__foot    { padding: 9px 11px; background-color: var(--glass-90); }
+.pr-card__name    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset"); font-size: 13px; color: var(--cream); }
+.pr-card__state   { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset"); font-size: 9px; letter-spacing: 1.08px; }
+.pr-card__check {
+    position: absolute; right: 8px; top: 8px;
+    width: 24px; height: 24px; border-radius: 7px;
+    border-width: 3px; border-color: var(--ink);
+    background-color: var(--green);
+    align-items: center; justify-content: center;
+}
+.pr-card__new {
+    position: absolute; left: 8px; top: 8px;
+    padding: 4px 8px; border-width: 2px; border-color: var(--ink);
+    border-radius: 6px; background-color: var(--amber);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 9px; color: var(--ink-15); letter-spacing: 0.9px;
+}
+
+
+/* ---------- 10 · LINHA DE JOGADOR (grupo / sala privada / classificação) ---------- */
+
+.pr-slot {
+    flex-direction: row; align-items: center;
+    border-radius: 13px;
+    border-width: 2px;
+}
+.pr-slot--filled  { background-color: var(--fill-blue-66); padding: 11px 14px; }
+.pr-slot--locked  { background-color: var(--fill-deep-20); border-color: var(--dash-12); padding: 11px 14px; }
+.pr-slot__name    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset"); font-size: 16px; color: var(--cream); letter-spacing: 0.32px; }
+.pr-slot__meta    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset"); font-size: 11px; color: var(--dim); }
+/* O nome NUNCA cresce livre: largura limitada + elipse, senão passa por
+   cima do badge LÍDER (defeito conhecido do porte anterior). */
+.pr-slot__name-box { flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; }
+
+
+/* ---------- 11 · MOLDURA TRACEJADA (composto) ----------
+   O UI Toolkit não tem border-style: dashed. Estrutura obrigatória,
+   sobreposta ao elemento alvo (não interfere no layout dele):
+
+   <VisualElement class="pr-dashed pr-dashed--r13">
+     <VisualElement class="pr-dashed__t" /><VisualElement class="pr-dashed__b" />
+     <VisualElement class="pr-dashed__l" /><VisualElement class="pr-dashed__r" />
+     <VisualElement class="pr-dashed__tl" /><VisualElement class="pr-dashed__tr" />
+     <VisualElement class="pr-dashed__br" /><VisualElement class="pr-dashed__bl" />
+   </VisualElement>
+
+   Traço 14px · vão 10px · período 24px, igual ao HTML.
+   A cor vem de -unity-background-image-tint-color na raiz .pr-dashed —
+   defina UMA das classes de cor (.pr-dashed--mute-22 etc).
+------------------------------------------------------------------------ */
+
+.pr-dashed {
+    --dash-tint: var(--dash-20);
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+}
+
+.pr-dashed__t, .pr-dashed__b {
+    position: absolute; height: 3px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Tile_H.png");
+    background-repeat: repeat-x;
+}
+.pr-dashed__l, .pr-dashed__r {
+    position: absolute; width: 3px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Tile_V.png");
+    background-repeat: repeat-y;
+}
+.pr-dashed__t, .pr-dashed__b, .pr-dashed__l, .pr-dashed__r,
+.pr-dashed__tl, .pr-dashed__tr, .pr-dashed__br, .pr-dashed__bl {
+    -unity-background-image-tint-color: var(--dash-tint);
+}
+.pr-dashed__t { top: 0; }
+.pr-dashed__b { bottom: 0; }
+.pr-dashed__l { left: 0; }
+.pr-dashed__r { right: 0; }
+
+.pr-dashed__tl, .pr-dashed__tr, .pr-dashed__br, .pr-dashed__bl { position: absolute; }
+.pr-dashed__tl { left: 0;  top: 0; }
+.pr-dashed__tr { right: 0; top: 0;    rotate: 90deg;  }
+.pr-dashed__br { right: 0; bottom: 0; rotate: 180deg; }
+.pr-dashed__bl { left: 0;  bottom: 0; rotate: 270deg; }
+
+/* raios disponíveis — o recuo das arestas é igual ao raio */
+.pr-dashed--r9  .pr-dashed__t, .pr-dashed--r9  .pr-dashed__b { left: 9px;  right: 9px;  }
+.pr-dashed--r9  .pr-dashed__l, .pr-dashed--r9  .pr-dashed__r { top: 9px;   bottom: 9px; }
+.pr-dashed--r9  .pr-dashed__tl, .pr-dashed--r9 .pr-dashed__tr,
+.pr-dashed--r9  .pr-dashed__br, .pr-dashed--r9 .pr-dashed__bl { width: 12px; height: 12px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R9.png"); }
+
+.pr-dashed--r12 .pr-dashed__t, .pr-dashed--r12 .pr-dashed__b { left: 12px; right: 12px; }
+.pr-dashed--r12 .pr-dashed__l, .pr-dashed--r12 .pr-dashed__r { top: 12px;  bottom: 12px; }
+.pr-dashed--r12 .pr-dashed__tl, .pr-dashed--r12 .pr-dashed__tr,
+.pr-dashed--r12 .pr-dashed__br, .pr-dashed--r12 .pr-dashed__bl { width: 15px; height: 15px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R12.png"); }
+
+.pr-dashed--r14 .pr-dashed__t, .pr-dashed--r14 .pr-dashed__b { left: 14px; right: 14px; }
+.pr-dashed--r14 .pr-dashed__l, .pr-dashed--r14 .pr-dashed__r { top: 14px;  bottom: 14px; }
+.pr-dashed--r14 .pr-dashed__tl, .pr-dashed--r14 .pr-dashed__tr,
+.pr-dashed--r14 .pr-dashed__br, .pr-dashed--r14 .pr-dashed__bl { width: 17px; height: 17px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R14.png"); }
+
+.pr-dashed--r15 .pr-dashed__t, .pr-dashed--r15 .pr-dashed__b { left: 15px; right: 15px; }
+.pr-dashed--r15 .pr-dashed__l, .pr-dashed--r15 .pr-dashed__r { top: 15px;  bottom: 15px; }
+.pr-dashed--r15 .pr-dashed__tl, .pr-dashed--r15 .pr-dashed__tr,
+.pr-dashed--r15 .pr-dashed__br, .pr-dashed--r15 .pr-dashed__bl { width: 18px; height: 18px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R15.png"); }
+
+.pr-dashed--r18 .pr-dashed__t, .pr-dashed--r18 .pr-dashed__b { left: 18px; right: 18px; }
+.pr-dashed--r18 .pr-dashed__l, .pr-dashed--r18 .pr-dashed__r { top: 18px;  bottom: 18px; }
+.pr-dashed--r18 .pr-dashed__tl, .pr-dashed--r18 .pr-dashed__tr,
+.pr-dashed--r18 .pr-dashed__br, .pr-dashed--r18 .pr-dashed__bl { width: 21px; height: 21px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R18.png"); }
+
+.pr-dashed--r22 .pr-dashed__t, .pr-dashed--r22 .pr-dashed__b { left: 22px; right: 22px; }
+.pr-dashed--r22 .pr-dashed__l, .pr-dashed--r22 .pr-dashed__r { top: 22px;  bottom: 22px; }
+.pr-dashed--r22 .pr-dashed__tl, .pr-dashed--r22 .pr-dashed__tr,
+.pr-dashed--r22 .pr-dashed__br, .pr-dashed--r22 .pr-dashed__bl { width: 25px; height: 25px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R22.png"); }
+
+.pr-dashed--r24 .pr-dashed__t, .pr-dashed--r24 .pr-dashed__b { left: 24px; right: 24px; }
+.pr-dashed--r24 .pr-dashed__l, .pr-dashed--r24 .pr-dashed__r { top: 24px;  bottom: 24px; }
+.pr-dashed--r24 .pr-dashed__tl, .pr-dashed--r24 .pr-dashed__tr,
+.pr-dashed--r24 .pr-dashed__br, .pr-dashed--r24 .pr-dashed__bl { width: 27px; height: 27px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R24.png"); }
+
+.pr-dashed--r26 .pr-dashed__t, .pr-dashed--r26 .pr-dashed__b { left: 26px; right: 26px; }
+.pr-dashed--r26 .pr-dashed__l, .pr-dashed--r26 .pr-dashed__r { top: 26px;  bottom: 26px; }
+.pr-dashed--r26 .pr-dashed__tl, .pr-dashed--r26 .pr-dashed__tr,
+.pr-dashed--r26 .pr-dashed__br, .pr-dashed--r26 .pr-dashed__bl { width: 29px; height: 29px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R26.png"); }
+
+/* cores do tracejado (tint aplicado ao tile branco) */
+.pr-dashed--mute-36  { --dash-tint: var(--dash-36); }
+.pr-dashed--mute-30  { --dash-tint: var(--dash-30); }
+.pr-dashed--mute-24  { --dash-tint: var(--dash-24); }
+.pr-dashed--mute-22  { --dash-tint: var(--dash-22); }
+.pr-dashed--mute-20  { --dash-tint: var(--dash-20); }
+.pr-dashed--mute-18  { --dash-tint: var(--dash-18); }
+.pr-dashed--mute-16  { --dash-tint: var(--dash-16); }
+.pr-dashed--mute-12  { --dash-tint: var(--dash-12); }
+.pr-dashed--amber-50 { --dash-tint: var(--dash-amber-50); }
+.pr-dashed--amber-45 { --dash-tint: var(--dash-amber-45); }
+.pr-dashed--ink-42   { --dash-tint: rgba(10, 12, 34, 0.42); }
+.pr-dashed--cream-16 { --dash-tint: rgba(255, 247, 232, 0.16); }
+
+
+/* ---------- 12 · ÍCONES ----------
+   Todo clip-path do HTML virou sprite. Nunca desenhe forma com
+   VisualElement vazio; use estas classes. Tabela completa em
+   docs/04-ASSETS.md. */
+
+.pr-icon { flex-shrink: 0; background-repeat: no-repeat; -unity-background-scale-mode: scale-to-fit; }
+.pr-icon--check   { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Check.png"); }
+.pr-icon--plus    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Plus.png"); }
+.pr-icon--minus   { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Minus.png"); }
+.pr-icon--lock    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Lock.png"); }
+.pr-icon--crown   { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Crown.png"); }
+.pr-icon--coin    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Coin.png"); }
+.pr-icon--diamond { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Diamond.png"); }
+.pr-icon--copy    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Copy.png"); }
+.pr-icon--play    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Play.png"); }
+.pr-icon--flag    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Flag.png"); }
+.pr-icon--person  { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Person.png"); }
+.pr-icon--menu    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_Menu.png"); }
+.pr-icon--left    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_ArrowLeft.png"); }
+.pr-icon--right   { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Icons/Icon_ArrowRight.png"); }
+.pr-icon--heal    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Icon_HealCross.png"); }
+
+.pr-icon--ink   { -unity-background-image-tint-color: var(--ink); }
+.pr-icon--cream { -unity-background-image-tint-color: var(--cream); }
+.pr-icon--green { -unity-background-image-tint-color: var(--green); }
+.pr-icon--amber { -unity-background-image-tint-color: var(--amber); }
+.pr-icon--muted { -unity-background-image-tint-color: var(--dim-2); }
+
+
+/* ---------- 13 · BARRAS SEGMENTADAS (HUD) ---------- */
+
+.pr-bar {
+    flex-direction: row;
+    background-color: var(--ink);
+    border-color: var(--ink);
+    overflow: hidden;
+}
+.pr-bar__seg { flex-grow: 1; border-radius: 6px; }
+.pr-bar__seg--hp     { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_HP_Full.png"); }
+.pr-bar__seg--hurt   { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_HP_Hurt.png"); }
+.pr-bar__seg--gone   { background-color: var(--hp-empty); background-image: none; }
+.pr-bar__seg--shield { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_Shield.png"); }
+.pr-bar__seg--shield-bright { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_Shield_Bright.png"); }
+.pr-bar__label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 11px; width: 58px; letter-spacing: 1.32px; flex-shrink: 0;
+}
+.pr-bar__value {
+    position: absolute; right: 12px; top: 0; bottom: 0;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 24px; color: var(--cream);
+    -unity-text-align: middle-right;
+    text-shadow: 0 2px 0 var(--ink);
+}
+
+
+/* ---------- 14 · SCRIMS E VINHETAS ---------- */
+
+.pr-scrim-mm     { background-color: rgba(6, 8, 24, 0.70); }
+.pr-scrim-top    { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Scrim_TopBar.png"); }
+.pr-scrim-bottom { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Scrim_Bottom.png"); }
+
+/* Vinhetas de estado do HUD. 9-slice para a espessura do brilho não
+   distorcer entre eixos — NÃO troque por stretch simples. */
+.pr-vignette {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    -unity-slice-left: 236; -unity-slice-right: 236;
+    -unity-slice-top: 236;  -unity-slice-bottom: 236;
+    -unity-slice-scale: 1;
+}
+.pr-vignette--red   { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Vignette_Red.png"); }
+.pr-vignette--green { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Vignette_Green.png"); }
+.pr-vignette--blue  { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Vignette_Blue.png"); }
+
+
+/* ---------- 15 · TEXTURAS DE PADRÃO ---------- */
+
+.pr-stripes-brand  { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Stripes_45_Amber_Ink.png"); background-repeat: repeat; }
+.pr-stripes-repair { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Stripes_45_Repair.png"); background-repeat: repeat; }
+.pr-stripes-gloss  { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Stripes_45_White_Soft.png"); background-repeat: repeat; }
+.pr-shadow-ellipse { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Shadow_Ellipse.png"); }
+.pr-glow-amber     { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Glow_Radial_Amber.png"); }
+.pr-shine          { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Shine_Sweep.png"); }
+.pr-dial-lines     { background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dial_Lines.png"); background-repeat: repeat; }
+
+
+/* ---------- 16 · ROLAGEM ---------- */
+/* ScrollView do HTML: barra fina, polegar #3B4180, trilha invisível. */
+.pr-scroll .unity-scroller--vertical { width: 8px; background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.pr-scroll .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.pr-scroll .unity-base-slider__dragger { background-color: var(--faint-3); border-radius: 4px; border-width: 0; width: 8px; }
+.pr-scroll .unity-scroller__low-button,
+.pr-scroll .unity-scroller__high-button { display: none; }

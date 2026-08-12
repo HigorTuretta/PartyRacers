@@ -1,0 +1,51 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Card_Item.uss" />
+
+    <!-- Cosmetico da garagem. QUATRO estados, sempre exatamente um visivel.
+         A moldura E o estado — nao existe card sem estado.
+         O preview e uma RawImage alimentada por RenderTexture do item
+         (ou textura de arte). Nunca um retangulo de cor vazio. -->
+    <ui:VisualElement name="Card_Item" class="item">
+
+        <ui:VisualElement name="State_Equipped" class="pr-card pr-card--equipped">
+            <ui:VisualElement name="Eq_Preview" class="pr-card__preview" />
+            <ui:VisualElement class="pr-card__foot pr-col gy-3">
+                <ui:Label name="Eq_Name" text="Azul Turbo" class="pr-card__name" />
+                <ui:Label text="EQUIPADO" class="pr-card__state item__state--green" />
+            </ui:VisualElement>
+            <ui:VisualElement class="pr-card__check pr-center">
+                <ui:VisualElement class="pr-icon pr-icon--check pr-icon--ink item__check-icon" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Selected" class="pr-card pr-card--selected">
+            <ui:VisualElement name="Sel_Preview" class="pr-card__preview" />
+            <ui:VisualElement class="pr-card__foot pr-col gy-3">
+                <ui:Label name="Sel_Name" text="Verde Lima" class="pr-card__name" />
+                <ui:Label text="SELECIONADO" class="pr-card__state item__state--amber" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Free" class="pr-card pr-card--free">
+            <ui:VisualElement name="Free_Preview" class="pr-card__preview" />
+            <ui:VisualElement class="pr-card__foot pr-col gy-3">
+                <ui:Label name="Free_Name" text="Roxo" class="pr-card__name item__name--soft" />
+                <ui:Label name="Free_Rarity" text="RARO" class="item__rarity" />
+            </ui:VisualElement>
+            <ui:Label name="Badge_New" text="NOVO" class="pr-card__new" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="State_Locked" class="pr-card pr-card--locked">
+            <ui:VisualElement class="pr-card__preview pr-center item__preview--locked">
+                <ui:VisualElement class="pr-icon pr-icon--lock pr-icon--muted item__lock" />
+            </ui:VisualElement>
+            <ui:VisualElement class="pr-card__foot pr-col gy-3">
+                <ui:Label name="Lk_Name" text="Foguete" class="pr-card__name item__name--dim" />
+                <ui:Label name="Lk_Unlock" text="NIVEL 30" class="item__unlock" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

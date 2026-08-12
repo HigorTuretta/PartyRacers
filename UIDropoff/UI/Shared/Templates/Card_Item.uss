@@ -1,0 +1,22 @@
+/* Card_Item.uss — HTML linhas 696-758. Celula de 4 colunas em painel de 674. */
+.item { width: 160.25px; }
+.item__state--green { color: var(--green); }
+.item__state--amber { color: var(--amber); }
+.item__check-icon   { width: 11px; height: 9px; }
+.item__name--soft   { color: var(--text-soft); }
+.item__name--dim    { color: var(--dim-2); }
+.item__rarity {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 9px; color: var(--dim-2); letter-spacing: 0.9px;
+}
+.item__unlock {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 9px; color: var(--violet); letter-spacing: 0.54px;
+}
+.item__preview--locked { background-color: rgba(48, 52, 90, 0.85); }
+.item__lock { width: 26px; height: 30px; }
+
+/* cor da raridade no rotulo, quando o item e livre */
+.item__rarity--raro     { color: var(--rar-raro); }
+.item__rarity--epico    { color: var(--rar-epico); }
+.item__rarity--lendario { color: var(--rar-lendario); }

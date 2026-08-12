@@ -1,0 +1,170 @@
+/* ============================================================
+   theme.uss — FONTE ÚNICA DE TOKENS. Extraído de "Party Racers v2.dc.html".
+   Não escreva um valor de cor, raio ou espessura fora deste arquivo.
+   ============================================================ */
+
+:root {
+    /* ---- superfícies ---- */
+    --ink:            rgb(10, 12, 34);
+    --ink-15:         rgb(21, 22, 28);
+    --night:          rgb(18, 22, 58);
+    --deep:           rgb(16, 19, 52);
+    --blue:           rgb(27, 32, 80);
+    --royal:          rgb(42, 52, 128);
+
+    /* ---- marca / ação ---- */
+    --amber:          rgb(255, 176, 32);
+    --amber-light:    rgb(255, 194, 77);
+    --amber-deep:     rgb(224, 148, 16);
+    --cream:          rgb(255, 247, 232);
+    --green:          rgb(61, 220, 151);
+    --green-light:    rgb(91, 232, 171);
+    --red:            rgb(255, 77, 109);
+    --red-light:      rgb(255, 141, 160);
+    --sky:            rgb(53, 167, 255);
+    --sky-light:      rgb(90, 200, 245);
+    --sky-pale:       rgb(155, 224, 255);
+    --violet:         rgb(140, 123, 255);
+
+    /* ---- texto ---- */
+    --text-strong:    rgb(255, 247, 232);
+    --text:           rgb(230, 233, 242);
+    --text-soft:      rgb(195, 206, 221);
+    --muted:          rgb(154, 162, 216);
+    --dim:            rgb(124, 134, 200);
+    --dim-2:          rgb(107, 111, 158);
+    --faint:          rgb(92, 99, 168);
+    --faint-2:        rgb(75, 81, 130);
+    --faint-3:        rgb(59, 65, 128);
+
+    /* ---- vidro (painéis sobre a cena 3D) ---- */
+    --glass:          rgba(10, 12, 34, 0.82);
+    --glass-88:       rgba(10, 12, 34, 0.88);
+    --glass-90:       rgba(10, 12, 34, 0.90);
+    --glass-86:       rgba(10, 12, 34, 0.86);
+    --glass-78:       rgba(10, 12, 34, 0.78);
+    --glass-72:       rgba(10, 12, 34, 0.72);
+    --glass-66:       rgba(10, 12, 34, 0.66);
+    --panel-stroke:   rgba(155, 165, 215, 0.20);
+    --hairline:       rgba(155, 165, 215, 0.18);
+    --hairline-soft:  rgba(155, 165, 215, 0.14);
+
+    /* ---- preenchimentos translúcidos recorrentes ---- */
+    --fill-blue-66:   rgba(27, 32, 80, 0.66);
+    --fill-blue-50:   rgba(27, 32, 80, 0.50);
+    --fill-blue-44:   rgba(27, 32, 80, 0.44);
+    --fill-blue-42:   rgba(27, 32, 80, 0.42);
+    --fill-royal-80:  rgba(42, 52, 128, 0.80);
+    --fill-deep-70:   rgba(16, 19, 52, 0.70);
+    --fill-deep-42:   rgba(16, 19, 52, 0.42);
+    --fill-deep-34:   rgba(16, 19, 52, 0.34);
+    --fill-deep-20:   rgba(16, 19, 52, 0.20);
+    --tint-green:     rgba(61, 220, 151, 0.16);
+    --tint-green-14:  rgba(61, 220, 151, 0.14);
+    --tint-green-10:  rgba(61, 220, 151, 0.10);
+    --tint-amber-16:  rgba(255, 176, 32, 0.16);
+    --tint-amber-14:  rgba(255, 176, 32, 0.14);
+    --tint-amber-10:  rgba(255, 176, 32, 0.10);
+    --tint-violet-20: rgba(140, 123, 255, 0.20);
+    --tint-violet-16: rgba(140, 123, 255, 0.16);
+    --tint-violet-10: rgba(140, 123, 255, 0.10);
+    --tint-red-14:    rgba(255, 77, 109, 0.14);
+    --tint-mute-10:   rgba(155, 165, 215, 0.10);
+    --tint-mute-08:   rgba(155, 165, 215, 0.08);
+    --tint-mute-06:   rgba(155, 165, 215, 0.06);
+    --tint-mute-20:   rgba(155, 165, 215, 0.20);
+
+    /* ---- tracejados (cor aplicada como tint no tile) ---- */
+    --dash-36:        rgba(155, 165, 215, 0.36);
+    --dash-30:        rgba(155, 165, 215, 0.30);
+    --dash-24:        rgba(155, 165, 215, 0.24);
+    --dash-22:        rgba(155, 165, 215, 0.22);
+    --dash-20:        rgba(155, 165, 215, 0.20);
+    --dash-18:        rgba(155, 165, 215, 0.18);
+    --dash-16:        rgba(155, 165, 215, 0.16);
+    --dash-12:        rgba(155, 165, 215, 0.12);
+    --dash-amber-50:  rgba(255, 176, 32, 0.50);
+    --dash-amber-45:  rgba(255, 176, 32, 0.45);
+
+    /* ---- raridade ---- */
+    --rar-comum:      rgb(154, 162, 216);
+    --rar-raro:       rgb(53, 167, 255);
+    --rar-epico:      rgb(140, 123, 255);
+    --rar-lendario:   rgb(255, 176, 32);
+
+    /* ---- vida ---- */
+    --hp-empty:       rgba(155, 165, 215, 0.10);
+    --repair-well:    rgb(58, 14, 28);
+}
+
+/* ============================================================
+   TIPOGRAFIA
+   O peso NÃO é uma propriedade no UI Toolkit: cada peso é um
+   font asset próprio. Use SEMPRE uma destas classes.
+   ============================================================ */
+
+.f-display   { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");  font-size: 22px; color: var(--cream); }
+.f-ui-400    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Regular SDF.asset");  font-size: 14px; }
+.f-ui-600    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-SemiBold SDF.asset");  font-size: 14px; }
+.f-ui-700    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Bold SDF.asset");      font-size: 14px; }
+.f-ui-800    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset"); font-size: 14px; }
+.f-ui-900    { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");     font-size: 14px; }
+.f-mono-400  { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset"); font-size: 12px; }
+.f-mono-700  { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");    font-size: 12px; }
+
+/* Rótulo de seção — MODO / GRUPO / AMIGOS / SALA / MAPA / REGRAS.
+   Sempre este conjunto exato, nunca improvisado. */
+.pr-section-label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 12px;
+    letter-spacing: 2.4px;      /* .2em x 12px */
+    color: var(--muted);
+}
+
+/* letter-spacing no UI Toolkit é PX, não em. Tabela de conversão
+   pronta para os valores usados no HTML — não recalcule à mão. */
+.ls-24e-12 { letter-spacing: 2.88px; }  /* .24em @12 */
+.ls-20e-12 { letter-spacing: 2.4px;  }
+.ls-18e-11 { letter-spacing: 1.98px; }
+.ls-16e-13 { letter-spacing: 2.08px; }
+.ls-14e-10 { letter-spacing: 1.4px;  }
+.ls-14e-11 { letter-spacing: 1.54px; }
+.ls-14e-13 { letter-spacing: 1.82px; }
+.ls-14e-15 { letter-spacing: 2.1px;  }
+.ls-14e-17 { letter-spacing: 2.38px; }
+.ls-12e-10 { letter-spacing: 1.2px;  }
+.ls-12e-11 { letter-spacing: 1.32px; }
+.ls-10e-09 { letter-spacing: 0.9px;  }
+.ls-10e-10 { letter-spacing: 1px;    }
+.ls-10e-11 { letter-spacing: 1.1px;  }
+.ls-10e-12 { letter-spacing: 1.2px;  }
+.ls-10e-13 { letter-spacing: 1.3px;  }
+.ls-09e-11 { letter-spacing: 0.99px; }
+.ls-08e-10 { letter-spacing: 0.8px;  }
+.ls-08e-11 { letter-spacing: 0.88px; }
+.ls-08e-13 { letter-spacing: 1.04px; }
+.ls-08e-14 { letter-spacing: 1.12px; }
+.ls-06e-10 { letter-spacing: 0.6px;  }
+.ls-06e-11 { letter-spacing: 0.66px; }
+.ls-06e-12 { letter-spacing: 0.72px; }
+.ls-06e-13 { letter-spacing: 0.78px; }
+.ls-04e-09 { letter-spacing: 0.36px; }
+.ls-04e-14 { letter-spacing: 0.56px; }
+.ls-04e-16 { letter-spacing: 0.64px; }
+.ls-04e-20 { letter-spacing: 0.8px;  }
+.ls-03e-17 { letter-spacing: 0.51px; }
+.ls-03e-18 { letter-spacing: 0.54px; }
+.ls-03e-19 { letter-spacing: 0.57px; }
+.ls-03e-21 { letter-spacing: 0.63px; }
+.ls-03e-22 { letter-spacing: 0.66px; }
+.ls-03e-24 { letter-spacing: 0.72px; }
+.ls-03e-28 { letter-spacing: 0.84px; }
+.ls-03e-30 { letter-spacing: 0.9px;  }
+.ls-02e-15 { letter-spacing: 0.3px;  }
+.ls-02e-16 { letter-spacing: 0.32px; }
+.ls-02e-21 { letter-spacing: 0.42px; }
+.ls-02e-25 { letter-spacing: 0.5px;  }
+.ls-02e-27 { letter-spacing: 0.54px; }
+.ls-02e-30 { letter-spacing: 0.6px;  }
+.ls-01e-40 { letter-spacing: 0.4px;  }
+.ls-28e-22 { letter-spacing: 6.16px; }  /* código da sala */

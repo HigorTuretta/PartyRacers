@@ -75,6 +75,7 @@ namespace PartyRacers.UI.Frontend
         private NetworkBootstrap bootstrap;
         private bool contagemDeLargadaAtiva;
         private float fimDaContagemDeLargada;
+        private bool uiToolkitOwnsPresentation;
 
         private void Awake()
         {
@@ -151,7 +152,8 @@ namespace PartyRacers.UI.Frontend
 
         private void Update()
         {
-            AcompanharTela();
+            if (!uiToolkitOwnsPresentation)
+                AcompanharTela();
             AtualizarLargadaAutomatica();
 
             if (loja == null || Time.unscaledTime < proximoTick)
@@ -159,6 +161,17 @@ namespace PartyRacers.UI.Frontend
 
             proximoTick = Time.unscaledTime + 1f;
             AtualizarRotacao();
+        }
+
+        /// <summary>
+        /// Transfere somente a apresentacao para o UIDocument. Rede, carregamento,
+        /// regras e persistencia continuam pertencendo a este fluxo.
+        /// </summary>
+        public void UsarUiToolkit(bool usar)
+        {
+            uiToolkitOwnsPresentation = usar;
+            if (usar)
+                rigDaGaragem?.Ativar(false);
         }
 
         // ---------- largada automática ----------

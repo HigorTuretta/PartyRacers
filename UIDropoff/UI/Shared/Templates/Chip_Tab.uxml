@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+
+
+    <!-- Categoria da garagem. Dois estados irmaos. -->
+    <ui:VisualElement name="Chip_Tab">
+        <ui:VisualElement name="State_On" class="pr-hs pr-hs--4">
+            <ui:VisualElement class="pr-hs__layer" style="border-radius: 12px;" />
+            <ui:Button name="State_On_Btn" text="MODELO" class="pr-chip pr-chip--on" />
+        </ui:VisualElement>
+        <ui:Button name="State_Off_Btn" text="MODELO" class="pr-chip pr-chip--off" />
+    </ui:VisualElement>
+</ui:UXML>

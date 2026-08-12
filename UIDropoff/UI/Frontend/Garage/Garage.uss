@@ -1,0 +1,48 @@
+/* ============================================================
+   Garage.uss — HTML linhas 659-759.
+   ============================================================ */
+
+/* Chapinha de camera: centrada em x=1341, logo abaixo do kart 3D.
+   left/right calculados para que o centro caia em 1341 num canvas 1920:
+   1341 - 960 = +381 do centro. */
+.garage__cam-chip {
+    position: absolute; left: 1341px; bottom: 214px;
+    translate: -50% 0;
+    padding: 8px 16px; border-radius: 10px;
+    background-color: var(--glass-86);
+    border-width: 2px; border-color: rgba(53, 167, 255, 0.40);
+}
+.garage__cam-dot { width: 9px; height: 9px; border-radius: 5px; background-color: var(--sky); }
+.garage__cam-label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 12px; color: var(--sky); letter-spacing: 1.2px;
+}
+
+/* Painel: termina em x=762, deixando o vao livre a direita para o kart. */
+.garage__panel { position: absolute; left: 44px; top: 128px; bottom: 36px; width: 718px; }
+
+.garage__tabs  { flex-wrap: wrap; }
+.garage__count {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 12px; color: var(--dim); letter-spacing: 2.4px;
+}
+
+/* Grade: 4 x 160.25 + 3 x 11 = 674, exatamente a largura interna do painel. */
+.garage__grid { flex-grow: 1; }
+.garage__grid .unity-scroll-view__content-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    margin-right: -11px;
+    margin-bottom: -11px;
+    padding-right: 6px;
+}
+.garage__grid .unity-scroll-view__content-container > * {
+    margin-right: 11px;
+    margin-bottom: 11px;
+}
+
+.garage__actions { position: absolute; right: 44px; bottom: 36px; }
+.garage__btn-shadow { border-radius: 15px; }
+.garage__btn-undo  { padding: 18px 28px; border-radius: 15px; font-size: 19px; }
+.garage__btn-equip { padding: 18px 40px; border-radius: 15px; font-size: 24px; letter-spacing: 0.72px; }

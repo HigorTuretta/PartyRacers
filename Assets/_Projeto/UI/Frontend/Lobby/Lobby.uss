@@ -1,0 +1,144 @@
+/* ============================================================
+   Lobby.uss — geometria exata do HTML (linhas 200-407).
+   Canvas de referencia: 1920 x 1080.
+   ============================================================ */
+
+/* ---- placas de nome dos karts ----
+   Linha centrada em x=960: left:0/right:0 + justify-content:center da o
+   mesmo resultado do translateX(-50%) do HTML, sem transform. */
+.lobby__nameplates {
+    position: absolute; left: 0; right: 0; bottom: 166px;
+    flex-direction: row; align-items: flex-end; justify-content: center;
+    margin-right: -18px;
+}
+.lobby__nameplates > * { margin-right: 18px; }
+.lobby__plates-side { width: 298px; }
+.lobby__plates-side--left  { justify-content: flex-end; }
+.lobby__plates-side--right { justify-content: flex-start; }
+
+.lobby__plate-shadow { border-radius: 12px; }
+.lobby__plate-player {
+    padding: 9px 18px;
+    border-width: 3px; border-color: var(--ink); border-radius: 12px;
+    background-color: var(--amber);
+}
+.lobby__plate-flag { width: 15px; height: 13px; }
+.lobby__plate-player-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 18px; color: var(--ink-15); letter-spacing: 0.54px;
+}
+/* placa de acompanhante (instanciada pelo controller) */
+.lobby__plate-mate {
+    flex-direction: row; align-items: center;
+    padding: 6px 13px;
+    border-width: 2px; border-color: var(--dash-30); border-radius: 9px;
+    background-color: rgba(10, 12, 34, 0.80);
+    margin-right: -7px;
+}
+.lobby__plate-mate > * { margin-right: 7px; }
+.lobby__plate-mate-dot  { width: 8px; height: 8px; border-radius: 4px; }
+.lobby__plate-mate-name {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 14px; color: var(--cream); letter-spacing: 0.42px;
+}
+
+/* vaga livre no palco: 140x96 tracejado + circulo com "+" + rotulo */
+.lobby__empty-slots {
+    position: absolute; left: 0; right: 0; bottom: 166px;
+    flex-direction: row; align-items: flex-end; justify-content: center;
+}
+.lobby__empty-slot      { align-items: center; margin-bottom: -12px; }
+.lobby__empty-slot > *  { margin-bottom: 12px; }
+.lobby__empty-box       { width: 140px; height: 96px; align-items: center; justify-content: center; }
+.lobby__empty-circle    {
+    width: 40px; height: 40px; align-items: center; justify-content: center;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Circle_40.png");
+    -unity-background-image-tint-color: var(--dash-30);
+}
+.lobby__empty-label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--faint); letter-spacing: 1.54px;
+}
+
+/* ---- coluna esquerda ---- */
+.lobby__col-left { position: absolute; left: 44px; top: 128px; width: 404px; }
+.lobby__col-left .mode-host { flex-grow: 1; flex-basis: 0; flex-shrink: 1; }
+.lobby__group-count {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 15px; color: var(--amber);
+}
+
+/* ---- coluna direita ---- */
+.lobby__panel-friends { position: absolute; right: 44px; top: 128px; width: 392px; }
+.lobby__friend-tabs   { padding: 4px; border-radius: 11px; background-color: var(--fill-deep-70); }
+.lobby__friend-tab {
+    flex-grow: 1; padding: 10px; border-radius: 8px; border-width: 0;
+    -unity-text-align: middle-center; font-size: 13px; letter-spacing: 0.78px;
+}
+.lobby__friend-tab--on {
+    background-color: var(--royal); color: var(--cream);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+}
+.lobby__friend-tab--off {
+    background-color: rgba(0, 0, 0, 0); color: var(--dim);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Bold SDF.asset");
+}
+.lobby__friend-tab--off:hover { color: var(--text-soft); }
+
+/* altura fixa: a lista rola, o painel nao cresce */
+.lobby__friend-list { height: 452px; border-radius: 12px; background-color: var(--fill-deep-42); }
+.lobby__friend-list .unity-scroll-view__content-container { margin-bottom: -6px; padding-right: 6px; }
+.lobby__friend-list .unity-scroll-view__content-container > * { margin-bottom: 6px; }
+
+/* ---- barra de acao ---- */
+.lobby__action-bar {
+    position: absolute; left: 44px; right: 44px; bottom: 28px;
+    padding: 12px 16px;
+    border-width: 2px; border-color: var(--panel-stroke);
+    border-radius: 18px;
+    background-color: var(--glass-90);
+}
+.lobby__map-block { width: 278px; flex-shrink: 0; }
+.lobby__bar-label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--dim); letter-spacing: 1.98px;
+}
+.lobby__map-value {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 21px; color: var(--cream); letter-spacing: 0.42px;
+}
+.lobby__group-status {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 18px; color: var(--green); letter-spacing: 0.36px;
+}
+.lobby__group-status--waiting { color: var(--amber); }
+
+/* Botoes: as medidas vem do padding do HTML, nao de largura fixa.
+   O verde e o maior elemento clicavel da tela — nao empate com o ambar. */
+.lobby__action-face {
+    width: 278px;
+    height: 68px;
+    padding: 0 22px;
+    font-size: 22px;
+    letter-spacing: 0.66px;
+}
+.lobby__btn-ready  { }
+.lobby__btn-cancel { }
+.lobby__btn-search { }
+.lobby__btn-search-icon { width: 18px; height: 20px; }
+.lobby__btn-search-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 24px; color: var(--ink); letter-spacing: 0.72px;
+}
+.lobby__btn-blocked {
+    width: 278px; height: 68px; padding: 10px 18px; border-radius: 16px;
+    background-color: rgba(16, 19, 52, 0.50);
+}
+.lobby__btn-blocked-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 22px; color: var(--faint-2); letter-spacing: 0.66px;
+}
+.lobby__btn-blocked-reason {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--faint); letter-spacing: 0.88px;
+}

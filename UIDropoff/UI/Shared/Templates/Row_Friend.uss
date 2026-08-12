@@ -1,0 +1,36 @@
+/* Row_Friend.uss — HTML linhas 366-383 */
+.friend__row { padding: 10px 12px; border-radius: 12px; background-color: var(--fill-blue-42); }
+.friend__row:hover { background-color: rgba(42, 52, 128, 0.60); }
+.friend__text { min-width: 0; flex-shrink: 1; }
+.friend__name {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Bold SDF.asset");
+    font-size: 14px; color: var(--cream);
+}
+.friend__state {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset");
+    font-size: 11px; color: var(--green);
+}
+/* cores de estado — o controller escolhe a classe */
+.friend__state--online  { color: var(--green); }
+.friend__state--away    { color: var(--amber); }
+.friend__state--steam   { color: var(--sky); }
+.friend__state--offline { color: var(--faint-2); }
+
+.friend__invite-shadow { border-radius: 9px; }
+.friend__invite {
+    padding: 8px 14px;
+    border-width: 2px; border-color: var(--ink); border-radius: 9px;
+    background-color: var(--green);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 11px; color: var(--ink); letter-spacing: 0.88px;
+    transition-property: translate; transition-duration: 0.08s;
+}
+.friend__invite:hover  { background-color: var(--green-light); }
+.friend__invite:active { translate: 0 3px; }
+
+.friend__cant {
+    padding: 8px 12px; border-radius: 9px;
+    background-color: var(--tint-mute-08);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 11px; color: var(--faint); letter-spacing: 0.88px;
+}

@@ -1,0 +1,97 @@
+/* ============================================================
+   CustomMatch.uss — HTML linhas 553-657.
+   ============================================================ */
+
+.custom__content { position: absolute; left: 44px; top: 128px; right: 44px; bottom: 36px; }
+.custom__room-panel { min-width: 0; }
+.custom__slots { width: 100%; min-width: 0; }
+
+.custom__title {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 27px; color: var(--cream); letter-spacing: 0.54px;
+}
+.custom__code-chip {
+    padding: 9px 16px;
+    border-width: 3px; border-color: var(--ink); border-radius: 11px;
+    background-color: var(--amber);
+}
+.custom__code {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 22px; color: var(--ink-15); letter-spacing: 6.16px;
+}
+.custom__copy { width: 16px; height: 16px; border-width: 0; background-color: rgba(0, 0, 0, 0); -unity-background-image-tint-color: var(--ink-15); }
+.custom__count {
+    padding: 9px 16px; border-radius: 10px; background-color: var(--tint-green-14);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 14px; color: var(--green); letter-spacing: 0.84px;
+}
+.custom__grid-row { width: 100%; min-width: 0; flex-grow: 1; flex-basis: 0; }
+.custom__slot-host { min-width: 0; flex-grow: 1; flex-basis: 0; }
+
+/* ---- coluna direita ---- */
+.custom__col-right { width: 472px; flex-shrink: 0; }
+
+.custom__map-preview {
+    height: 228px;
+    border-width: 3px; border-color: var(--ink); border-radius: 14px;
+    background-color: rgb(32, 82, 45);
+    overflow: hidden;
+}
+.custom__map-placeholder {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset");
+    font-size: 13px; color: rgba(255, 247, 232, 0.60); letter-spacing: 1.82px;
+}
+.custom__map-chip {
+    position: absolute; left: 14px; bottom: 14px;
+    padding: 6px 12px; border-radius: 8px; background-color: var(--glass-86);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--green); letter-spacing: 1.1px;
+}
+.custom__map-name {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 25px; color: var(--cream); letter-spacing: 0.5px;
+}
+.custom__map-desc {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Regular SDF.asset");
+    font-size: 14px; color: var(--muted); white-space: normal;
+}
+.custom__map-controls { height: 32px; }
+.custom__map-arrow {
+    width: 34px; height: 32px; flex-shrink: 0;
+    padding: 0; border-width: 2px; border-color: var(--dash-24); border-radius: 8px;
+    background-color: var(--fill-blue-50);
+}
+.custom__map-arrow:hover { border-color: var(--amber); background-color: var(--tint-amber-14); }
+.custom__map-arrow-icon { width: 11px; height: 16px; }
+.custom__dots { height: 5px; }
+.custom__dot { flex-grow: 1; flex-basis: 0; height: 5px; border-radius: 3px; background-color: var(--dash-20); }
+.custom__dot--on { background-color: var(--amber); }
+
+.custom__rule { }
+.custom__rule-label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Bold SDF.asset");
+    font-size: 14px; color: var(--text-soft);
+}
+.custom__stepper { padding: 7px 12px; border-radius: 9px; background-color: var(--fill-deep-70); }
+.custom__step-btn { width: 26px; height: 24px; padding: 0; border-radius: 6px; border-width: 0; background-color: var(--dash-20); }
+.custom__step-btn:hover { background-color: var(--amber); }
+.custom__step-icon { width: 10px; height: 13px; }
+.custom__step-value {
+    min-width: 58px; -unity-text-align: middle-center;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 14px; color: var(--cream);
+}
+
+.custom__btn-shadow { border-radius: 16px; }
+.custom__action-face { height: 72px; padding-top: 0; padding-bottom: 0; }
+.custom__btn-bots  { padding-left: 28px; padding-right: 28px; font-size: 20px; }
+.custom__btn-start { padding-left: 20px; padding-right: 20px; font-size: 28px; letter-spacing: 0.84px; }
+.custom__btn-blocked { height: 72px; padding: 8px 20px; border-radius: 16px; background-color: rgba(16, 19, 52, 0.50); }
+.custom__btn-blocked-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 26px; color: var(--faint-2); letter-spacing: 0.78px;
+}
+.custom__btn-blocked-reason {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--faint); letter-spacing: 0.88px;
+}

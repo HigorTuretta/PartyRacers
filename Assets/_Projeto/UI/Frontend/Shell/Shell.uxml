@@ -1,0 +1,77 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Frontend/Shell/Shell.uss" />
+
+    <!-- Raiz do frontend. A cena 3D (karts, plataforma, luzes, VFX) fica ATRAS
+         disto, em GameObjects. Aqui so existe UI. -->
+    <ui:VisualElement name="Shell" class="pr-screen">
+
+        <ui:VisualElement name="Scrim_Bottom" class="pr-scrim-bottom shell__scrim-bottom" picking-mode="Ignore" />
+
+        <!-- Telas normais ficam abaixo da barra. Assim o host de tela cheia
+             nunca rouba o clique das abas. -->
+        <ui:VisualElement name="Screen_Host" class="pr-fill shell__screen-host" picking-mode="Ignore" />
+
+        <!-- ══════════ BARRA SUPERIOR (compartilhada por Lobby, Garagem, Sala) ══════════ -->
+        <ui:VisualElement name="TopBar" class="pr-row gx-26 shell__topbar">
+
+            <ui:VisualElement name="Brand" class="pr-col pr-none shell__brand">
+                <ui:Label name="Brand_Party" text="PARTY" class="shell__brand-party" />
+                <ui:VisualElement name="Brand_Plate" class="pr-hs pr-hs--4 shell__brand-plate">
+                    <ui:VisualElement class="pr-hs__layer shell__brand-plate-shadow" />
+                    <ui:Label name="Brand_Racers" text="RACERS" class="shell__brand-racers" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="Tabs" class="pr-row gx-8 shell__tabs">
+                <ui:VisualElement name="Tab_Lobby" class="pr-hs pr-hs--5 shell__tab--on">
+                    <ui:VisualElement class="pr-hs__layer shell__tab-shadow" />
+                    <ui:Button name="Tab_Lobby_Btn" text="LOBBY" class="pr-tab pr-tab--on" />
+                </ui:VisualElement>
+                <ui:VisualElement name="Tab_Garage" class="pr-hs pr-hs--5 shell__tab--off">
+                    <ui:VisualElement class="pr-hs__layer shell__tab-shadow" />
+                    <ui:Button name="Tab_Garage_Btn" text="GARAGEM" class="pr-tab pr-tab--off" />
+                </ui:VisualElement>
+                <ui:VisualElement name="Tab_Private" class="pr-hs pr-hs--5 shell__tab--off">
+                    <ui:VisualElement class="pr-hs__layer shell__tab-shadow" />
+                    <ui:Button name="Tab_Private_Btn" text="SALA PRIVADA" class="pr-tab pr-tab--off shell__tab-private" />
+                </ui:VisualElement>
+                <ui:VisualElement name="Tab_Store" class="pr-hs pr-hs--5 shell__tab--off">
+                    <ui:VisualElement class="pr-hs__layer shell__tab-shadow" />
+                    <ui:Button name="Tab_Store_Btn" text="LOJA" class="pr-tab pr-tab--off" />
+                </ui:VisualElement>
+                <ui:VisualElement name="Tab_Pass" class="pr-hs pr-hs--5 shell__tab--off">
+                    <ui:VisualElement class="pr-hs__layer shell__tab-shadow" />
+                    <ui:Button name="Tab_Pass_Btn" text="PASSE" class="pr-tab pr-tab--off" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="pr-spacer" />
+
+            <ui:VisualElement name="Wallet_Coins" class="pr-row gx-10 pr-wallet shell__metric">
+                <ui:VisualElement class="pr-icon pr-icon--coin shell__coin" />
+                <ui:Label name="Wallet_Coins_Value" text="12.480" class="pr-wallet__value" />
+            </ui:VisualElement>
+            <ui:VisualElement name="Wallet_Gems" class="pr-row gx-10 pr-wallet shell__metric">
+                <ui:VisualElement class="pr-icon pr-icon--diamond shell__gem" />
+                <ui:Label name="Wallet_Gems_Value" text="340" class="pr-wallet__value" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="Profile" class="pr-row gx-12 shell__profile shell__metric">
+                <ui:VisualElement name="Profile_Avatar" class="pr-avatar shell__profile-avatar" />
+                <ui:VisualElement class="pr-col gy-3">
+                    <ui:Label name="Profile_Name" text="HIGOR" class="shell__profile-name" />
+                    <ui:VisualElement class="pr-row gx-5">
+                        <ui:VisualElement name="Profile_Dot" class="shell__profile-dot" />
+                        <ui:Label name="Profile_State" text="ONLINE" class="shell__profile-state" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Matchmaking e o unico modal: fica acima inclusive da TopBar. -->
+        <ui:VisualElement name="Overlay_Host" class="pr-fill" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

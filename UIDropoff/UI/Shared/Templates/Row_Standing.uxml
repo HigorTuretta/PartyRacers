@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_Standing.uss" />
+
+    <!-- Linha da classificacao. Dois estados: "me" (placa ambar com sombra
+         dura) e "other" (linha simples). -->
+    <ui:VisualElement name="Row_Standing">
+        <ui:VisualElement name="State_Me" class="pr-hs pr-hs--4">
+            <ui:VisualElement class="pr-hs__layer stand__me-shadow" />
+            <ui:VisualElement class="pr-row gx-11 stand__me">
+                <ui:Label name="Me_Pos" text="4" class="stand__me-pos" />
+                <ui:Label name="Me_Name" text="HIGOR" class="stand__me-name pr-grow" />
+                <ui:Label name="Me_Gap" text="+0.8" class="stand__me-gap" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="State_Other" class="pr-row gx-11 stand__other">
+            <ui:Label name="Other_Pos" text="5" class="stand__other-pos" />
+            <ui:Label name="Other_Name" text="nitroking" class="stand__other-name pr-nowrap pr-grow" />
+            <ui:Label name="Other_Gap" text="+1.2" class="stand__other-gap" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

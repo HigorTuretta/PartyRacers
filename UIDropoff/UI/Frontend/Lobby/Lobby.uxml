@@ -1,0 +1,137 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Frontend/Lobby/Lobby.uss" />
+    <ui:Template name="Card_Mode" src="project://database/Assets/_Projeto/UI/Shared/Templates/Card_Mode.uxml" />
+    <ui:Template name="Row_GroupSlot" src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_GroupSlot.uxml" />
+    <ui:Template name="Row_Friend" src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_Friend.uxml" />
+
+    <ui:VisualElement name="Screen_Lobby" class="pr-screen">
+
+        <!-- ══════════════════════════════════════════════════════════════
+             ZONA FRANCA  x[470,1450]  y[300,860]
+             Nada de UI opaca aqui: e onde os karts 3D aparecem.
+             Os karts, as sombras no chao, a plataforma e o anel sao
+             GameObjects 3D. NAO existem neste UXML.
+             ══════════════════════════════════════════════════════════════ -->
+
+        <!-- Placas de nome dos karts. O controller posiciona cada placa
+             projetando a posicao do kart 3D na tela (WorldToScreen).
+             Sem 3D pronto, a linha abaixo ja da o arranjo do HTML:
+             jogador no centro (x=960), acompanhantes alternando direita e
+             esquerda, base em y=166 a partir do rodape. -->
+        <ui:VisualElement name="Nameplates" class="lobby__nameplates" picking-mode="Ignore">
+            <ui:VisualElement name="Plates_Left" class="pr-row-base gx-18 lobby__plates-side lobby__plates-side--left" />
+
+            <ui:VisualElement name="Plate_Player" class="pr-hs pr-hs--5 pr-none">
+                <ui:VisualElement class="pr-hs__layer lobby__plate-shadow" />
+                <ui:VisualElement class="pr-row gx-9 lobby__plate-player">
+                    <ui:VisualElement class="pr-icon pr-icon--flag pr-icon--ink lobby__plate-flag" />
+                    <ui:Label text="SEU KART" class="lobby__plate-player-text" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="Plates_Right" class="pr-row-base gx-18 lobby__plates-side lobby__plates-side--right" />
+        </ui:VisualElement>
+
+        <!-- Vaga livre no palco (nao ha kart 3D para desenhar) -->
+        <ui:VisualElement name="Stage_EmptySlots" class="lobby__empty-slots" picking-mode="Ignore" />
+
+        <!-- ══════════ COLUNA ESQUERDA ══════════ -->
+        <ui:VisualElement name="Col_Left" class="pr-col gy-16 lobby__col-left">
+
+            <ui:VisualElement name="Panel_Mode" class="pr-panel pr-col gy-14">
+                <ui:Label text="MODO" class="pr-section-label" />
+                <ui:VisualElement name="Mode_Cards" class="pr-row-stretch gx-8">
+                    <ui:Instance template="Card_Mode" name="Card_Mode_Solo" />
+                    <ui:Instance template="Card_Mode" name="Card_Mode_Duo" />
+                    <ui:Instance template="Card_Mode" name="Card_Mode_Squad" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="Panel_Group" class="pr-panel pr-col gy-12">
+                <ui:VisualElement class="pr-row gx-10">
+                    <ui:Label text="GRUPO" class="pr-section-label" />
+                    <ui:VisualElement class="pr-hair-h" />
+                    <ui:Label name="Group_Count" text="4/4" class="lobby__group-count" />
+                </ui:VisualElement>
+                <!-- SEMPRE 4 vagas. O modo decide o estado de cada uma,
+                     nunca a quantidade. -->
+                <ui:VisualElement name="Group_Slots" class="pr-col gy-7">
+                    <ui:Instance template="Row_GroupSlot" name="Group_Slot_0" />
+                    <ui:Instance template="Row_GroupSlot" name="Group_Slot_1" />
+                    <ui:Instance template="Row_GroupSlot" name="Group_Slot_2" />
+                    <ui:Instance template="Row_GroupSlot" name="Group_Slot_3" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ══════════ COLUNA DIREITA: AMIGOS ══════════ -->
+        <ui:VisualElement name="Panel_Friends" class="pr-panel pr-col gy-12 lobby__panel-friends">
+            <ui:Label text="AMIGOS" class="pr-section-label" />
+
+            <ui:VisualElement name="Friend_Tabs" class="pr-row gx-6 lobby__friend-tabs">
+                <ui:Button name="Friend_Tab_Game" text="DO JOGO" class="lobby__friend-tab lobby__friend-tab--on" />
+                <ui:Button name="Friend_Tab_Steam" text="STEAM" class="lobby__friend-tab lobby__friend-tab--off" />
+            </ui:VisualElement>
+
+            <ui:ScrollView name="Friend_List" class="pr-scroll lobby__friend-list" horizontal-scroller-visibility="Hidden">
+                <ui:Instance template="Row_Friend" name="Friend_0" />
+                <ui:Instance template="Row_Friend" name="Friend_1" />
+                <ui:Instance template="Row_Friend" name="Friend_2" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+
+        <!-- ══════════ BARRA DE ACAO ══════════ -->
+        <ui:VisualElement name="ActionBar" class="pr-row gx-18 lobby__action-bar">
+
+            <ui:VisualElement class="pr-col gy-6 lobby__map-block">
+                <ui:Label text="MAPA" class="lobby__bar-label" />
+                <ui:Label name="Map_Value" text="SORTEADO PELO JOGO" class="lobby__map-value" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="pr-rule-v" />
+
+            <ui:VisualElement class="pr-col gy-6 pr-grow">
+                <ui:Label text="ESTADO DO GRUPO" class="lobby__bar-label" />
+                <!-- "AGUARDANDO N JOGADORES" (ambar) ou
+                     "TODOS PRONTOS &#183; PODE BUSCAR" (verde) -->
+                <ui:Label name="Group_Status" text="TODOS PRONTOS &#183; PODE BUSCAR" class="lobby__group-status" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="pr-row gx-12 pr-none">
+
+                <ui:VisualElement name="Btn_Ready" class="pr-hs pr-hs--6 pr-btn">
+                    <ui:VisualElement class="pr-hs__layer pr-btn__shadow" />
+                    <ui:Button name="Btn_Ready_Face" text="FICAR PRONTO" class="pr-btn__face pr-btn--amber lobby__btn-ready" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="Btn_Cancel" class="pr-hs pr-hs--6 pr-btn">
+                    <ui:VisualElement class="pr-hs__layer pr-btn__shadow" />
+                    <ui:Button name="Btn_Cancel_Face" text="CANCELAR" class="pr-btn__face pr-btn--dark lobby__btn-cancel" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="Btn_Search" class="pr-hs pr-hs--6 pr-btn">
+                    <ui:VisualElement class="pr-hs__layer pr-btn__shadow" />
+                    <ui:Button name="Btn_Search_Face" class="pr-row gx-14 pr-btn__face pr-btn--green lobby__btn-search">
+                        <ui:VisualElement class="pr-icon pr-icon--play pr-icon--ink lobby__btn-search-icon" />
+                        <ui:Label text="BUSCAR PARTIDA" class="lobby__btn-search-text" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <!-- Bloqueado: tracejado + motivo. Substitui Btn_Search. -->
+                <ui:VisualElement name="Btn_Search_Blocked" class="pr-col pr-center gy-5 lobby__btn-blocked">
+                    <ui:VisualElement class="pr-dashed pr-dashed--r16 pr-dashed--mute-24" picking-mode="Ignore">
+                        <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                        <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                        <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                        <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+                    </ui:VisualElement>
+                    <ui:Label text="BUSCAR PARTIDA" class="lobby__btn-blocked-text" />
+                    <ui:Label name="Block_Reason" text="AGUARDANDO O GRUPO" class="lobby__btn-blocked-reason" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Titan+One&family=Archivo:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#14161D; overflow:hidden; }
+  * { box-sizing:border-box; }
+  a { color:#FFB020; text-decoration:none; }
+  a:hover { color:#FFD066; }
+  @keyframes prSweep { 0%{left:2%} 100%{left:98%} }
+  @keyframes prBlip { 0%{transform:scale(.4);opacity:0} 40%{transform:scale(1.15);opacity:1} 100%{transform:scale(1);opacity:1} }
+  @keyframes prPulse { 0%,100%{opacity:.35} 50%{opacity:1} }
+  @keyframes prSpin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+  @keyframes prRadar { 0%{transform:scale(.2);opacity:.9} 100%{transform:scale(1);opacity:0} }
+  @keyframes prBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  @keyframes prDanger { 0%,100%{opacity:.25} 50%{opacity:.9} }
+  @keyframes prShine { 0%{transform:translateX(-120%)} 100%{transform:translateX(320%)} }
+  @keyframes prGlow { 0%,100%{box-shadow:0 0 16px rgba(53,167,255,.45),0 5px 0 rgba(10,12,34,.5)} 50%{box-shadow:0 0 34px rgba(90,200,245,.85),0 5px 0 rgba(10,12,34,.5)} }
+  @keyframes prTick { 0%,100%{opacity:.55} 50%{opacity:1} }
+  ::-webkit-scrollbar { width:8px; height:8px }
+  ::-webkit-scrollbar-thumb { background:#3B4180; border-radius:4px }
+  ::-webkit-scrollbar-track { background:transparent }
+</style>
+</helmet>
+
+<div style="display:flex;width:100vw;height:100vh;font-family:Archivo,system-ui,sans-serif;background:#14161D">
+
+  <!-- ══════════ CHROME DO DOCUMENTO (não faz parte do jogo) ══════════ -->
+  <div style="width:296px;flex:none;display:flex;flex-direction:column;background:#1B1E27;border-right:1px solid #2C303C;overflow-y:auto;overflow-x:hidden">
+    <div style="padding:22px 20px 16px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #2C303C">
+      <span style="font:700 10px/1 'Space Mono',monospace;letter-spacing:.22em;color:#6E7488">PROTÓTIPO NAVEGÁVEL</span>
+      <span style="font:400 22px/1 'Titan One',cursive;color:#FFF7E8">Party Racers UI v2</span>
+      <span style="font:400 12px/1.5 Archivo,sans-serif;color:#8A90A6">PLACA evoluída · vidro sobre cena 3D</span>
+    </div>
+
+    <div style="padding:18px 14px;display:flex;flex-direction:column;gap:22px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="padding:0 6px;font:700 10px/1 'Space Mono',monospace;letter-spacing:.2em;color:#6E7488">FRONTEND</span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ navFrontend }}" as="it" hint-placeholder-count="5">
+            <sc-if value="{{ it.active }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:9px;background:#FFB020;color:#15161C;font:800 13px/1 Archivo,sans-serif;letter-spacing:.03em;text-align:left;cursor:pointer">
+                <span style="width:6px;height:6px;border-radius:50%;background:#15161C;flex:none"></span>{{ it.label }}
+              </button>
+            </sc-if>
+            <sc-if value="{{ it.idle }}">
+              <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:9px;background:transparent;color:#B7BDD0;font:600 13px/1 Archivo,sans-serif;letter-spacing:.03em;text-align:left;cursor:pointer" style-hover="background:#252938;color:#FFF7E8">
+                <span style="width:6px;height:6px;border-radius:50%;background:#454B60;flex:none"></span>{{ it.label }}
+              </button>
+            </sc-if>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="padding:0 6px;font:700 10px/1 'Space Mono',monospace;letter-spacing:.2em;color:#6E7488">CORRIDA</span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ navRace }}" as="it" hint-placeholder-count="2">
+            <sc-if value="{{ it.active }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:9px;background:#FFB020;color:#15161C;font:800 13px/1 Archivo,sans-serif;letter-spacing:.03em;text-align:left;cursor:pointer">
+                <span style="width:6px;height:6px;border-radius:50%;background:#15161C;flex:none"></span>{{ it.label }}
+              </button>
+            </sc-if>
+            <sc-if value="{{ it.idle }}">
+              <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:9px;background:transparent;color:#B7BDD0;font:600 13px/1 Archivo,sans-serif;letter-spacing:.03em;text-align:left;cursor:pointer" style-hover="background:#252938;color:#FFF7E8">
+                <span style="width:6px;height:6px;border-radius:50%;background:#454B60;flex:none"></span>{{ it.label }}
+              </button>
+            </sc-if>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ showHudStates }}">
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:18px;border-top:1px solid #2C303C">
+          <span style="padding:0 6px;font:700 10px/1 'Space Mono',monospace;letter-spacing:.2em;color:#6E7488">ESTADO DO HUD</span>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <sc-for list="{{ hudStates }}" as="it" hint-placeholder-count="5">
+              <sc-if value="{{ it.active }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ it.go }}" style="padding:8px 11px;border:0;border-radius:7px;background:#3DDC97;color:#0A0C22;font:800 11px/1 Archivo,sans-serif;letter-spacing:.05em;cursor:pointer">{{ it.label }}</button>
+              </sc-if>
+              <sc-if value="{{ it.idle }}">
+                <button onClick="{{ it.go }}" style="padding:8px 11px;border:1px solid #3A3F52;border-radius:7px;background:transparent;color:#9AA2B8;font:700 11px/1 Archivo,sans-serif;letter-spacing:.05em;cursor:pointer" style-hover="border-color:#3DDC97;color:#3DDC97">{{ it.label }}</button>
+              </sc-if>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showModes }}">
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:18px;border-top:1px solid #2C303C">
+          <span style="padding:0 6px;font:700 10px/1 'Space Mono',monospace;letter-spacing:.2em;color:#6E7488">MODO DO GRUPO</span>
+          <div style="display:flex;gap:5px">
+            <sc-for list="{{ modeBtns }}" as="it" hint-placeholder-count="3">
+              <sc-if value="{{ it.active }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ it.go }}" style="flex:1;padding:9px 6px;border:0;border-radius:7px;background:#FFB020;color:#15161C;font:800 11px/1 Archivo,sans-serif;letter-spacing:.05em;cursor:pointer">{{ it.label }}</button>
+              </sc-if>
+              <sc-if value="{{ it.idle }}">
+                <button onClick="{{ it.go }}" style="flex:1;padding:9px 6px;border:1px solid #3A3F52;border-radius:7px;background:transparent;color:#9AA2B8;font:700 11px/1 Archivo,sans-serif;letter-spacing:.05em;cursor:pointer" style-hover="border-color:#FFB020;color:#FFB020">{{ it.label }}</button>
+              </sc-if>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showMmSteps }}">
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:18px;border-top:1px solid #2C303C">
+          <span style="padding:0 6px;font:700 10px/1 'Space Mono',monospace;letter-spacing:.2em;color:#6E7488">ETAPA DA BUSCA</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ mmBtns }}" as="it" hint-placeholder-count="6">
+              <sc-if value="{{ it.active }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border:0;border-radius:7px;background:#35A7FF;color:#0A0C22;font:800 11px/1 Archivo,sans-serif;letter-spacing:.04em;text-align:left;cursor:pointer">{{ it.n }} · {{ it.label }}</button>
+              </sc-if>
+              <sc-if value="{{ it.idle }}">
+                <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border:1px solid #3A3F52;border-radius:7px;background:transparent;color:#9AA2B8;font:700 11px/1 Archivo,sans-serif;letter-spacing:.04em;text-align:left;cursor:pointer" style-hover="border-color:#35A7FF;color:#35A7FF">{{ it.n }} · {{ it.label }}</button>
+              </sc-if>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;flex-direction:column;gap:7px;padding:14px;border-radius:10px;background:#22262F">
+        <span style="font:700 10px/1 'Space Mono',monospace;letter-spacing:.16em;color:#6E7488">RESOLUÇÃO</span>
+        <span style="font:800 13px/1 Archivo,sans-serif;color:#E6E9F2">{{ resLabel }}</span>
+        <span style="font:400 11px/1.5 Archivo,sans-serif;color:#8A90A6">Canvas Scale With Screen Size · Match 0.5</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PALCO ══════════ -->
+  <div ref="{{ setWrap }}" style="flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 40%,#1E212B 0%,#101219 100%)">
+    <div ref="{{ setStage }}" style="position:absolute;left:50%;top:50%;transform-origin:center center;overflow:hidden;background:#0A0C22;box-shadow:0 40px 90px rgba(0,0,0,.6)">
+
+      <!-- ─── CENA 3D DE FUNDO (compartilhada pelo frontend) ─── -->
+      <sc-if value="{{ isFrontend }}">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#151A44 0%,#101334 46%,#0A0C22 100%)">
+          <span style="position:absolute;left:0;right:0;top:0;height:210px;background:linear-gradient(180deg,rgba(53,167,255,.14),transparent)"></span>
+          <sc-if value="{{ stageCentered }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;left:960px;top:56%;transform:translate(-50%,-50%);width:1180px;height:1180px;border-radius:50%;background:radial-gradient(circle,rgba(255,176,32,.16) 0%,rgba(255,176,32,.05) 42%,transparent 68%)"></span>
+            <span style="position:absolute;left:960px;bottom:104px;transform:translateX(-50%);width:1080px;height:250px;border-radius:50%;border:5px solid rgba(255,176,32,.34);background:radial-gradient(ellipse at 50% 42%,rgba(43,52,128,.72),rgba(10,12,34,.24))"></span>
+            <span style="position:absolute;left:960px;bottom:150px;transform:translateX(-50%);width:840px;height:180px;border-radius:50%;border:3px dashed rgba(255,247,232,.16)"></span>
+          </sc-if>
+          <sc-if value="{{ stageOffsetGarage }}">
+            <span style="position:absolute;left:1341px;top:56%;transform:translate(-50%,-50%);width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(255,176,32,.16) 0%,rgba(255,176,32,.05) 42%,transparent 68%)"></span>
+            <span style="position:absolute;left:1341px;bottom:104px;transform:translateX(-50%);width:900px;height:230px;border-radius:50%;border:5px solid rgba(255,176,32,.34);background:radial-gradient(ellipse at 50% 42%,rgba(43,52,128,.72),rgba(10,12,34,.24))"></span>
+            <span style="position:absolute;left:1341px;bottom:146px;transform:translateX(-50%);width:700px;height:168px;border-radius:50%;border:3px dashed rgba(255,247,232,.16)"></span>
+          </sc-if>
+          <span style="position:absolute;left:0;right:0;bottom:0;height:170px;background:linear-gradient(180deg,transparent,rgba(10,12,34,.92))"></span>
+          <span style="position:absolute;left:88px;top:0;width:2px;height:340px;background:linear-gradient(180deg,rgba(255,247,232,.2),transparent)"></span>
+          <span style="position:absolute;right:88px;top:0;width:2px;height:340px;background:linear-gradient(180deg,rgba(255,247,232,.2),transparent)"></span>
+        </div>
+      </sc-if>
+
+      <!-- ─── BARRA SUPERIOR DO FRONTEND ─── -->
+      <sc-if value="{{ isFrontend }}">
+        <div style="position:absolute;left:0;right:0;top:0;height:104px;display:flex;align-items:center;gap:26px;padding:0 44px;background:linear-gradient(180deg,rgba(10,12,34,.88),rgba(10,12,34,0))">
+          <div style="display:flex;flex-direction:column;transform:rotate(-2deg);flex:none">
+            <span style="font:400 27px/1 'Titan One',cursive;color:#FFF7E8;letter-spacing:.02em">PARTY</span>
+            <span style="margin-top:2px;padding:3px 10px 4px;border:3px solid #0A0C22;border-radius:7px;background:#FFB020;box-shadow:0 4px 0 #0A0C22;font:400 19px/1 'Titan One',cursive;color:#15161C;letter-spacing:.04em">RACERS</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-left:12px">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+              <sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}">
+                <div style="position:relative;padding:14px 34px;border:3px solid #0A0C22;border-radius:14px;background:#FFB020;box-shadow:0 5px 0 #0A0C22;font:400 22px/1 'Titan One',cursive;color:#15161C;letter-spacing:.03em">{{ t.label }}</div>
+              </sc-if>
+              <sc-if value="{{ t.idle }}">
+                <div style="padding:14px 30px;border:2px solid rgba(155,165,215,.28);border-radius:14px;background:rgba(16,19,52,.62);font:400 21px/1 'Titan One',cursive;color:#9AA2D8;letter-spacing:.03em;cursor:pointer" style-hover="color:#FFF7E8;border-color:rgba(255,176,32,.6)">{{ t.label }}</div>
+              </sc-if>
+            </sc-for>
+          </div>
+          <span style="flex:1"></span>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border:2px solid rgba(155,165,215,.24);border-radius:13px;background:rgba(10,12,34,.72)">
+            <span style="width:22px;height:22px;border-radius:50%;border:3px solid #0A0C22;background:radial-gradient(circle at 34% 30%,#FFE08A,#FFB020)"></span>
+            <span style="font:800 21px/1 Archivo,sans-serif;color:#FFF7E8;font-variant-numeric:tabular-nums">12.480</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border:2px solid rgba(155,165,215,.24);border-radius:13px;background:rgba(10,12,34,.72)">
+            <span style="width:20px;height:20px;background:#8C7BFF;border:3px solid #0A0C22;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)"></span>
+            <span style="font:800 21px/1 Archivo,sans-serif;color:#FFF7E8;font-variant-numeric:tabular-nums">340</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:9px 18px 9px 9px;border:2px solid rgba(155,165,215,.24);border-radius:13px;background:rgba(10,12,34,.72)">
+            <span style="width:38px;height:38px;border-radius:10px;border:3px solid #0A0C22;background:linear-gradient(140deg,#35A7FF,#2A3480)"></span>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <span style="font:800 15px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.02em">HIGOR</span>
+              <span style="display:flex;align-items:center;gap:5px;font:400 11px/1 'Space Mono',monospace;color:#3DDC97"><span style="width:6px;height:6px;border-radius:50%;background:#3DDC97"></span>ONLINE</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══════════════════ 1 · LOBBY PÚBLICO ══════════════════ -->
+      <sc-if value="{{ isLobby }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="01 Lobby público" style="position:absolute;inset:0">
+
+          <!-- carros 3D -->
+          <div style="position:absolute;left:960px;bottom:166px;transform:translateX(-50%);display:flex;align-items:flex-end;justify-content:center;gap:18px">
+            <div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:18px;width:298px">
+              <sc-for list="{{ leftCars }}" as="c" hint-placeholder-count="1">
+                <sc-if value="{{ c.isMate }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;opacity:.84">
+                    <div style="position:relative;width:140px;height:96px;border-radius:14px;border:2px dashed rgba(155,165,215,.36);background:linear-gradient(160deg,rgba(27,32,80,.44),rgba(16,19,52,.2));display:flex;align-items:center;justify-content:center">
+                      <span style="font:400 10px/1 'Space Mono',monospace;color:#9AA2D8;letter-spacing:.12em">KART 3D</span>
+                    </div>
+                    <span style="width:124px;height:26px;margin-top:-18px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(6,8,20,.6),rgba(6,8,20,0) 72%)"></span>
+                    <div style="display:flex;align-items:center;gap:7px;padding:6px 13px;border:2px solid rgba(155,165,215,.3);border-radius:9px;background:rgba(10,12,34,.8)">
+                      <span style="width:8px;height:8px;border-radius:50%;background:{{ c.dot }}"></span>
+                      <span style="font:800 14px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.03em">{{ c.name }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ c.isEmpty }}">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+                    <div style="width:140px;height:96px;border-radius:14px;border:2px dashed rgba(155,165,215,.16);display:flex;align-items:center;justify-content:center">
+                      <span style="width:40px;height:40px;border-radius:50%;border:2px dashed rgba(155,165,215,.3);display:flex;align-items:center;justify-content:center;font:400 22px/1 Archivo,sans-serif;color:#5C63A8">+</span>
+                    </div>
+                    <span style="height:26px"></span>
+                    <span style="font:700 11px/1 'Space Mono',monospace;color:#5C63A8;letter-spacing:.14em">VAGA LIVRE</span>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:14px;flex:none;animation:prBob 5.5s ease-in-out infinite">
+              <div style="position:relative;width:340px;height:196px;border-radius:20px;border:3px dashed rgba(255,176,32,.5);background:linear-gradient(160deg,rgba(43,52,128,.5),rgba(16,19,52,.24));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+                <span style="font:400 15px/1 'Space Mono',monospace;color:#FFB020;letter-spacing:.14em">KART 3D · VOCÊ</span>
+                <span style="font:400 12px/1 'Space Mono',monospace;color:#7C86C8">gira 6°/s · sempre no centro do palco</span>
+              </div>
+              <span style="width:288px;height:42px;margin-top:-26px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(6,8,20,.72),rgba(6,8,20,0) 72%)"></span>
+              <div style="display:flex;align-items:center;gap:9px;padding:9px 18px;border:3px solid #0A0C22;border-radius:12px;background:#FFB020;box-shadow:0 5px 0 #0A0C22">
+                <span style="width:15px;height:13px;background:#15161C;clip-path:polygon(0 32%,22% 0,50% 26%,78% 0,100% 32%,86% 100%,14% 100%)"></span>
+                <span style="font:400 18px/1 'Titan One',cursive;color:#15161C;letter-spacing:.03em">SEU KART</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-end;justify-content:flex-start;gap:18px;width:298px">
+              <sc-for list="{{ rightCars }}" as="c" hint-placeholder-count="2">
+                <sc-if value="{{ c.isMate }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;opacity:.84">
+                    <div style="position:relative;width:140px;height:96px;border-radius:14px;border:2px dashed rgba(155,165,215,.36);background:linear-gradient(160deg,rgba(27,32,80,.44),rgba(16,19,52,.2));display:flex;align-items:center;justify-content:center">
+                      <span style="font:400 10px/1 'Space Mono',monospace;color:#9AA2D8;letter-spacing:.12em">KART 3D</span>
+                    </div>
+                    <span style="width:124px;height:26px;margin-top:-18px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(6,8,20,.6),rgba(6,8,20,0) 72%)"></span>
+                    <div style="display:flex;align-items:center;gap:7px;padding:6px 13px;border:2px solid rgba(155,165,215,.3);border-radius:9px;background:rgba(10,12,34,.8)">
+                      <span style="width:8px;height:8px;border-radius:50%;background:{{ c.dot }}"></span>
+                      <span style="font:800 14px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.03em">{{ c.name }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ c.isEmpty }}">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+                    <div style="width:140px;height:96px;border-radius:14px;border:2px dashed rgba(155,165,215,.16);display:flex;align-items:center;justify-content:center">
+                      <span style="width:40px;height:40px;border-radius:50%;border:2px dashed rgba(155,165,215,.3);display:flex;align-items:center;justify-content:center;font:400 22px/1 Archivo,sans-serif;color:#5C63A8">+</span>
+                    </div>
+                    <span style="height:26px"></span>
+                    <span style="font:700 11px/1 'Space Mono',monospace;color:#5C63A8;letter-spacing:.14em">VAGA LIVRE</span>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- coluna esquerda: modo + grupo -->
+          <div style="position:absolute;left:44px;top:128px;width:404px;display:flex;flex-direction:column;gap:16px">
+
+            <div style="display:flex;flex-direction:column;gap:14px;padding:20px;border:2px solid rgba(155,165,215,.2);border-radius:18px;background:rgba(10,12,34,.82);backdrop-filter:blur(16px)">
+              <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#9AA2D8">MODO</span>
+              <div style="display:flex;gap:8px">
+                <sc-for list="{{ modeCards }}" as="m" hint-placeholder-count="3">
+                  <sc-if value="{{ m.active }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ m.go }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:15px 6px 13px;border:3px solid #0A0C22;border-radius:14px;background:#FFB020;box-shadow:0 5px 0 #0A0C22;cursor:pointer">
+                      <span style="display:flex;gap:3px;height:15px;align-items:flex-end">{{ m.pips }}</span>
+                      <span style="font:400 19px/1 'Titan One',cursive;color:#15161C;letter-spacing:.03em">{{ m.label }}</span>
+                      <span style="font:700 11px/1 'Space Mono',monospace;color:rgba(21,22,28,.66)">{{ m.cap }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ m.idle }}">
+                    <div onClick="{{ m.go }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:15px 6px 13px;border:2px solid rgba(155,165,215,.26);border-radius:14px;background:rgba(27,32,80,.5);cursor:pointer" style-hover="border-color:rgba(255,176,32,.7);background:rgba(42,52,128,.6)">
+                      <span style="display:flex;gap:3px;height:15px;align-items:flex-end">{{ m.pips }}</span>
+                      <span style="font:400 19px/1 'Titan One',cursive;color:#C3CEDD;letter-spacing:.03em">{{ m.label }}</span>
+                      <span style="font:700 11px/1 'Space Mono',monospace;color:#6B6F9E">{{ m.cap }}</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;padding:20px;border:2px solid rgba(155,165,215,.2);border-radius:18px;background:rgba(10,12,34,.82);backdrop-filter:blur(16px)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#9AA2D8">GRUPO</span>
+                <span style="flex:1;height:1px;background:rgba(155,165,215,.18)"></span>
+                <span style="font:800 15px/1 Archivo,sans-serif;color:#FFB020;font-variant-numeric:tabular-nums">{{ groupCount }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <sc-for list="{{ groupSlots }}" as="p" hint-placeholder-count="4">
+                  <sc-if value="{{ p.filled }}" hint-placeholder-val="{{ true }}">
+                    <div style="position:relative;display:flex;align-items:center;gap:12px;padding:11px 14px;border:2px solid {{ p.border }};border-radius:13px;background:rgba(27,32,80,.66)">
+                      <span style="position:relative;width:42px;height:42px;flex:none;border-radius:11px;border:3px solid #0A0C22;background:{{ p.avatar }}"></span>
+                      <div style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1">
+                        <div style="display:flex;align-items:center;gap:7px">
+                          <span style="font:800 16px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.name }}</span>
+                          <sc-if value="{{ p.leader }}">
+                            <span style="padding:3px 7px;border-radius:5px;background:#FFB020;font:900 9px/1 Archivo,sans-serif;color:#15161C;letter-spacing:.1em">LÍDER</span>
+                          </sc-if>
+                        </div>
+                        <span style="font:400 11px/1 'Space Mono',monospace;color:#7C86C8">{{ p.meta }}</span>
+                      </div>
+                      <sc-if value="{{ p.ready }}">
+                        <span style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;background:rgba(61,220,151,.16);font:900 11px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.09em">
+                          <span style="width:13px;height:10px;background:#3DDC97;clip-path:polygon(0 44%,38% 100%,100% 6%,84% 0,36% 68%,12% 34%)"></span>PRONTO
+                        </span>
+                      </sc-if>
+                      <sc-if value="{{ p.waiting }}">
+                        <span style="padding:7px 12px;border-radius:9px;background:rgba(255,176,32,.14);font:900 11px/1 Archivo,sans-serif;color:#FFB020;letter-spacing:.09em">AGUARDA</span>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ p.empty }}">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border:2px dashed rgba(155,165,215,.22);border-radius:13px;background:rgba(16,19,52,.34);cursor:pointer" style-hover="border-color:rgba(255,176,32,.6)">
+                      <span style="width:42px;height:42px;flex:none;border-radius:11px;border:2px dashed rgba(155,165,215,.3);display:flex;align-items:center;justify-content:center;font:400 22px/1 Archivo,sans-serif;color:#5C63A8">+</span>
+                      <span style="font:800 14px/1 Archivo,sans-serif;color:#6B6F9E;letter-spacing:.1em">CONVIDAR</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ p.locked }}">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border:2px solid rgba(155,165,215,.1);border-radius:13px;background:rgba(16,19,52,.2)">
+                      <span style="width:42px;height:42px;flex:none;border-radius:11px;background:rgba(155,165,215,.06);display:flex;align-items:center;justify-content:center">
+                        <span style="width:13px;height:11px;border-radius:2px;background:#3B4180;box-shadow:0 -5px 0 -2px transparent,inset 0 0 0 99px #3B4180"></span>
+                      </span>
+                      <span style="font:700 13px/1 'Space Mono',monospace;color:#4B5182;letter-spacing:.08em">{{ p.lockText }}</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <!-- coluna direita: amigos -->
+          <div style="position:absolute;right:44px;top:128px;width:392px;display:flex;flex-direction:column;gap:12px;padding:20px;border:2px solid rgba(155,165,215,.2);border-radius:18px;background:rgba(10,12,34,.82);backdrop-filter:blur(16px)">
+            <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#9AA2D8">AMIGOS</span>
+            <div style="display:flex;gap:6px;padding:4px;border-radius:11px;background:rgba(16,19,52,.7)">
+              <sc-for list="{{ friendTabs }}" as="f" hint-placeholder-count="2">
+                <sc-if value="{{ f.active }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ f.go }}" style="flex:1;padding:10px;border-radius:8px;background:#2A3480;text-align:center;font:800 13px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.06em;cursor:pointer">{{ f.label }}</div>
+                </sc-if>
+                <sc-if value="{{ f.idle }}">
+                  <div onClick="{{ f.go }}" style="flex:1;padding:10px;border-radius:8px;text-align:center;font:700 13px/1 Archivo,sans-serif;color:#7C86C8;letter-spacing:.06em;cursor:pointer" style-hover="color:#C3CEDD">{{ f.label }}</div>
+                </sc-if>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;height:452px;overflow-y:auto;padding-right:6px;background:rgba(16,19,52,.42);border-radius:12px">
+              <sc-for list="{{ friends }}" as="f" hint-placeholder-count="7">
+                <div style="display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;background:rgba(27,32,80,.42)" style-hover="background:rgba(42,52,128,.6)">
+                  <span style="position:relative;width:38px;height:38px;flex:none;border-radius:10px;border:2px solid #0A0C22;background:{{ f.avatar }}">
+                    <span style="position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;border:2px solid #0A0C22;background:{{ f.dot }}"></span>
+                  </span>
+                  <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">
+                    <span style="font:700 14px/1 Archivo,sans-serif;color:#FFF7E8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.name }}</span>
+                    <span style="font:400 11px/1 'Space Mono',monospace;color:{{ f.stateColor }}">{{ f.state }}</span>
+                  </div>
+                  <sc-if value="{{ f.can }}">
+                    <button style="padding:8px 14px;border:2px solid #0A0C22;border-radius:9px;background:#3DDC97;box-shadow:0 3px 0 #0A0C22;font:900 11px/1 Archivo,sans-serif;color:#0A0C22;letter-spacing:.08em;cursor:pointer" style-hover="background:#5BE8AB" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(3px)">CONVIDAR</button>
+                  </sc-if>
+                  <sc-if value="{{ f.cant }}">
+                    <span style="padding:8px 12px;border-radius:9px;background:rgba(155,165,215,.08);font:800 11px/1 Archivo,sans-serif;color:#5C63A8;letter-spacing:.08em">{{ f.cantLabel }}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- barra de ação inferior -->
+          <div style="position:absolute;left:44px;right:44px;bottom:36px;display:flex;align-items:center;gap:18px;padding:18px 22px;border:2px solid rgba(155,165,215,.2);border-radius:20px;background:rgba(10,12,34,.9);backdrop-filter:blur(16px)">
+            <div style="display:flex;flex-direction:column;gap:6px;width:300px">
+              <span style="font:700 11px/1 'Space Mono',monospace;letter-spacing:.18em;color:#7C86C8">MAPA</span>
+              <span style="font:400 21px/1 'Titan One',cursive;color:#FFF7E8;letter-spacing:.02em">SORTEADO PELO JOGO</span>
+            </div>
+            <span style="width:2px;height:52px;background:rgba(155,165,215,.16)"></span>
+            <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+              <span style="font:700 11px/1 'Space Mono',monospace;letter-spacing:.18em;color:#7C86C8">ESTADO DO GRUPO</span>
+              <span style="font:800 18px/1 Archivo,sans-serif;color:{{ groupStatusColor }};letter-spacing:.02em">{{ groupStatus }}</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center">
+              <sc-if value="{{ meReady }}">
+                <button onClick="{{ toggleReady }}" style="padding:20px 34px;border:3px solid #0A0C22;border-radius:16px;background:rgba(27,32,80,.9);box-shadow:0 6px 0 #0A0C22;font:400 24px/1 'Titan One',cursive;color:#C3CEDD;letter-spacing:.03em;cursor:pointer" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">CANCELAR</button>
+              </sc-if>
+              <sc-if value="{{ meNotReady }}">
+                <button onClick="{{ toggleReady }}" style="padding:20px 40px;border:3px solid #0A0C22;border-radius:16px;background:#FFB020;box-shadow:0 6px 0 #0A0C22;font:400 24px/1 'Titan One',cursive;color:#15161C;letter-spacing:.03em;cursor:pointer" style-hover="background:#FFC24D" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">FICAR PRONTO</button>
+              </sc-if>
+              <sc-if value="{{ canSearch }}">
+                <button onClick="{{ goMm }}" style="display:flex;align-items:center;gap:14px;padding:20px 46px;border:3px solid #0A0C22;border-radius:16px;background:#3DDC97;box-shadow:0 6px 0 #0A0C22;font:400 30px/1 'Titan One',cursive;color:#0A0C22;letter-spacing:.03em;cursor:pointer" style-hover="background:#5BE8AB" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">
+                  <span style="width:20px;height:22px;background:#0A0C22;clip-path:polygon(0 0,100% 50%,0 100%)"></span>BUSCAR PARTIDA
+                </button>
+              </sc-if>
+              <sc-if value="{{ cantSearch }}">
+                <div style="display:flex;flex-direction:column;gap:5px;align-items:center;padding:18px 40px;border:3px dashed rgba(155,165,215,.24);border-radius:16px;background:rgba(16,19,52,.5)">
+                  <span style="font:400 26px/1 'Titan One',cursive;color:#4B5182;letter-spacing:.03em">BUSCAR PARTIDA</span>
+                  <span style="font:700 11px/1 'Space Mono',monospace;color:#5C63A8;letter-spacing:.08em">{{ blockReason }}</span>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══════════════════ 2 · BUSCANDO PARTIDA (RÁDIO) ══════════════════ -->
+      <sc-if value="{{ isMm }}">
+        <div data-screen-label="02 Buscando partida" style="position:absolute;inset:0;background:rgba(6,8,24,.7);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center">
+          <div style="position:relative;width:1420px;display:flex;flex-direction:column;gap:0;border:4px solid #0A0C22;border-radius:28px;background:linear-gradient(180deg,#161B48,#0E1130);box-shadow:0 16px 0 #06081A,0 40px 90px rgba(0,0,0,.5);overflow:hidden">
+
+            <span style="position:absolute;left:0;right:0;top:0;height:10px;background:repeating-linear-gradient(-45deg,#FFB020 0 22px,#0A0C22 22px 44px)"></span>
+
+            <!-- cabeçalho -->
+            <div style="display:flex;align-items:center;gap:20px;padding:34px 40px 22px">
+              <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.24em;color:#FFB020">CANAL DE CORRIDA · 88.4 FM</span>
+                <span style="font:400 40px/1 'Titan One',cursive;color:#FFF7E8;letter-spacing:.01em">{{ mmTitle }}</span>
+                <span style="font:400 16px/1.4 Archivo,sans-serif;color:#9AA2D8">{{ mmSub }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+                <span style="font:700 11px/1 'Space Mono',monospace;letter-spacing:.2em;color:#7C86C8">TEMPO DE BUSCA</span>
+                <span style="font:400 56px/0.9 'Titan One',cursive;color:{{ mmTimerColor }};font-variant-numeric:tabular-nums">{{ mmTimer }}</span>
+              </div>
+            </div>
+
+            <!-- dial de rádio -->
+            <div style="margin:0 40px;position:relative;height:216px;border:3px solid #0A0C22;border-radius:18px;background:linear-gradient(180deg,#0A0C22,#12163A);overflow:hidden">
+              <span style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(155,165,215,.09) 0 1px,transparent 1px 40px)"></span>
+              <span style="position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(155,165,215,.2)"></span>
+              <div style="position:absolute;left:0;right:0;top:14px;display:flex;justify-content:space-between;padding:0 22px">
+                <sc-for list="{{ dialTicks }}" as="d" hint-placeholder-count="9">
+                  <span style="font:400 11px/1 'Space Mono',monospace;color:#4B5182">{{ d.v }}</span>
+                </sc-for>
+              </div>
+
+              <!-- blips = jogadores encontrados -->
+              <sc-for list="{{ blips }}" as="b" hint-placeholder-count="6">
+                <div style="position:absolute;left:{{ b.x }};top:{{ b.y }};transform:translate(-50%,-50%);animation:prBlip .5s ease-out both;display:flex;flex-direction:column;align-items:center;gap:6px">
+                  <span style="width:14px;height:14px;border-radius:50%;border:3px solid #0A0C22;background:{{ b.color }};box-shadow:0 0 18px {{ b.color }}"></span>
+                  <span style="padding:3px 8px;border-radius:5px;background:rgba(10,12,34,.9);font:700 10px/1 'Space Mono',monospace;color:{{ b.color }};letter-spacing:.06em;white-space:nowrap">{{ b.name }}</span>
+                </div>
+              </sc-for>
+
+              <!-- agulha -->
+              <sc-if value="{{ mmScanning }}">
+                <div style="position:absolute;top:0;bottom:0;width:3px;background:#FFB020;box-shadow:0 0 26px 5px rgba(255,176,32,.6);animation:prSweep 2.6s ease-in-out infinite alternate">
+                  <span style="position:absolute;left:50%;top:-1px;transform:translateX(-50%);width:19px;height:15px;background:#FFB020;border:3px solid #0A0C22;clip-path:polygon(0 0,100% 0,50% 100%)"></span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ mmLocked }}">
+                <div style="position:absolute;top:0;bottom:0;left:66%;width:3px;background:#3DDC97;box-shadow:0 0 30px 6px rgba(61,220,151,.55)">
+                  <span style="position:absolute;left:50%;top:-1px;transform:translateX(-50%);width:19px;height:15px;background:#3DDC97;border:3px solid #0A0C22;clip-path:polygon(0 0,100% 0,50% 100%)"></span>
+                </div>
+              </sc-if>
+
+              <!-- onda de sinal -->
+              <div style="position:absolute;right:26px;bottom:20px;display:flex;align-items:flex-end;gap:4px;height:38px">
+                <sc-for list="{{ signalBars }}" as="s" hint-placeholder-count="7">
+                  <span style="width:6px;height:{{ s.h }};border-radius:2px;background:{{ s.c }};animation:prPulse {{ s.d }} ease-in-out infinite"></span>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- vagas -->
+            <div style="display:flex;flex-direction:column;gap:14px;padding:26px 40px 0">
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#9AA2D8">SALA</span>
+                <span style="flex:1;height:1px;background:rgba(155,165,215,.16)"></span>
+                <span style="font:800 15px/1 Archivo,sans-serif;color:#FFF7E8;font-variant-numeric:tabular-nums">{{ mmFilled }} / 16</span>
+                <sc-if value="{{ mmHasBots }}">
+                  <span style="padding:5px 11px;border-radius:7px;background:rgba(140,123,255,.16);font:900 10px/1 Archivo,sans-serif;color:#8C7BFF;letter-spacing:.1em">{{ mmBotCount }} BOTS</span>
+                </sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px">
+                <sc-for list="{{ mmSlots }}" as="s" hint-placeholder-count="12">
+                  <sc-if value="{{ s.human }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:14px 8px;border:3px solid #0A0C22;border-radius:14px;background:rgba(42,52,128,.8);animation:prBlip .35s ease-out both">
+                      <span style="width:44px;height:44px;border-radius:11px;border:3px solid #0A0C22;background:{{ s.avatar }}"></span>
+                      <span style="font:800 12px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.03em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ s.mate }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:14px 8px;border:3px solid #FFB020;border-radius:14px;background:rgba(255,176,32,.14)">
+                      <span style="width:44px;height:44px;border-radius:11px;border:3px solid #0A0C22;background:{{ s.avatar }}"></span>
+                      <span style="font:800 12px/1 Archivo,sans-serif;color:#FFB020;letter-spacing:.03em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ s.bot }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:14px 8px;border:3px solid #0A0C22;border-radius:14px;background:rgba(140,123,255,.16);animation:prBlip .35s ease-out both">
+                      <span style="width:44px;height:44px;border-radius:11px;border:3px solid #0A0C22;background:linear-gradient(140deg,#8C7BFF,#4B3FA8);display:flex;align-items:center;justify-content:center">
+                        <span style="width:18px;height:14px;border-radius:3px;background:#0A0C22"></span>
+                      </span>
+                      <span style="font:800 12px/1 Archivo,sans-serif;color:#8C7BFF;letter-spacing:.06em">BOT</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ s.empty }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:14px 8px;border:3px dashed rgba(155,165,215,.2);border-radius:14px">
+                      <span style="width:44px;height:44px;border-radius:11px;border:2px dashed rgba(155,165,215,.24)"></span>
+                      <span style="font:700 11px/1 'Space Mono',monospace;color:#4B5182;letter-spacing:.06em">···</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- etapas -->
+            <div style="display:flex;gap:0;margin:26px 40px 0;border:3px solid #0A0C22;border-radius:14px;overflow:hidden">
+              <sc-for list="{{ mmStages }}" as="st" hint-placeholder-count="5">
+                <sc-if value="{{ st.done }}" hint-placeholder-val="{{ true }}">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 8px;background:rgba(61,220,151,.18);border-right:2px solid #0A0C22">
+                    <span style="width:13px;height:10px;background:#3DDC97;clip-path:polygon(0 44%,38% 100%,100% 6%,84% 0,36% 68%,12% 34%)"></span>
+                    <span style="font:800 12px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.06em">{{ st.label }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ st.now }}">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 8px;background:#FFB020;border-right:2px solid #0A0C22">
+                    <span style="width:10px;height:10px;border-radius:50%;background:#15161C;animation:prPulse 1s ease-in-out infinite"></span>
+                    <span style="font:900 12px/1 Archivo,sans-serif;color:#15161C;letter-spacing:.06em">{{ st.label }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ st.todo }}">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 8px;background:rgba(16,19,52,.7);border-right:2px solid #0A0C22">
+                    <span style="width:10px;height:10px;border-radius:50%;border:2px solid #4B5182"></span>
+                    <span style="font:700 12px/1 Archivo,sans-serif;color:#5C63A8;letter-spacing:.06em">{{ st.label }}</span>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </div>
+
+            <!-- rodapé -->
+            <div style="display:flex;align-items:center;gap:20px;padding:24px 40px 32px">
+              <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+                <div style="height:14px;border:3px solid #0A0C22;border-radius:9px;background:#0A0C22;overflow:hidden">
+                  <span style="display:block;height:100%;width:{{ mmProgress }};background:linear-gradient(90deg,#FFB020,#FF7A2B);border-radius:6px"></span>
+                </div>
+                <span style="font:400 12px/1 'Space Mono',monospace;color:#7C86C8">{{ mmHint }}</span>
+              </div>
+              <sc-if value="{{ mmCancelable }}">
+                <button onClick="{{ goLobby }}" style="padding:16px 30px;border:3px solid #0A0C22;border-radius:14px;background:rgba(27,32,80,.9);box-shadow:0 5px 0 #0A0C22;font:400 20px/1 'Titan One',cursive;color:#FF8DA0;letter-spacing:.03em;cursor:pointer" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(5px)">CANCELAR BUSCA</button>
+              </sc-if>
+              <sc-if value="{{ mmGoRace }}">
+                <button onClick="{{ goHud }}" style="padding:16px 40px;border:3px solid #0A0C22;border-radius:14px;background:#3DDC97;box-shadow:0 5px 0 #0A0C22;font:400 24px/1 'Titan One',cursive;color:#0A0C22;letter-spacing:.03em;cursor:pointer" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(5px)">ENTRAR NA PISTA</button>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══════════════════ 3 · PARTIDA PERSONALIZADA ══════════════════ -->
+      <sc-if value="{{ isCustom }}">
+        <div data-screen-label="03 Partida personalizada" style="position:absolute;inset:0">
+          <div style="position:absolute;left:44px;top:128px;right:44px;bottom:36px;display:flex;gap:16px">
+
+            <div style="flex:1;display:flex;flex-direction:column;gap:14px;padding:22px;border:2px solid rgba(155,165,215,.2);border-radius:20px;background:rgba(10,12,34,.88);backdrop-filter:blur(16px)">
+              <div style="display:flex;align-items:center;gap:16px">
+                <span style="font:400 27px/1 'Titan One',cursive;color:#FFF7E8;letter-spacing:.02em">SALA PRIVADA</span>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border:3px solid #0A0C22;border-radius:11px;background:#FFB020">
+                  <span style="font:700 22px/1 'Space Mono',monospace;color:#15161C;letter-spacing:.28em">7KQ2XM</span>
+                  <span style="width:16px;height:16px;border:2px solid #15161C;border-radius:3px;cursor:pointer"></span>
+                </div>
+                <span style="flex:1"></span>
+                <span style="padding:9px 16px;border-radius:10px;background:rgba(61,220,151,.14);font:800 14px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.06em;font-variant-numeric:tabular-nums">9 / 16</span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;flex:1">
+                <sc-for list="{{ customSlots }}" as="p" hint-placeholder-count="16">
+                  <sc-if value="{{ p.player }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border:2px solid {{ p.border }};border-radius:12px;background:rgba(27,32,80,.6)">
+                      <span style="width:12px;font:700 13px/1 'Space Mono',monospace;color:#7C86C8;font-variant-numeric:tabular-nums">{{ p.n }}</span>
+                      <span style="width:34px;height:34px;flex:none;border-radius:9px;border:2px solid #0A0C22;background:{{ p.avatar }}"></span>
+                      <span style="flex:1;min-width:0;font:800 14px/1 Archivo,sans-serif;color:#FFF7E8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.name }}</span>
+                      <sc-if value="{{ p.host }}">
+                        <span style="padding:4px 8px;border-radius:5px;background:#FFB020;font:900 9px/1 Archivo,sans-serif;color:#15161C;letter-spacing:.09em">ANFITRIÃO</span>
+                      </sc-if>
+                      <sc-if value="{{ p.ready }}">
+                        <span style="width:15px;height:12px;background:#3DDC97;clip-path:polygon(0 44%,38% 100%,100% 6%,84% 0,36% 68%,12% 34%)"></span>
+                      </sc-if>
+                      <sc-if value="{{ p.waiting }}">
+                        <span style="width:12px;height:12px;border-radius:50%;border:2px solid #FFB020"></span>
+                      </sc-if>
+                      <span style="width:22px;height:22px;border-radius:6px;background:rgba(255,77,109,.14);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#FF4D6D">
+                        <span style="width:9px;height:2px;background:#FF8DA0"></span>
+                      </span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ p.bot }}">
+                    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border:2px solid rgba(140,123,255,.34);border-radius:12px;background:rgba(140,123,255,.1)">
+                      <span style="width:12px;font:700 13px/1 'Space Mono',monospace;color:#7C86C8;font-variant-numeric:tabular-nums">{{ p.n }}</span>
+                      <span style="width:34px;height:34px;flex:none;border-radius:9px;border:2px solid #0A0C22;background:linear-gradient(140deg,#8C7BFF,#4B3FA8)"></span>
+                      <span style="flex:1;font:800 14px/1 Archivo,sans-serif;color:#8C7BFF;letter-spacing:.04em">{{ p.name }}</span>
+                      <span style="padding:4px 9px;border-radius:5px;background:rgba(140,123,255,.2);font:900 9px/1 Archivo,sans-serif;color:#8C7BFF;letter-spacing:.09em">BOT</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ p.empty }}">
+                    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border:2px dashed rgba(155,165,215,.18);border-radius:12px;cursor:pointer" style-hover="border-color:rgba(255,176,32,.55)">
+                      <span style="width:12px;font:700 13px/1 'Space Mono',monospace;color:#3B4180;font-variant-numeric:tabular-nums">{{ p.n }}</span>
+                      <span style="width:34px;height:34px;flex:none;border-radius:9px;border:2px dashed rgba(155,165,215,.24);display:flex;align-items:center;justify-content:center;font:400 18px/1 Archivo,sans-serif;color:#4B5182">+</span>
+                      <span style="font:700 13px/1 'Space Mono',monospace;color:#4B5182;letter-spacing:.08em">CONVIDAR</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="width:472px;flex:none;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;flex-direction:column;gap:13px;padding:22px;border:2px solid rgba(155,165,215,.2);border-radius:20px;background:rgba(10,12,34,.88);backdrop-filter:blur(16px)">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#9AA2D8">MAPA</span>
+                  <span style="flex:1;height:1px;background:rgba(155,165,215,.16)"></span>
+                  <span style="padding:5px 11px;border-radius:6px;background:rgba(255,176,32,.16);font:900 10px/1 Archivo,sans-serif;color:#FFB020;letter-spacing:.1em">ESCOLHA MANUAL</span>
+                </div>
+                <div style="position:relative;height:228px;border:3px solid #0A0C22;border-radius:14px;background:linear-gradient(160deg,#2A6B3A,#14351F);display:flex;align-items:center;justify-content:center;overflow:hidden">
+                  <span style="font:400 13px/1 'Space Mono',monospace;color:rgba(255,247,232,.6);letter-spacing:.14em">RENDER DA PISTA</span>
+                  <span style="position:absolute;left:14px;bottom:14px;padding:6px 12px;border-radius:8px;background:rgba(10,12,34,.86);font:700 11px/1 'Space Mono',monospace;color:#3DDC97;letter-spacing:.1em">3 VOLTAS · MÉDIA</span>
+                </div>
+                <span style="font:400 25px/1 'Titan One',cursive;color:#FFF7E8;letter-spacing:.02em">MINI GOLFE RUN</span>
+                <span style="font:400 14px/1.5 Archivo,sans-serif;color:#9AA2D8;text-wrap:pretty">Dois níveis, dois saltos e atalhos no gramado. Armadilha de moinho na volta final.</span>
+                <div style="display:flex;gap:7px">
+                  <sc-for list="{{ mapDots }}" as="d" hint-placeholder-count="5">
+                    <sc-if value="{{ d.on }}" hint-placeholder-val="{{ true }}">
+                      <span style="flex:1;height:5px;border-radius:3px;background:#FFB020"></span>
+                    </sc-if>
+                    <sc-if value="{{ d.off }}">
+                      <span style="flex:1;height:5px;border-radius:3px;background:rgba(155,165,215,.2);cursor:pointer"></span>
+                    </sc-if>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:11px;padding:22px;border:2px solid rgba(155,165,215,.2);border-radius:20px;background:rgba(10,12,34,.88);backdrop-filter:blur(16px)">
+                <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#9AA2D8">REGRAS</span>
+                <sc-for list="{{ customRules }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:12px">
+                    <span style="flex:1;font:700 14px/1 Archivo,sans-serif;color:#C3CEDD">{{ r.label }}</span>
+                    <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:9px;background:rgba(27,32,80,.7)">
+                      <span style="width:16px;height:16px;border-radius:4px;background:rgba(155,165,215,.2);cursor:pointer"></span>
+                      <span style="min-width:58px;text-align:center;font:800 14px/1 Archivo,sans-serif;color:#FFF7E8">{{ r.value }}</span>
+                      <span style="width:16px;height:16px;border-radius:4px;background:rgba(155,165,215,.2);cursor:pointer"></span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <span style="flex:1"></span>
+
+              <div style="display:flex;gap:12px">
+                <button style="flex:none;padding:20px 28px;border:3px solid #0A0C22;border-radius:16px;background:rgba(27,32,80,.9);box-shadow:0 6px 0 #0A0C22;font:400 20px/1 'Titan One',cursive;color:#C3CEDD;cursor:pointer" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">+ BOTS</button>
+                <button onClick="{{ goHud }}" style="flex:1;padding:20px;border:3px solid #0A0C22;border-radius:16px;background:#3DDC97;box-shadow:0 6px 0 #0A0C22;font:400 28px/1 'Titan One',cursive;color:#0A0C22;letter-spacing:.03em;cursor:pointer" style-hover="background:#5BE8AB" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">INICIAR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══════════════════ 4 · GARAGEM ══════════════════ -->
+      <sc-if value="{{ isGarage }}">
+        <div data-screen-label="04 Garagem" style="position:absolute;inset:0">
+
+          <div style="position:absolute;left:1341px;bottom:214px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:12px">
+            <div style="width:760px;height:352px;border-radius:22px;border:3px dashed rgba(255,176,32,.45);background:linear-gradient(160deg,rgba(43,52,128,.44),rgba(16,19,52,.2));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+              <span style="font:400 17px/1 'Space Mono',monospace;color:#FFB020;letter-spacing:.14em">KART 3D</span>
+              <span style="font:400 13px/1.6 'Space Mono',monospace;color:#7C86C8;text-align:center">câmera focada em <span style="color:#FFF7E8">{{ camTarget }}</span><br>lerp 0.45s · easeInOutCubic</span>
+            </div>
+            <span style="width:620px;height:56px;margin-top:-34px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(6,8,20,.76),rgba(6,8,20,0) 72%)"></span>
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:10px;background:rgba(10,12,34,.86);border:2px solid rgba(53,167,255,.4)">
+              <span style="width:9px;height:9px;border-radius:50%;background:#35A7FF;animation:prPulse 1.4s ease-in-out infinite"></span>
+              <span style="font:700 12px/1 'Space Mono',monospace;color:#35A7FF;letter-spacing:.1em">{{ camPose }}</span>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:44px;top:128px;bottom:36px;width:718px;display:flex;flex-direction:column;gap:14px;padding:22px;border:2px solid rgba(155,165,215,.2);border-radius:20px;background:rgba(10,12,34,.88);backdrop-filter:blur(16px)">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{ garageCats }}" as="c" hint-placeholder-count="7">
+                <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ c.go }}" style="padding:11px 20px;border:3px solid #0A0C22;border-radius:12px;background:#FFB020;box-shadow:0 4px 0 #0A0C22;font:400 17px/1 'Titan One',cursive;color:#15161C;letter-spacing:.03em;cursor:pointer">{{ c.label }}</div>
+                </sc-if>
+                <sc-if value="{{ c.idle }}">
+                  <div onClick="{{ c.go }}" style="padding:11px 20px;border:2px solid rgba(155,165,215,.24);border-radius:12px;background:rgba(27,32,80,.5);font:400 17px/1 'Titan One',cursive;color:#9AA2D8;letter-spacing:.03em;cursor:pointer" style-hover="color:#FFF7E8;border-color:rgba(255,176,32,.55)">{{ c.label }}</div>
+                </sc-if>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font:700 12px/1 'Space Mono',monospace;letter-spacing:.2em;color:#7C86C8">{{ gridCount }}</span>
+              <span style="flex:1;height:1px;background:rgba(155,165,215,.14)"></span>
+              <span style="padding:5px 10px;border-radius:6px;background:rgba(61,220,151,.14);font:900 10px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.1em">EQUIPADO</span>
+              <span style="padding:5px 10px;border-radius:6px;background:rgba(255,176,32,.14);font:900 10px/1 Archivo,sans-serif;color:#FFB020;letter-spacing:.1em">NOVO</span>
+              <span style="padding:5px 10px;border-radius:6px;background:rgba(155,165,215,.1);font:900 10px/1 Archivo,sans-serif;color:#6B6F9E;letter-spacing:.1em">BLOQUEADO</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:min-content;gap:11px;overflow-y:auto;padding-right:6px;align-content:start;flex:1">
+              <sc-for list="{{ garageItems }}" as="g" hint-placeholder-count="12">
+                <sc-if value="{{ g.equipped }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:relative;display:flex;flex-direction:column;gap:0;border:4px solid #3DDC97;border-radius:15px;background:rgba(61,220,151,.1);overflow:hidden;cursor:pointer">
+                    <div style="height:118px;background:linear-gradient(160deg,{{ g.c1 }},{{ g.c2 }});display:flex;align-items:center;justify-content:center">
+                      <span style="font:400 11px/1 'Space Mono',monospace;color:rgba(255,247,232,.66)">PREVIEW</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:3px;padding:9px 11px;background:rgba(10,12,34,.9)">
+                      <span style="font:800 13px/1.1 Archivo,sans-serif;color:#FFF7E8">{{ g.name }}</span>
+                      <span style="font:900 9px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.12em">EQUIPADO</span>
+                    </div>
+                    <span style="position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:7px;border:3px solid #0A0C22;background:#3DDC97;display:flex;align-items:center;justify-content:center">
+                      <span style="width:11px;height:9px;background:#0A0C22;clip-path:polygon(0 44%,38% 100%,100% 6%,84% 0,36% 68%,12% 34%)"></span>
+                    </span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ g.selected }}">
+                  <div style="position:relative;display:flex;flex-direction:column;border:4px solid #FFB020;border-radius:15px;background:rgba(255,176,32,.1);overflow:hidden;cursor:pointer;box-shadow:0 0 0 3px rgba(255,176,32,.24)">
+                    <div style="height:118px;background:linear-gradient(160deg,{{ g.c1 }},{{ g.c2 }});display:flex;align-items:center;justify-content:center">
+                      <span style="font:400 11px/1 'Space Mono',monospace;color:rgba(255,247,232,.66)">PREVIEW</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:3px;padding:9px 11px;background:rgba(10,12,34,.9)">
+                      <span style="font:800 13px/1.1 Archivo,sans-serif;color:#FFF7E8">{{ g.name }}</span>
+                      <span style="font:900 9px/1 Archivo,sans-serif;color:#FFB020;letter-spacing:.12em">SELECIONADO</span>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ g.free }}">
+                  <div style="position:relative;display:flex;flex-direction:column;border:2px solid rgba(155,165,215,.22);border-radius:15px;background:rgba(27,32,80,.44);overflow:hidden;cursor:pointer" style-hover="border-color:rgba(255,247,232,.5)">
+                    <div style="height:118px;background:linear-gradient(160deg,{{ g.c1 }},{{ g.c2 }});display:flex;align-items:center;justify-content:center">
+                      <span style="font:400 11px/1 'Space Mono',monospace;color:rgba(255,247,232,.56)">PREVIEW</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:3px;padding:9px 11px;background:rgba(10,12,34,.86)">
+                      <span style="font:800 13px/1.1 Archivo,sans-serif;color:#C3CEDD">{{ g.name }}</span>
+                      <span style="font:700 9px/1 'Space Mono',monospace;color:#6B6F9E;letter-spacing:.1em">{{ g.rarity }}</span>
+                    </div>
+                    <sc-if value="{{ g.isNew }}">
+                      <span style="position:absolute;left:8px;top:8px;padding:4px 8px;border:2px solid #0A0C22;border-radius:6px;background:#FFB020;font:900 9px/1 Archivo,sans-serif;color:#15161C;letter-spacing:.1em">NOVO</span>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ g.locked }}">
+                  <div style="position:relative;display:flex;flex-direction:column;border:2px solid rgba(155,165,215,.12);border-radius:15px;background:rgba(16,19,52,.6);overflow:hidden;cursor:pointer">
+                    <div style="height:118px;background:linear-gradient(160deg,rgba(75,81,130,.5),rgba(16,19,52,.7));display:flex;align-items:center;justify-content:center">
+                      <span style="width:26px;height:30px;display:flex;flex-direction:column;align-items:center">
+                        <span style="width:17px;height:14px;border:3px solid #6B6F9E;border-bottom:0;border-radius:9px 9px 0 0"></span>
+                        <span style="width:26px;height:18px;border-radius:4px;background:#6B6F9E"></span>
+                      </span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:3px;padding:9px 11px;background:rgba(10,12,34,.9)">
+                      <span style="font:800 13px/1.1 Archivo,sans-serif;color:#6B6F9E">{{ g.name }}</span>
+                      <span style="font:700 9px/1 'Space Mono',monospace;color:#8C7BFF;letter-spacing:.06em">{{ g.unlock }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="position:absolute;right:44px;bottom:36px;display:flex;gap:12px">
+            <button style="padding:18px 28px;border:3px solid #0A0C22;border-radius:15px;background:rgba(27,32,80,.9);box-shadow:0 6px 0 #0A0C22;font:400 19px/1 'Titan One',cursive;color:#C3CEDD;cursor:pointer" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">DESFAZER</button>
+            <button onClick="{{ goLobby }}" style="padding:18px 40px;border:3px solid #0A0C22;border-radius:15px;background:#3DDC97;box-shadow:0 6px 0 #0A0C22;font:400 24px/1 'Titan One',cursive;color:#0A0C22;letter-spacing:.03em;cursor:pointer" style-hover="background:#5BE8AB" style-active="box-shadow:0 0 0 #0A0C22;transform:translateY(6px)">EQUIPAR</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══════════════════ 5 · HUD DE CORRIDA (PC) ══════════════════ -->
+      <sc-if value="{{ isHud }}">
+        <div data-screen-label="05 HUD corrida PC" style="position:absolute;inset:0;background:linear-gradient(170deg,#4FA8DC 0%,#67B98C 42%,#3E8C58 100%)">
+          <span style="position:absolute;left:0;right:0;bottom:0;height:52%;background:linear-gradient(180deg,transparent,rgba(10,12,34,.28))"></span>
+          <span style="position:absolute;left:50%;top:56%;transform:translateX(-50%);width:640px;height:520px;background:linear-gradient(180deg,#63C77E,#3E8C58);clip-path:polygon(38% 0,62% 0,100% 100%,0 100%)"></span>
+          <span style="position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);font:400 14px/1 'Space Mono',monospace;color:rgba(10,12,34,.36);letter-spacing:.2em">GAMEPLAY 3D</span>
+
+          <!-- arco de perigo -->
+          <sc-if value="{{ hudDanger }}">
+            <span style="position:absolute;inset:0;box-shadow:inset 0 0 190px 46px rgba(255,77,109,.72);animation:prDanger .25s ease-in-out infinite;pointer-events:none"></span>
+          </sc-if>
+          <sc-if value="{{ hudHealFlash }}">
+            <span style="position:absolute;inset:0;box-shadow:inset 0 0 170px 40px rgba(61,220,151,.5);pointer-events:none"></span>
+          </sc-if>
+          <sc-if value="{{ hudShieldOn }}">
+            <span style="position:absolute;inset:0;box-shadow:inset 0 0 150px 34px rgba(53,167,255,.42);pointer-events:none"></span>
+          </sc-if>
+
+          <!-- topo-centro: volta e tempo -->
+          <div style="position:absolute;left:50%;top:32px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="display:flex;align-items:stretch;gap:10px">
+              <div style="display:flex;align-items:center;padding:13px 22px;border:4px solid #0A0C22;border-radius:14px;background:#FFB020;box-shadow:0 6px 0 #0A0C22;font:400 30px/1 'Titan One',cursive;color:#15161C;letter-spacing:.02em">VOLTA 2/3</div>
+              <div style="display:flex;align-items:center;padding:13px 26px;border:4px solid #0A0C22;border-radius:14px;background:#0A0C22;box-shadow:0 6px 0 rgba(0,0,0,.4);font:400 40px/1 'Titan One',cursive;color:#FFF7E8;font-variant-numeric:tabular-nums;letter-spacing:.01em">01:12.480</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <span style="padding:6px 13px;border:3px solid #0A0C22;border-radius:9px;background:rgba(10,12,34,.82);font:700 15px/1 'Space Mono',monospace;color:#C3CEDD">ÚLT 01:14.902</span>
+              <span style="padding:6px 13px;border:3px solid #0A0C22;border-radius:9px;background:#3DDC97;font:700 15px/1 'Space Mono',monospace;color:#0A0C22">MELH 01:11.302</span>
+            </div>
+          </div>
+
+          <!-- topo-esquerda: posição -->
+          <div style="position:absolute;left:36px;top:32px;display:flex;align-items:center;gap:14px">
+            <div style="display:flex;align-items:baseline;gap:3px;padding:12px 20px 14px;border:4px solid #0A0C22;border-radius:16px;background:#FFF7E8;box-shadow:0 6px 0 #0A0C22;transform:rotate(-2deg)">
+              <span style="font:400 54px/0.85 'Titan One',cursive;color:#15161C">4</span>
+              <span style="font:400 22px/1 'Titan One',cursive;color:#15161C">º</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font:700 13px/1 'Space Mono',monospace;letter-spacing:.16em;color:rgba(10,12,34,.62)">DE 12</span>
+              <span style="padding:5px 11px;border-radius:7px;background:rgba(10,12,34,.78);font:800 13px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.06em">+2 POSIÇÕES</span>
+            </div>
+          </div>
+
+          <!-- direita: classificação -->
+          <div style="position:absolute;right:36px;top:32px;width:328px;display:flex;flex-direction:column;gap:5px">
+            <sc-for list="{{ standings }}" as="s" hint-placeholder-count="6">
+              <sc-if value="{{ s.me }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border:4px solid #0A0C22;border-radius:12px;background:#FFB020;box-shadow:0 4px 0 #0A0C22">
+                  <span style="width:30px;text-align:center;font:400 22px/1 'Titan One',cursive;color:#15161C">{{ s.pos }}</span>
+                  <span style="flex:1;font:900 16px/1 Archivo,sans-serif;color:#15161C;letter-spacing:.04em">{{ s.name }}</span>
+                  <span style="font:700 14px/1 'Space Mono',monospace;color:rgba(21,22,28,.7)">{{ s.gap }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ s.other }}">
+                <div style="display:flex;align-items:center;gap:11px;padding:8px 13px;border-radius:11px;background:rgba(10,12,34,.72)">
+                  <span style="width:30px;text-align:center;font:800 15px/1 Archivo,sans-serif;color:#9AA2D8;font-variant-numeric:tabular-nums">{{ s.pos }}</span>
+                  <span style="flex:1;font:700 14px/1 Archivo,sans-serif;color:#E6E9F2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</span>
+                  <span style="font:400 13px/1 'Space Mono',monospace;color:#7C86C8">{{ s.gap }}</span>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+
+          <!-- toasts -->
+          <div style="position:absolute;left:36px;bottom:172px;display:flex;flex-direction:column-reverse;gap:7px;width:340px">
+            <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border:3px solid #0A0C22;border-radius:11px;background:rgba(10,12,34,.9);opacity:{{ t.op }}">
+                <span style="width:26px;height:26px;flex:none;border-radius:7px;background:{{ t.color }}"></span>
+                <span style="font:700 14px/1.2 Archivo,sans-serif;color:#FFF7E8">{{ t.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- ▼ CLUSTER VITAL: escudo + vida (canto inferior esquerdo) ▼ -->
+          <div style="position:absolute;left:36px;bottom:34px;display:flex;flex-direction:column;gap:9px;width:486px">
+
+            <sc-if value="{{ hudNormalBars }}" hint-placeholder-val="{{ true }}">
+
+              <sc-if value="{{ shieldBarReady }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:11px">
+                  <span style="width:58px;font:900 11px/1 Archivo,sans-serif;color:#9BE0FF;letter-spacing:.12em">ESCUDO</span>
+                  <div style="position:relative;flex:1;height:24px;border:3px solid #0A0C22;border-radius:11px;background:#0A0C22;display:flex;gap:3px;padding:3px;overflow:hidden;animation:prGlow 1.8s ease-in-out infinite">
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#DFF6FF,#35A7FF)"></span>
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#DFF6FF,#35A7FF)"></span>
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#DFF6FF,#35A7FF)"></span>
+                    <span style="position:absolute;top:0;bottom:0;left:0;width:70px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.72),transparent);animation:prShine 2.4s ease-in-out infinite"></span>
+                  </div>
+                  <span style="display:flex;align-items:center;gap:6px;padding:5px 10px;border:2px solid #0A0C22;border-radius:8px;background:#DFF6FF;font:900 11px/1 Archivo,sans-serif;color:#0A2A44;letter-spacing:.1em">
+                    <span style="font:400 15px/1 'Titan One',cursive;color:#0A2A44">Q</span>PRONTO
+                  </span>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ shieldBarActive }}">
+                <div style="display:flex;align-items:center;gap:11px">
+                  <span style="width:58px;font:900 11px/1 Archivo,sans-serif;color:#FFF7E8;letter-spacing:.12em">ESCUDO</span>
+                  <div style="position:relative;flex:1;height:24px;border:3px solid #9BE0FF;border-radius:11px;background:#0A0C22;display:flex;gap:3px;padding:3px;overflow:hidden;box-shadow:0 0 40px rgba(90,200,245,.95),inset 0 0 18px rgba(155,230,255,.6)">
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#FFFFFF,#9BE0FF)"></span>
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#FFFFFF,#9BE0FF)"></span>
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#FFFFFF,#9BE0FF)"></span>
+                    <span style="position:absolute;top:0;bottom:0;left:0;width:90px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.95),transparent);animation:prShine 1s linear infinite"></span>
+                  </div>
+                  <span style="padding:5px 11px;border:2px solid #0A0C22;border-radius:8px;background:#35A7FF;font:900 11px/1 Archivo,sans-serif;color:#0A0C22;letter-spacing:.1em;font-variant-numeric:tabular-nums">ATIVO 2.1s</span>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ shieldBarCooling }}">
+                <div style="display:flex;align-items:center;gap:11px">
+                  <span style="width:58px;font:900 11px/1 Archivo,sans-serif;color:#4B5182;letter-spacing:.12em">ESCUDO</span>
+                  <div style="position:relative;flex:1;height:24px;border:3px solid #0A0C22;border-radius:11px;background:#0A0C22;overflow:hidden">
+                    <span style="position:absolute;left:3px;top:3px;bottom:3px;width:62%;border-radius:6px;background:linear-gradient(180deg,rgba(53,167,255,.5),rgba(32,121,196,.42))"></span>
+                    <span style="position:absolute;left:64.5%;top:3px;bottom:3px;width:2px;background:rgba(155,230,255,.8);animation:prTick .9s ease-in-out infinite"></span>
+                  </div>
+                  <span style="padding:5px 11px;border:2px solid #0A0C22;border-radius:8px;background:rgba(10,12,34,.86);font:700 12px/1 'Space Mono',monospace;color:#5AC8F5;font-variant-numeric:tabular-nums">8.4s</span>
+                </div>
+              </sc-if>
+
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="width:58px;font:900 11px/1 Archivo,sans-serif;color:#3DDC97;letter-spacing:.12em">VIDA</span>
+                <div style="position:relative;flex:1;height:46px;border:4px solid #0A0C22;border-radius:13px;background:#0A0C22;display:flex;gap:3px;padding:3px;box-shadow:0 5px 0 rgba(10,12,34,.5)">
+                  <sc-for list="{{ hpChunks }}" as="h" hint-placeholder-count="5">
+                    <sc-if value="{{ h.full }}" hint-placeholder-val="{{ true }}">
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#6BF2BC,#2FBB7E)"></span>
+                    </sc-if>
+                    <sc-if value="{{ h.hurt }}">
+                      <span style="flex:1;border-radius:6px;background:linear-gradient(180deg,#FFD066,#E09410)"></span>
+                    </sc-if>
+                    <sc-if value="{{ h.gone }}">
+                      <span style="flex:1;border-radius:6px;background:rgba(155,165,215,.1)"></span>
+                    </sc-if>
+                  </sc-for>
+                  <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font:400 24px/1 'Titan One',cursive;color:#FFF7E8;text-shadow:0 2px 0 #0A0C22;font-variant-numeric:tabular-nums">{{ hpValue }}</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hudBroken }}">
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="width:58px;font:900 11px/1 Archivo,sans-serif;color:#4B5182;letter-spacing:.12em">ESCUDO</span>
+                <div style="flex:1;height:24px;border:3px solid #0A0C22;border-radius:11px;background:#0A0C22;display:flex;gap:3px;padding:3px">
+                      <span style="flex:1;border-radius:6px;background:rgba(155,165,215,.08)"></span>
+                      <span style="flex:1;border-radius:6px;background:rgba(155,165,215,.08)"></span>
+                      <span style="flex:1;border-radius:6px;background:rgba(155,165,215,.08)"></span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="width:58px;font:900 11px/1 Archivo,sans-serif;color:#FF4D6D;letter-spacing:.12em">REPARO</span>
+                <div style="position:relative;flex:1;height:46px;border:4px solid #FF4D6D;border-radius:13px;background:#3A0E1C;overflow:hidden;box-shadow:0 0 28px rgba(255,77,109,.5)">
+                  <span style="position:absolute;left:0;top:0;bottom:0;width:44%;background:repeating-linear-gradient(-45deg,#FFB020 0 14px,#E09410 14px 28px)"></span>
+                  <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font:400 20px/1 'Titan One',cursive;color:#FFF7E8;text-shadow:0 2px 0 #0A0C22">DANIFICADO</span>
+                  <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font:400 24px/1 'Titan One',cursive;color:#FFF7E8;text-shadow:0 2px 0 #0A0C22;font-variant-numeric:tabular-nums">1.4s</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hudDamageTick }}">
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="width:58px"></span>
+                <div style="flex:1;height:6px;border-radius:3px;background:rgba(10,12,34,.6);overflow:hidden">
+                  <span style="display:block;height:100%;width:38%;background:#FFB020;border-radius:3px"></span>
+                </div>
+                <span style="font:700 10px/1 'Space Mono',monospace;color:#FFB020;letter-spacing:.08em">IMUNE</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <!-- ▼ PODER: canto inferior direito, fora da linha de condução ▼ -->
+          <div style="position:absolute;right:36px;bottom:34px;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <sc-if value="{{ itemFilled }}" hint-placeholder-val="{{ true }}">
+              <div style="position:relative;width:124px;height:124px;border:4px solid #0A0C22;border-radius:24px;background:#FFB020;box-shadow:0 6px 0 #0A0C22,0 0 32px rgba(255,176,32,.34);display:flex;align-items:center;justify-content:center;overflow:hidden">
+                <span style="position:absolute;inset:0;background:repeating-linear-gradient(-46deg,rgba(255,255,255,.22) 0 10px,transparent 10px 26px)"></span>
+                <span style="position:absolute;top:0;bottom:0;left:0;width:60px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);animation:prShine 3s ease-in-out infinite"></span>
+                <span style="position:relative;width:64px;height:84px;background:linear-gradient(100deg,#FFF7E8 0%,#FFF7E8 46%,#C9BDA4 100%);border:4px solid #0A0C22;border-radius:25px 25px 10px 10px"></span>
+                <span style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:26px;height:26px;border:4px solid #0A0C22;border-radius:50%;background:radial-gradient(circle at 34% 30%,#9BD4FF,#1B6FC4)"></span>
+              </div>
+              <span style="display:flex;align-items:center;gap:7px;padding:5px 14px;border:2px solid #0A0C22;border-radius:8px;background:#FFF7E8;font:900 12px/1 Archivo,sans-serif;color:#15161C;letter-spacing:.1em">
+                <span style="font:400 17px/1 'Titan One',cursive;color:#15161C">E</span>FOGUETE
+              </span>
+            </sc-if>
+            <sc-if value="{{ itemEmpty }}">
+              <div style="width:124px;height:124px;border:4px dashed rgba(10,12,34,.42);border-radius:24px;background:rgba(10,12,34,.24);display:flex;align-items:center;justify-content:center">
+                <span style="font:400 34px/1 'Titan One',cursive;color:rgba(255,247,232,.44)">?</span>
+              </div>
+              <span style="padding:5px 14px;border-radius:8px;background:rgba(10,12,34,.66);font:800 12px/1 Archivo,sans-serif;color:rgba(255,247,232,.7);letter-spacing:.1em">SEM ITEM</span>
+            </sc-if>
+          </div>
+
+          <!-- número flutuante de dano/cura -->
+          <sc-if value="{{ hudFloatDamage }}">
+            <span style="position:absolute;left:50%;top:46%;transform:translateX(-50%);font:400 62px/1 'Titan One',cursive;color:#FF4D6D;text-shadow:0 5px 0 #0A0C22">−15</span>
+          </sc-if>
+          <sc-if value="{{ hudFloatHeal }}">
+            <span style="position:absolute;left:50%;top:46%;transform:translateX(-50%);display:flex;align-items:center;gap:12px">
+              <span style="width:38px;height:38px;background:#3DDC97;border:4px solid #0A0C22;clip-path:polygon(38% 0,62% 0,62% 38%,100% 38%,100% 62%,62% 62%,62% 100%,38% 100%,38% 62%,0 62%,0 38%,38% 38%)"></span>
+              <span style="font:400 62px/1 'Titan One',cursive;color:#3DDC97;text-shadow:0 5px 0 #0A0C22">+40</span>
+            </span>
+          </sc-if>
+
+          <!-- escolha ItemBox vs cura -->
+          <sc-if value="{{ hudChoice }}">
+            <div style="position:absolute;left:50%;top:210px;transform:translateX(-50%);display:flex;gap:26px;align-items:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:16px 26px;border:4px solid #0A0C22;border-radius:18px;background:rgba(255,176,32,.94);box-shadow:0 7px 0 #0A0C22;animation:prBob 1.6s ease-in-out infinite">
+                <span style="width:46px;height:46px;border:4px solid #0A0C22;border-radius:11px;background:#FFF7E8"></span>
+                <span style="font:400 21px/1 'Titan One',cursive;color:#15161C">ITEM</span>
+                <span style="font:700 11px/1 'Space Mono',monospace;color:rgba(21,22,28,.66);letter-spacing:.08em">← ESQUERDA</span>
+              </div>
+              <span style="font:400 26px/1 'Titan One',cursive;color:rgba(255,247,232,.8);text-shadow:0 3px 0 #0A0C22">OU</span>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:16px 26px;border:4px solid #0A0C22;border-radius:18px;background:rgba(61,220,151,.94);box-shadow:0 7px 0 #0A0C22;animation:prBob 1.6s ease-in-out .4s infinite">
+                <span style="width:46px;height:46px;background:#FFF7E8;border:4px solid #0A0C22;clip-path:polygon(36% 0,64% 0,64% 36%,100% 36%,100% 64%,64% 64%,64% 100%,36% 100%,36% 64%,0 64%,0 36%,36% 36%)"></span>
+                <span style="font:400 21px/1 'Titan One',cursive;color:#0A0C22">CURA</span>
+                <span style="font:700 11px/1 'Space Mono',monospace;color:rgba(10,12,34,.66);letter-spacing:.08em">DIREITA →</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ══════════════════ 6 · HUD CELULAR ══════════════════ -->
+      <sc-if value="{{ isHudM }}">
+        <div data-screen-label="06 HUD corrida celular" style="position:absolute;inset:0;background:linear-gradient(170deg,#4FA8DC 0%,#67B98C 42%,#3E8C58 100%)">
+          <span style="position:absolute;left:50%;top:56%;transform:translateX(-50%);width:700px;height:520px;background:linear-gradient(180deg,#63C77E,#3E8C58);clip-path:polygon(38% 0,62% 0,100% 100%,0 100%)"></span>
+
+          <div style="position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;align-items:center;gap:9px">
+            <div style="padding:10px 18px;border:4px solid #0A0C22;border-radius:12px;background:#FFB020;box-shadow:0 5px 0 #0A0C22;font:400 24px/1 'Titan One',cursive;color:#15161C">2/3</div>
+            <div style="padding:10px 20px;border:4px solid #0A0C22;border-radius:12px;background:#0A0C22;font:400 30px/1 'Titan One',cursive;color:#FFF7E8;font-variant-numeric:tabular-nums">01:12.480</div>
+          </div>
+
+          <div style="position:absolute;left:28px;top:22px;display:flex;align-items:baseline;gap:3px;padding:10px 16px 12px;border:4px solid #0A0C22;border-radius:14px;background:#FFF7E8;box-shadow:0 5px 0 #0A0C22;transform:rotate(-2deg)">
+            <span style="font:400 40px/0.85 'Titan One',cursive;color:#15161C">4</span>
+            <span style="font:400 17px/1 'Titan One',cursive;color:#15161C">º</span>
+          </div>
+
+          <div style="position:absolute;right:100px;top:22px;width:250px;display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ standingsShort }}" as="s" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:9px;padding:7px 11px;border-radius:9px;background:rgba(10,12,34,.72)">
+                <span style="width:22px;text-align:center;font:800 13px/1 Archivo,sans-serif;color:#9AA2D8">{{ s.pos }}</span>
+                <span style="flex:1;font:700 13px/1 Archivo,sans-serif;color:#E6E9F2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ s.name }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="position:absolute;right:28px;top:22px;width:56px;height:56px;border:4px solid #0A0C22;border-radius:14px;background:rgba(10,12,34,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px">
+            <span style="width:24px;height:3px;border-radius:2px;background:#FFF7E8"></span>
+            <span style="width:24px;height:3px;border-radius:2px;background:#FFF7E8"></span>
+            <span style="width:24px;height:3px;border-radius:2px;background:#FFF7E8"></span>
+          </div>
+
+          <!-- cluster vital compacto, acima do polegar esquerdo -->
+          <div style="position:absolute;left:50%;bottom:30px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;width:420px">
+            <div style="height:14px;border:3px solid #0A0C22;border-radius:8px;background:#0A0C22;display:flex;gap:3px;padding:2px">
+              <span style="flex:1;border-radius:4px;background:linear-gradient(180deg,#9BE0FF,#35A7FF)"></span>
+              <span style="flex:1;border-radius:4px;background:linear-gradient(180deg,#9BE0FF,#35A7FF)"></span>
+              <span style="flex:1;border-radius:4px;background:rgba(155,165,215,.1)"></span>
+            </div>
+            <div style="position:relative;height:32px;border:4px solid #0A0C22;border-radius:11px;background:#0A0C22;display:flex;gap:3px;padding:3px">
+              <span style="flex:1;border-radius:5px;background:linear-gradient(180deg,#6BF2BC,#2FBB7E)"></span>
+              <span style="flex:1;border-radius:5px;background:linear-gradient(180deg,#6BF2BC,#2FBB7E)"></span>
+              <span style="flex:1;border-radius:5px;background:linear-gradient(180deg,#6BF2BC,#2FBB7E)"></span>
+              <span style="flex:1;border-radius:5px;background:linear-gradient(180deg,#FFD066,#E09410)"></span>
+              <span style="flex:1;border-radius:5px;background:rgba(155,165,215,.1)"></span>
+              <span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font:400 20px/1 'Titan One',cursive;color:#FFF7E8;text-shadow:0 2px 0 #0A0C22">72</span>
+            </div>
+          </div>
+
+          <!-- controles touch -->
+          <div style="position:absolute;left:44px;bottom:44px;display:flex;gap:14px">
+            <div style="width:112px;height:112px;border:4px solid #0A0C22;border-radius:26px;background:rgba(10,12,34,.6);display:flex;align-items:center;justify-content:center">
+              <span style="width:0;height:0;border-top:22px solid transparent;border-bottom:22px solid transparent;border-right:26px solid #FFF7E8"></span>
+            </div>
+            <div style="width:112px;height:112px;border:4px solid #0A0C22;border-radius:26px;background:rgba(10,12,34,.6);display:flex;align-items:center;justify-content:center">
+              <span style="width:0;height:0;border-top:22px solid transparent;border-bottom:22px solid transparent;border-left:26px solid #FFF7E8"></span>
+            </div>
+          </div>
+          <div style="position:absolute;right:44px;bottom:44px;display:flex;align-items:flex-end;gap:14px">
+            <div style="position:relative;width:96px;height:96px;border:4px solid #0A0C22;border-radius:24px;background:linear-gradient(160deg,#5AC8F5,#2079C4);box-shadow:0 5px 0 #0A0C22;display:flex;align-items:center;justify-content:center">
+              <span style="font:400 20px/1 'Titan One',cursive;color:#FFF7E8;letter-spacing:.04em">ESCUDO</span>
+              <span style="position:absolute;inset:-7px;border-radius:28px;border:3px solid rgba(90,200,245,.55);animation:prPulse 1.6s ease-in-out infinite"></span>
+            </div>
+            <div style="width:130px;height:130px;border:4px solid #0A0C22;border-radius:30px;background:#FFB020;box-shadow:0 6px 0 #0A0C22;display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <span style="width:60px;height:78px;background:linear-gradient(100deg,#FFF7E8,#C9BDA4);border:4px solid #0A0C22;border-radius:24px 24px 9px 9px"></span>
+            </div>
+            <div style="width:150px;height:150px;border:4px solid #0A0C22;border-radius:34px;background:#3DDC97;box-shadow:0 6px 0 #0A0C22;display:flex;align-items:center;justify-content:center;font:400 30px/1 'Titan One',cursive;color:#0A0C22">GÁS</div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900}}">
+const AV = {
+  a: 'linear-gradient(140deg,#35A7FF,#2A3480)',
+  b: 'linear-gradient(140deg,#FF4D6D,#8C2340)',
+  c: 'linear-gradient(140deg,#3DDC97,#1F7A55)',
+  d: 'linear-gradient(140deg,#FFB020,#B26E08)',
+  e: 'linear-gradient(140deg,#8C7BFF,#4B3FA8)',
+  f: 'linear-gradient(140deg,#FF9E45,#A34C10)'
+};
+
+const MODES = [
+  { id: 'solo', label: 'SOLO', cap: '1', slots: 1 },
+  { id: 'duo', label: 'DUO', cap: '2', slots: 2 },
+  { id: 'squad', label: 'SQUAD', cap: '4', slots: 4 }
+];
+
+const MATES = [
+  { name: 'BIANCA', avatar: AV.b, ready: true, meta: 'nível 24 · 38ms' },
+  { name: 'RAFA', avatar: AV.c, ready: false, meta: 'nível 11 · 52ms' },
+  { name: 'DUDU', avatar: AV.f, ready: true, meta: 'nível 31 · 44ms' }
+];
+
+const FRIENDS_GAME = [
+  { name: 'BIANCA', avatar: AV.b, state: 'no seu grupo', dot: '#3DDC97', can: false, cantLabel: 'NO GRUPO' },
+  { name: 'RAFA', avatar: AV.c, state: 'no seu grupo', dot: '#3DDC97', can: false, cantLabel: 'NO GRUPO' },
+  { name: 'DUDU', avatar: AV.f, state: 'no seu grupo', dot: '#3DDC97', can: false, cantLabel: 'NO GRUPO' },
+  { name: 'LEO_99', avatar: AV.a, state: 'na garagem', dot: '#3DDC97', can: true },
+  { name: 'MARINA', avatar: AV.e, state: 'em corrida', dot: '#FFB020', can: false, cantLabel: 'EM JOGO' },
+  { name: 'TIAGO', avatar: AV.d, state: 'no lobby', dot: '#3DDC97', can: true },
+  { name: 'PEDRO_H', avatar: AV.b, state: 'offline há 2h', dot: '#4B5182', can: false, cantLabel: 'OFFLINE' },
+  { name: 'CAROL', avatar: AV.c, state: 'no lobby', dot: '#3DDC97', can: true }
+];
+
+const FRIENDS_STEAM = [
+  { name: 'nitroking', avatar: AV.a, state: 'jogando Party Racers', dot: '#3DDC97', can: true },
+  { name: 'julia.exe', avatar: AV.e, state: 'online na Steam', dot: '#35A7FF', can: true },
+  { name: 'brunosk8', avatar: AV.d, state: 'online na Steam', dot: '#35A7FF', can: true },
+  { name: 'vitorzin', avatar: AV.f, state: 'ausente', dot: '#FFB020', can: true },
+  { name: 'anaclara', avatar: AV.c, state: 'offline', dot: '#4B5182', can: false, cantLabel: 'OFFLINE' },
+  { name: 'kart_master', avatar: AV.b, state: 'jogando Party Racers', dot: '#3DDC97', can: true }
+];
+
+const MM_STAGES = ['PRONTOS', 'PROCURANDO', 'ENCONTRADOS', 'PREENCHENDO', 'CARREGANDO'];
+
+const MM_STEPS = [
+  { title: 'AGUARDANDO O GRUPO', sub: 'Todos precisam marcar pronto antes de sintonizar o canal.', stage: 0, timer: '--', humans: 0, bots: 0, prog: '0%', hint: 'A busca só começa com o grupo inteiro pronto.', scan: false, cancel: true },
+  { title: 'SINTONIZANDO CANAL', sub: 'Varrendo a frequência atrás de outros pilotos na fila.', stage: 1, timer: '08s', humans: 5, bots: 0, prog: '20%', hint: 'Encontrando pilotos com ping compatível…', scan: true, cancel: true },
+  { title: 'PILOTOS NA FREQUÊNCIA', sub: 'Sinal travado. Continuando a busca enquanto houver vagas.', stage: 2, timer: '26s', humans: 11, bots: 0, prog: '65%', hint: '11 pilotos captados · faltam 5 vagas', scan: true, cancel: true },
+  { title: 'PREENCHENDO COM BOTS', sub: 'Busca encerrada. Completando a grid para largar agora.', stage: 3, timer: '40s', humans: 11, bots: 5, prog: '88%', hint: 'Bots entram no lugar das vagas não preenchidas.', scan: false, cancel: false, locked: true },
+  { title: 'PARTIDA ENCONTRADA', sub: 'Mapa sorteado: MINI GOLFE RUN · 3 voltas.', stage: 4, timer: '40s', humans: 11, bots: 5, prog: '100%', hint: 'Carregando pista e sincronizando jogadores…', scan: false, cancel: false, locked: true, go: true }
+];
+
+const BLIP_POOL = [
+  { x: '18%', y: '62%', name: 'LEO_99', color: '#3DDC97' },
+  { x: '31%', y: '38%', name: 'nitroking', color: '#35A7FF' },
+  { x: '44%', y: '70%', name: 'CAROL', color: '#3DDC97' },
+  { x: '58%', y: '44%', name: 'julia.exe', color: '#35A7FF' },
+  { x: '71%', y: '66%', name: 'TIAGO', color: '#3DDC97' },
+  { x: '84%', y: '40%', name: 'brunosk8', color: '#35A7FF' },
+  { x: '25%', y: '48%', name: 'kart_master', color: '#8C7BFF' },
+  { x: '66%', y: '30%', name: 'vitorzin', color: '#8C7BFF' }
+];
+
+const MM_NAMES = ['LEO_99', 'nitroking', 'CAROL', 'julia.exe', 'TIAGO', 'brunosk8', 'kart_master', 'vitorzin'];
+
+const CATS = [
+  { id: 'modelo', label: 'MODELO', cam: 'o carro inteiro', pose: 'CÂMERA · ORBITAL 3/4' },
+  { id: 'cor', label: 'COR', cam: 'o carro inteiro', pose: 'CÂMERA · ORBITAL 3/4' },
+  { id: 'rodas', label: 'RODAS', cam: 'as rodas dianteiras', pose: 'CÂMERA · BAIXA E PRÓXIMA' },
+  { id: 'frente', label: 'FRENTE', cam: 'o para-choque dianteiro', pose: 'CÂMERA · FRONTAL BAIXA' },
+  { id: 'traseira', label: 'TRASEIRA', cam: 'a traseira', pose: 'CÂMERA · GIRO 180°' },
+  { id: 'teto', label: 'TETO', cam: 'os acessórios superiores', pose: 'CÂMERA · ELEVADA' },
+  { id: 'adesivos', label: 'ADESIVOS', cam: 'a lateral', pose: 'CÂMERA · PERFIL' }
+];
+
+const ITEM_SETS = {
+  modelo: ['Compacto', 'Muscle', 'Buggy', 'Van', 'Hot Rod', 'Formula', 'Picape', 'Foguete'],
+  cor: ['Azul Turbo', 'Vermelho', 'Verde Lima', 'Âmbar', 'Roxo', 'Creme', 'Preto Fosco', 'Rosa'],
+  rodas: ['Padrão', 'Off-road', 'Slick', 'Cromada', 'Raiada', 'Neon', 'Garra', 'Balão', 'Vintage', 'Turbina', 'Serra', 'Bolha'],
+  frente: ['Liso', 'Grade Dupla', 'Aríete', 'Pá de Neve'],
+  traseira: ['Liso', 'Aerofólio', 'Turbina Dupla', 'Escapamento Alto'],
+  teto: ['Nenhum', 'Bagageiro', 'Sirene', 'Antena', 'Prancha', 'Foguete'],
+  adesivos: ['27', 'Chamas', 'Listras', 'Xadrez', 'Raio', 'Estrela', 'Camuflado', 'Bolinhas']
+};
+
+const PALETTE = [
+  ['#35A7FF', '#1B5FA8'], ['#FF4D6D', '#8C2340'], ['#3DDC97', '#1F7A55'],
+  ['#FFB020', '#B26E08'], ['#8C7BFF', '#4B3FA8'], ['#FFF7E8', '#B8AE99'],
+  ['#2A3480', '#0A0C22'], ['#FF9EC4', '#A34C74'], ['#5AC8F5', '#2079C4'],
+  ['#FFD066', '#C97C0A'], ['#6BF2BC', '#2FBB7E'], ['#C3CEDD', '#6B7390']
+];
+
+const RARITY = ['COMUM', 'RARO', 'ÉPICO', 'LENDÁRIO'];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'lobby',
+    hud: 'normal',
+    mode: 'squad',
+    mm: 1,
+    cat: 'rodas',
+    friendTab: 'jogo',
+    ready: true
+  };
+
+  componentDidMount() {
+    this.fit();
+    this._onResize = () => this.fit();
+    window.addEventListener('resize', this._onResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  fit() {
+    const wrap = this._wrap, stage = this._stage;
+    if (!wrap || !stage) return;
+    const mobile = this.state.screen === 'hudm';
+    const w = mobile ? 2340 : 1920, h = 1080;
+    stage.style.width = w + 'px';
+    stage.style.height = h + 'px';
+    const pad = 40;
+    const s = Math.min((wrap.clientWidth - pad) / w, (wrap.clientHeight - pad) / h);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  go(screen) {
+    this.setState({ screen }, () => this.fit());
+  }
+
+  navItem(id, label) {
+    const on = this.state.screen === id;
+    return { id, label, active: on, idle: !on, go: () => this.go(id) };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const mode = MODES.find(m => m.id === st.mode) || MODES[2];
+    const mateCount = mode.slots - 1;
+    const mates = MATES.slice(0, mateCount);
+    const step = MM_STEPS[st.mm] || MM_STEPS[1];
+    const cat = CATS.find(c => c.id === st.cat) || CATS[2];
+
+    // ---- grupo ----
+    const groupSlots = [];
+    groupSlots.push({
+      filled: true, name: 'HIGOR (você)', avatar: AV.a, leader: true,
+      meta: 'nível 42 · 31ms', ready: st.ready, waiting: !st.ready,
+      border: st.ready ? 'rgba(61,220,151,.6)' : 'rgba(255,176,32,.55)'
+    });
+    mates.forEach(m => groupSlots.push({
+      filled: true, name: m.name, avatar: m.avatar, leader: false, meta: m.meta,
+      ready: m.ready, waiting: !m.ready,
+      border: m.ready ? 'rgba(61,220,151,.6)' : 'rgba(255,176,32,.55)'
+    }));
+    if (mode.slots < 4 && mode.slots > 1) groupSlots.push({ empty: true });
+    if (mode.slots === 4 && mates.length < 3) groupSlots.push({ empty: true });
+    while (groupSlots.length < 4) {
+      groupSlots.push({ locked: true, lockText: mode.slots === 1 ? 'MODO SOLO' : 'TROQUE PARA SQUAD' });
+    }
+
+    const allReady = st.ready && mates.every(m => m.ready);
+    const waitingCount = (st.ready ? 0 : 1) + mates.filter(m => !m.ready).length;
+
+    // ---- carros no palco ----
+    const sideCars = mates.map(m => ({ isMate: true, name: m.name, dot: m.ready ? '#3DDC97' : '#FFB020' }));
+    if (mode.slots === 4 && mates.length < 3) sideCars.push({ isEmpty: true });
+    const leftCars = [], rightCars = [];
+    sideCars.forEach((c, i) => (i % 2 === 0 ? rightCars : leftCars).push(c));
+
+    // ---- amigos ----
+    const source = st.friendTab === 'jogo' ? FRIENDS_GAME : FRIENDS_STEAM;
+    const friends = source.map(f => ({
+      name: f.name, avatar: f.avatar, dot: f.dot, state: f.state,
+      stateColor: f.dot === '#4B5182' ? '#5C63A8' : '#7C86C8',
+      can: !!f.can, cant: !f.can, cantLabel: f.cantLabel || ''
+    }));
+
+    // ---- matchmaking ----
+    const mmSlots = [];
+    const myCrew = [{ name: 'HIGOR', avatar: AV.a }].concat(mates.map(m => ({ name: m.name, avatar: m.avatar })));
+    if (st.mm > 0) myCrew.forEach(c => mmSlots.push({ mate: true, name: c.name, avatar: c.avatar }));
+    const extraHumans = Math.max(0, step.humans - myCrew.length);
+    for (let i = 0; i < extraHumans; i++) {
+      mmSlots.push({ human: true, name: MM_NAMES[i % MM_NAMES.length], avatar: PALETTE[i % PALETTE.length][0] });
+    }
+    for (let i = 0; i < step.bots; i++) mmSlots.push({ bot: true });
+    while (mmSlots.length < 16) mmSlots.push({ empty: true });
+
+    const blipCount = st.mm === 0 ? 0 : st.mm === 1 ? 3 : 6;
+    const blips = BLIP_POOL.slice(0, blipCount);
+
+    const mmStages = MM_STAGES.map((label, i) => ({
+      label,
+      done: i < step.stage,
+      now: i === step.stage,
+      todo: i > step.stage
+    }));
+
+    const signalBars = [14, 26, 34, 22, 38, 18, 28].map((h, i) => ({
+      h: h + 'px',
+      c: step.scan ? (i % 2 ? '#FFB020' : '#3DDC97') : '#3B4180',
+      d: (0.7 + i * 0.13).toFixed(2) + 's'
+    }));
+
+    // ---- garagem ----
+    const names = ITEM_SETS[st.cat] || ITEM_SETS.rodas;
+    const garageItems = names.map((name, i) => {
+      const p = PALETTE[i % PALETTE.length];
+      const base = { name, c1: p[0], c2: p[1], rarity: RARITY[i % RARITY.length] };
+      if (i === 0) return Object.assign(base, { equipped: true });
+      if (i === 2) return Object.assign(base, { selected: true });
+      if (i >= names.length - 3) return Object.assign(base, { locked: true, unlock: i % 2 ? 'PASSE NÍVEL ' + (20 + i) : 'LOJA · 800' });
+      return Object.assign(base, { free: true, isNew: i === 1 || i === 4 });
+    });
+
+    // ---- partida personalizada ----
+    const customNames = ['HIGOR', 'BIANCA', 'RAFA', 'DUDU', 'LEO_99', 'CAROL', 'nitroking'];
+    const customSlots = [];
+    for (let i = 0; i < 16; i++) {
+      const n = String(i + 1).padStart(2, '0');
+      if (i < customNames.length) {
+        customSlots.push({
+          player: true, n, name: customNames[i], avatar: PALETTE[i % PALETTE.length][0],
+          host: i === 0, ready: i % 3 !== 1, waiting: i % 3 === 1,
+          border: i === 0 ? 'rgba(255,176,32,.6)' : 'rgba(155,165,215,.22)'
+        });
+      } else if (i < 9) {
+        customSlots.push({ bot: true, n, name: 'BOT ' + (i - customNames.length + 1) });
+      } else {
+        customSlots.push({ empty: true, n });
+      }
+    }
+
+    // ---- HUD ----
+    const hud = st.hud;
+    const hpMap = { normal: 5, dano: 3, danificado: 0, cura: 5, escudo: 4 };
+    const hpFull = hpMap[hud] !== undefined ? hpMap[hud] : 5;
+    const hpChunks = [];
+    for (let i = 0; i < 5; i++) {
+      if (i < hpFull - (hud === 'dano' ? 1 : 0)) hpChunks.push({ full: true });
+      else if (i < hpFull) hpChunks.push({ hurt: true });
+      else hpChunks.push({ gone: true });
+    }
+    const hpValueMap = { normal: '100', dano: '58', danificado: '0', cura: '100', escudo: '76' };
+
+    const standings = [
+      { pos: '1', name: 'nitroking', gap: '−4.2' },
+      { pos: '2', name: 'BIANCA', gap: '−2.1' },
+      { pos: '3', name: 'julia.exe', gap: '−0.8' },
+      { pos: '4', name: 'VOCÊ', gap: '01:12.4', me: true },
+      { pos: '5', name: 'BOT ANDRÉ', gap: '+1.4' },
+      { pos: '6', name: 'CAROL', gap: '+3.7' }
+    ].map(s => (s.me ? s : Object.assign({}, s, { other: true })));
+
+    const toastMap = {
+      normal: [{ text: 'CAROL pegou um foguete', color: '#FFB020', op: '.6' }],
+      dano: [
+        { text: 'Você bateu na parede a 132 km/h', color: '#FF4D6D', op: '1' },
+        { text: 'BIANCA usou disco voador', color: '#8C7BFF', op: '.55' }
+      ],
+      danificado: [{ text: 'Kart danificado — reparando', color: '#FF4D6D', op: '1' }],
+      cura: [{ text: 'Você recuperou 40 de vida', color: '#3DDC97', op: '1' }],
+      escudo: [{ text: 'Escudo bloqueou o foguete', color: '#35A7FF', op: '1' }]
+    };
+
+    return {
+      // navegação
+      navFrontend: [
+        this.navItem('lobby', 'Lobby público'),
+        this.navItem('mm', 'Buscando partida'),
+        this.navItem('custom', 'Partida personalizada'),
+        this.navItem('garage', 'Garagem')
+      ],
+      navRace: [this.navItem('hud', 'HUD corrida · PC'), this.navItem('hudm', 'HUD corrida · celular')],
+      isFrontend: ['lobby', 'custom', 'garage', 'mm'].indexOf(st.screen) >= 0,
+      stageCentered: st.screen !== 'garage',
+      stageOffsetGarage: st.screen === 'garage',
+      isLobby: st.screen === 'lobby',
+      isMm: st.screen === 'mm',
+      isCustom: st.screen === 'custom',
+      isGarage: st.screen === 'garage',
+      isHud: st.screen === 'hud',
+      isHudM: st.screen === 'hudm',
+      resLabel: st.screen === 'hudm' ? '2340 × 1080 · paisagem' : '1920 × 1080',
+      goLobby: () => this.go('lobby'),
+      goMm: () => this.go('mm'),
+      goHud: () => this.go('hud'),
+
+      tabs: ['LOBBY', 'GARAGEM', 'LOJA', 'PASSE'].map(label => {
+        const on = (label === 'LOBBY' && (st.screen === 'lobby' || st.screen === 'custom')) ||
+                   (label === 'GARAGEM' && st.screen === 'garage');
+        return { label, active: on, idle: !on };
+      }),
+
+      // controles do chrome
+      showHudStates: st.screen === 'hud',
+      hudStates: [
+        ['normal', 'NORMAL'], ['dano', 'DANO'], ['danificado', 'DANIFICADO'],
+        ['cura', 'CURA'], ['escudo', 'ESCUDO']
+      ].map(([id, label]) => ({
+        label, active: st.hud === id, idle: st.hud !== id,
+        go: () => this.setState({ hud: id })
+      })),
+      showModes: st.screen === 'lobby',
+      modeBtns: MODES.map(m => ({
+        label: m.label, active: st.mode === m.id, idle: st.mode !== m.id,
+        go: () => this.setState({ mode: m.id })
+      })),
+      showMmSteps: st.screen === 'mm',
+      mmBtns: MM_STEPS.map((s, i) => ({
+        n: i + 1, label: s.title, active: st.mm === i, idle: st.mm !== i,
+        go: () => this.setState({ mm: i })
+      })),
+
+      // lobby
+      leftCars,
+      rightCars,
+      modeCards: MODES.map(m => ({
+        label: m.label, cap: 'até ' + m.cap,
+        pips: '●'.repeat(m.slots),
+        active: st.mode === m.id, idle: st.mode !== m.id,
+        go: () => this.setState({ mode: m.id })
+      })),
+      groupSlots,
+      groupCount: (1 + mates.length) + '/' + mode.slots,
+      friendTabs: [
+        { label: 'NO JOGO', active: st.friendTab === 'jogo', idle: st.friendTab !== 'jogo', go: () => this.setState({ friendTab: 'jogo' }) },
+        { label: 'STEAM', active: st.friendTab === 'steam', idle: st.friendTab !== 'steam', go: () => this.setState({ friendTab: 'steam' }) }
+      ],
+      friends,
+      meReady: st.ready,
+      meNotReady: !st.ready,
+      toggleReady: () => this.setState({ ready: !st.ready }),
+      canSearch: allReady,
+      cantSearch: !allReady,
+      blockReason: waitingCount === 1 ? 'FALTA 1 JOGADOR' : 'FALTAM ' + waitingCount + ' JOGADORES',
+      groupStatus: allReady ? 'TODOS PRONTOS · PODE BUSCAR' : waitingCount + ' AGUARDANDO CONFIRMAÇÃO',
+      groupStatusColor: allReady ? '#3DDC97' : '#FFB020',
+
+      // matchmaking
+      mmTitle: step.title,
+      mmSub: step.sub,
+      mmTimer: step.timer,
+      mmTimerColor: st.mm >= 3 ? '#FF4D6D' : st.mm === 2 ? '#FFB020' : '#FFF7E8',
+      mmScanning: !!step.scan,
+      mmLocked: !!step.locked,
+      mmProgress: step.prog,
+      mmHint: step.hint,
+      mmCancelable: !!step.cancel,
+      mmGoRace: !!step.go,
+      mmFilled: step.humans + step.bots,
+      mmHasBots: step.bots > 0,
+      mmBotCount: step.bots,
+      mmSlots,
+      mmStages,
+      blips,
+      signalBars,
+      dialTicks: ['84', '86', '88', '90', '92', '94', '96', '98', '100'].map(v => ({ v })),
+
+      // personalizada
+      customSlots,
+      mapDots: [true, false, false, false, false].map(on => ({ on, off: !on })),
+      customRules: [
+        { label: 'Voltas', value: '3' },
+        { label: 'Itens', value: 'TODOS' },
+        { label: 'Bots preenchem', value: 'SIM' },
+        { label: 'Dano por colisão', value: 'LIGADO' }
+      ],
+
+      // garagem
+      garageCats: CATS.map(c => ({
+        label: c.label, active: st.cat === c.id, idle: st.cat !== c.id,
+        go: () => this.setState({ cat: c.id })
+      })),
+      camTarget: cat.cam,
+      camPose: cat.pose,
+      gridCount: names.length + ' ITENS',
+      garageItems,
+
+      // HUD
+      hudNormalBars: hud !== 'danificado',
+      hudBroken: hud === 'danificado',
+      hudDamageTick: hud === 'dano',
+      hudDanger: hud === 'dano' || hud === 'danificado',
+      hudHealFlash: hud === 'cura',
+      hudShieldOn: hud === 'escudo',
+      hudFloatDamage: hud === 'dano',
+      hudFloatHeal: hud === 'cura',
+      hudChoice: false,
+      hpChunks,
+      hpValue: hpValueMap[hud] || '100',
+      shieldBarReady: hud === 'normal' || hud === 'cura',
+      shieldBarActive: hud === 'escudo',
+      shieldBarCooling: hud === 'dano',
+      itemFilled: hud !== 'cura',
+      itemEmpty: hud === 'cura',
+      standings,
+      standingsShort: standings.slice(2, 5),
+      toasts: toastMap[hud] || [],
+
+      // refs
+      setWrap: el => { this._wrap = el; this.fit(); },
+      setStage: el => { this._stage = el; this.fit(); }
+    };
+  }
+}
+
+</script>
+</body>
+</html>

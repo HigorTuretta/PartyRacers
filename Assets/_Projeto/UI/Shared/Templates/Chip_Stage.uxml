@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Chip_Stage.uss" />
+
+    <!-- Etapa da trilha: PRONTOS / PROCURANDO / ENCONTRADOS / PREENCHENDO /
+         CARREGANDO. Apenas UMA etapa em State_Now por vez. -->
+    <ui:VisualElement name="Chip_Stage" class="stage">
+        <ui:VisualElement name="State_Done" class="pr-row pr-center gx-8 stage__box stage__box--done">
+            <ui:VisualElement class="pr-icon pr-icon--check pr-icon--green stage__mark" />
+            <ui:Label name="Done_Label" text="PRONTOS" class="stage__label stage__label--done" />
+        </ui:VisualElement>
+        <ui:VisualElement name="State_Now" class="pr-row pr-center gx-8 stage__box stage__box--now">
+            <ui:VisualElement name="Now_Pulse" class="stage__pulse" />
+            <ui:Label name="Now_Label" text="PROCURANDO" class="stage__label stage__label--now" />
+        </ui:VisualElement>
+        <ui:VisualElement name="State_Todo" class="pr-row pr-center gx-8 stage__box stage__box--todo">
+            <ui:VisualElement class="stage__ring" />
+            <ui:Label name="Todo_Label" text="CARREGANDO" class="stage__label stage__label--todo" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

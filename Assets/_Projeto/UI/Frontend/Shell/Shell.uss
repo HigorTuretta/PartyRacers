@@ -1,0 +1,64 @@
+/* Shell.uss — barra superior do frontend. Medidas do HTML, linha 165+. */
+
+.shell__scrim-bottom { position: absolute; left: 0; right: 0; bottom: 0; height: 140px; }
+
+.shell__topbar {
+    position: absolute; left: 0; right: 0; top: 0;
+    height: 104px;
+    padding-left: 44px; padding-right: 44px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Scrim_TopBar.png");
+}
+
+/* marca — o grupo inteiro inclina -2 graus */
+.shell__brand { rotate: -2deg; }
+.shell__brand-party {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 27px; color: var(--cream); letter-spacing: 0.54px;
+}
+.shell__brand-plate { margin-top: 2px; align-self: flex-start; }
+.shell__brand-plate-shadow { border-radius: 7px; }
+.shell__brand-racers {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 19px; color: var(--ink-15); letter-spacing: 0.76px;
+    padding: 3px 10px 4px 10px;
+    border-width: 3px; border-color: var(--ink);
+    border-radius: 7px;
+    background-color: var(--amber);
+}
+
+.shell__tabs { margin-left: 12px; }
+.shell__tab-shadow { border-radius: 14px; }
+.shell__tab--off .shell__tab-shadow { display: none; }
+.shell__tab-private { padding-left: 24px; padding-right: 24px; }
+
+.shell__coin { width: 22px; height: 22px; }
+.shell__gem  { width: 20px; height: 20px; -unity-background-image-tint-color: var(--violet); }
+
+/* Carteiras e perfil formam uma unica familia de blocos. */
+.shell__metric {
+    width: 144px;
+    height: 54px;
+    flex-shrink: 0;
+    justify-content: center;
+}
+
+.shell__profile {
+    padding: 6px 12px 6px 8px;
+    border-width: 2px; border-color: rgba(155, 165, 215, 0.24);
+    border-radius: 13px;
+    background-color: var(--glass-72);
+}
+.shell__profile-avatar { width: 36px; height: 36px; border-radius: 10px; }
+.shell__profile-name {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 15px; color: var(--cream); letter-spacing: 0.3px;
+}
+.shell__profile-dot { width: 6px; height: 6px; border-radius: 3px; background-color: var(--green); }
+.shell__profile-state {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset");
+    font-size: 11px; color: var(--green);
+}
+
+/* As telas ocupam a area inteira; cada uma se ancora a partir de top:128px,
+   ou seja 24px abaixo da barra de 104px. */
+.shell__screen-host { }

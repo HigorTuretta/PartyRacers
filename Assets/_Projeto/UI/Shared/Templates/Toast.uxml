@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Toast.uss" />
+
+    <!-- Aviso da corrida. Entrada 0.18s, vida 2.5s, saida 0.25s,
+         no maximo 3 simultaneos, empilhando de baixo para cima. -->
+    <ui:VisualElement name="Toast" class="pr-row gx-11 toast">
+        <ui:VisualElement name="Toast_Swatch" class="toast__swatch" />
+        <ui:Label name="Toast_Text" text="BIANCA passou voce" class="toast__text" />
+    </ui:VisualElement>
+</ui:UXML>

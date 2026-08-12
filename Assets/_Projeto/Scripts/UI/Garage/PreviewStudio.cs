@@ -49,6 +49,9 @@ namespace PartyRacers.UI.Garage
             public string Categoria;
             public CarElementName Elemento;
             public bool EhModelo;
+            public bool EhCor;
+            public bool EhSelecao;
+            public KartVisualSelection Selecao;
             public int Indice;
             public System.Action<Texture2D> Entregar;
         }
@@ -101,8 +104,68 @@ namespace PartyRacers.UI.Garage
             if (referencia == null)
                 return;
 
-            Pedir(referencia.CarIndex, "MINIATURA", CarElementName.None, true, referencia.CarIndex,
-                  aoFicarPronta);
+            PedirCarro(new KartVisualSelection(
+                referencia.CarIndex,
+                referencia.ColorIndex,
+                KartGarageSelection.EncodeElements()), aoFicarPronta);
+        }
+
+        /// <summary>Fotografa o visual completo informado pelo registro da sala.</summary>
+        public void PedirCarro(KartVisualSelection selecao, System.Action<Texture2D> aoFicarPronta)
+        {
+            if (referencia == null || aoFicarPronta == null)
+                return;
+
+            string elementos = selecao.ElementData ?? string.Empty;
+            string chave = $"JOGADOR_{selecao.CarIndex}_{selecao.ColorIndex}_{elementos}";
+            if (cache.TryGetValue(chave, out Texture2D pronta) && pronta != null)
+            {
+                aoFicarPronta(pronta);
+                return;
+            }
+
+            fila.Enqueue(new Pedido
+            {
+                Chave = chave,
+                Carro = selecao.CarIndex,
+                Categoria = "MINIATURA",
+                Elemento = CarElementName.None,
+                EhModelo = true,
+                EhSelecao = true,
+                Selecao = selecao,
+                Indice = selecao.CarIndex,
+                Entregar = aoFicarPronta,
+            });
+
+            trabalhando ??= StartCoroutine(Trabalhar());
+        }
+
+        /// <summary>Fotografa uma cor sobre o modelo e as pecas atualmente equipados.</summary>
+        public void PedirCor(int indice, System.Action<Texture2D> aoFicarPronta)
+        {
+            if (referencia == null || aoFicarPronta == null)
+                return;
+
+            int carro = referencia.CarIndex;
+            string chave = $"COR_{carro}_{indice}_{KartGarageSelection.EncodeElements()}";
+            if (cache.TryGetValue(chave, out Texture2D pronta) && pronta != null)
+            {
+                aoFicarPronta(pronta);
+                return;
+            }
+
+            fila.Enqueue(new Pedido
+            {
+                Chave = chave,
+                Carro = carro,
+                Categoria = "COR",
+                Elemento = CarElementName.None,
+                EhCor = true,
+                Indice = indice,
+                Entregar = aoFicarPronta,
+            });
+
+            trabalhando ??= StartCoroutine(Trabalhar());
         }
 
         /// <summary>Descarta o que dependia do carro que saiu de cena.</summary>
@@ -145,7 +208,12 @@ namespace PartyRacers.UI.Garage
                     break;
 
                 // Modelo troca o carro inteiro; peça monta a variante SOBRE o carro equipado.
-                if (p.EhModelo)
+                if (p.EhSelecao)
+                {
+                    clone.ApplySelection(p.Selecao);
+                    carroDoClone = p.Selecao.CarIndex;
+                }
+                else if (p.EhModelo)
                 {
                     if (carroDoClone != p.Indice)
                     {
@@ -153,7 +221,7 @@ namespace PartyRacers.UI.Garage
                         carroDoClone = p.Indice;
                     }
                 }
-                else
+                else if (!p.EhCor)
                 {
                     if (carroDoClone != p.Carro)
                     {
@@ -163,12 +231,17 @@ namespace PartyRacers.UI.Garage
 
                     clone.SetElement(p.Elemento, p.Indice);
                 }
+                else if (carroDoClone != p.Carro)
+                {
+                    clone.SetCar(p.Carro);
+                    carroDoClone = p.Carro;
+                }
 
                 // A COR equipada tem que ir junto. Sem ela o clone sai na tinta de fábrica e o
                 // card mostra um carro que o jogador não reconhece como sendo o dele — foi o que
                 // fez os previews parecerem de outro veículo.
-                if (referencia != null)
-                    clone.SetColor(referencia.ColorIndex);
+                if (!p.EhSelecao && referencia != null)
+                    clone.SetColor(p.EhCor ? p.Indice : referencia.ColorIndex);
 
                 // O rig é montado no mesmo frame: sem esperar, a caixa medida é a do carro anterior.
                 yield return null;
@@ -315,7 +388,26 @@ namespace PartyRacers.UI.Garage
 
             var rt = RenderTexture.GetTemporary(lado, lado, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, 4);
             camera3D.targetTexture = rt;
-            camera3D.Render();
+
+            // A luz ambiente da cena do frontend e azul/roxa. Ela fazia a tinta branca parecer
+            // rosa nos cards, embora o valor real da paleta estivesse correto. A foto usa um
+            // ambiente neutro apenas durante Camera.Render e restaura tudo no mesmo frame.
+            UnityEngine.Rendering.AmbientMode ambientMode = RenderSettings.ambientMode;
+            Color ambientLight = RenderSettings.ambientLight;
+            float ambientIntensity = RenderSettings.ambientIntensity;
+            try
+            {
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = Color.white;
+                RenderSettings.ambientIntensity = 1f;
+                camera3D.Render();
+            }
+            finally
+            {
+                RenderSettings.ambientMode = ambientMode;
+                RenderSettings.ambientLight = ambientLight;
+                RenderSettings.ambientIntensity = ambientIntensity;
+            }
 
             var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false);
             RenderTexture ativo = RenderTexture.active;

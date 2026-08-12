@@ -86,7 +86,7 @@ namespace PartyRacers.UI.Garage
         [SerializeField, Min(0.05f)] private float duracao = 0.45f;
 
         [Header("Respiração de repouso")]
-        [SerializeField] private float amplitudeIdle = 0.05f;
+        [SerializeField] private float amplitudeIdle = 0f;
         [SerializeField] private float frequenciaIdle = 0.12f;
         [Tooltip("Segundos sem interação para a respiração voltar.")]
         [SerializeField] private float atrasoDoIdle = 1.2f;
@@ -258,7 +258,10 @@ namespace PartyRacers.UI.Garage
         private System.Collections.IEnumerator Retornando(Transform alvo)
         {
             Quaternion inicio = alvo.localRotation;
-            Quaternion fim = Quaternion.identity;
+            PartyRacers.UI.Motion.CarStage carStage =
+                alvo.GetComponent<PartyRacers.UI.Motion.CarStage>()
+                ?? alvo.GetComponentInParent<PartyRacers.UI.Motion.CarStage>();
+            Quaternion fim = carStage != null ? carStage.RotacaoDeRepouso : Quaternion.identity;
 
             for (float k = 0f; k < 1f; k += Time.deltaTime / Mathf.Max(0.05f, duracao))
             {

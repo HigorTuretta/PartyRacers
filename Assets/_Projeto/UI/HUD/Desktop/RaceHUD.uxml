@@ -1,0 +1,202 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/HUD/Desktop/RaceHUD.uss" />
+    <ui:Template name="Row_Standing" src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_Standing.uxml" />
+    <ui:Template name="Toast" src="project://database/Assets/_Projeto/UI/Shared/Templates/Toast.uxml" />
+
+    <!-- HUD de corrida, PC. 1920 x 1080.
+         REGRAS DO HUD (tokens-v2 -> hud): sem mira, sem velocimetro, sem
+         minimapa, sem alerta central, sem HP dos outros jogadores.
+         O CENTRO DA TELA FICA LIVRE: e a linha de conducao. -->
+    <ui:VisualElement name="Screen_RaceHUD" class="pr-screen" picking-mode="Ignore">
+
+        <ui:VisualElement name="Scrim_Bottom" class="hud__scrim" picking-mode="Ignore" />
+
+        <!-- vinhetas de estado, uma por vez -->
+        <ui:VisualElement name="Vignette_Danger" class="pr-vignette pr-vignette--red" picking-mode="Ignore" />
+        <ui:VisualElement name="Vignette_Heal"   class="pr-vignette pr-vignette--green" picking-mode="Ignore" />
+        <ui:VisualElement name="Vignette_Shield" class="pr-vignette pr-vignette--blue" picking-mode="Ignore" />
+
+        <!-- ══════════ TOPO-CENTRO: volta e tempo ══════════ -->
+        <ui:VisualElement name="LapBlock" class="pr-col pr-center gy-9 hud__lap-block">
+            <ui:VisualElement class="pr-row-stretch gx-10">
+                <ui:VisualElement class="pr-hs pr-hs--6">
+                    <ui:VisualElement class="pr-hs__layer hud__plate-shadow" />
+                    <ui:Label name="Lap_Value" text="VOLTA 2/3" class="hud__lap" />
+                </ui:VisualElement>
+                <ui:VisualElement class="pr-hs pr-hs--6">
+                    <ui:VisualElement class="pr-hs__layer hud__plate-shadow hud__time-shadow" />
+                    <ui:Label name="Time_Value" text="01:12.480" class="hud__time" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="pr-row gx-8">
+                <ui:Label name="Time_Last" text="ULT 01:14.902" class="hud__time-chip" />
+                <ui:Label name="Time_Best" text="MELH 01:11.302" class="hud__time-chip hud__time-chip--best" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ══════════ TOPO-ESQUERDA: posicao ══════════ -->
+        <ui:VisualElement name="PositionBlock" class="pr-row gx-14 hud__pos-block">
+            <ui:VisualElement class="pr-hs pr-hs--6 hud__pos-plate-wrap">
+                <ui:VisualElement class="pr-hs__layer hud__pos-shadow" />
+                <ui:VisualElement class="pr-row hud__pos-plate">
+                    <ui:Label name="Pos_Value" text="4" class="hud__pos-num" />
+                    <ui:Label text="&#186;" class="hud__pos-ord" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="pr-col gy-4">
+                <ui:Label name="Pos_Total" text="DE 12" class="hud__pos-total" />
+                <ui:Label name="Pos_Delta" text="+2 POSICOES" class="hud__pos-delta" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ══════════ DIREITA: classificacao ══════════ -->
+        <ui:VisualElement name="Standings" class="pr-col gy-5 hud__standings">
+            <ui:Instance template="Row_Standing" name="Stand_0" />
+            <ui:Instance template="Row_Standing" name="Stand_1" />
+            <ui:Instance template="Row_Standing" name="Stand_2" />
+            <ui:Instance template="Row_Standing" name="Stand_3" />
+            <ui:Instance template="Row_Standing" name="Stand_4" />
+            <ui:Instance template="Row_Standing" name="Stand_5" />
+        </ui:VisualElement>
+
+        <!-- ══════════ AVISOS ══════════ -->
+        <ui:VisualElement name="Toasts" class="hud__toasts" picking-mode="Ignore" />
+
+        <!-- ══════════ CLUSTER VITAL — canto inferior ESQUERDO ══════════ -->
+        <ui:VisualElement name="VitalCluster" class="pr-col gy-9 hud__vital">
+
+            <!-- ESCUDO · pronto. O sinal de disponibilidade e a PROPRIA barra:
+                 brilho pulsante 1.8s + varredura de luz 2.4s. Sem icone,
+                 sem botao. -->
+            <ui:VisualElement name="Shield_Ready" class="pr-row gx-11">
+                <ui:Label text="ESCUDO" class="pr-bar__label hud__shield-label--ready" />
+                <ui:VisualElement class="pr-bar pr-grow hud__shield-bar hud__shield-bar--ready">
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--shield hud__shield-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--shield hud__shield-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--shield hud__shield-seg" />
+                    <ui:VisualElement name="Shield_Shine" class="pr-shine hud__shine" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement class="pr-row gx-6 hud__q-chip">
+                    <ui:Label text="Q" class="hud__q-key" />
+                    <ui:Label text="PRONTO" class="hud__q-text" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ESCUDO · ativo -->
+            <ui:VisualElement name="Shield_Active" class="pr-row gx-11">
+                <ui:Label text="ESCUDO" class="pr-bar__label hud__shield-label--active" />
+                <ui:VisualElement class="pr-bar pr-grow hud__shield-bar hud__shield-bar--active">
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--shield-bright hud__shield-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--shield-bright hud__shield-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--shield-bright hud__shield-seg" />
+                    <ui:VisualElement name="Shield_Shine_Fast" class="pr-shine hud__shine hud__shine--fast" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="Shield_Timer" text="ATIVO 2.1s" class="hud__shield-chip--active" />
+            </ui:VisualElement>
+
+            <!-- ESCUDO · recarregando. Sem brilho, sem varredura. -->
+            <ui:VisualElement name="Shield_Cooling" class="pr-row gx-11">
+                <ui:Label text="ESCUDO" class="pr-bar__label hud__shield-label--cool" />
+                <ui:VisualElement class="pr-bar pr-grow hud__shield-bar hud__shield-bar--cool">
+                    <ui:VisualElement name="Shield_Cool_Fill" class="hud__shield-cool-fill" />
+                    <ui:VisualElement name="Shield_Cool_Tick" class="hud__shield-cool-tick" />
+                </ui:VisualElement>
+                <ui:Label name="Shield_Cooldown" text="8.4s" class="hud__shield-chip--cool" />
+            </ui:VisualElement>
+
+            <!-- ESCUDO · vazio (estado danificado) -->
+            <ui:VisualElement name="Shield_Broken" class="pr-row gx-11">
+                <ui:Label text="ESCUDO" class="pr-bar__label hud__shield-label--cool" />
+                <ui:VisualElement class="pr-bar pr-grow hud__shield-bar hud__shield-bar--cool">
+                        <ui:VisualElement class="pr-bar__seg hud__shield-seg-empty" />
+                        <ui:VisualElement class="pr-bar__seg hud__shield-seg-empty" />
+                        <ui:VisualElement class="pr-bar__seg hud__shield-seg-empty" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- VIDA · 5 blocos. verde = cheio, ambar = ferido, vazio = perdido -->
+            <ui:VisualElement name="HP_Row" class="pr-row gx-11">
+                <ui:Label text="VIDA" class="pr-bar__label hud__hp-label" />
+                <ui:VisualElement name="HP_Bar" class="pr-bar pr-grow hud__hp-bar">
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hud__hp-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hud__hp-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hud__hp-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hud__hp-seg" />
+                        <ui:VisualElement class="pr-bar__seg pr-bar__seg--hp hud__hp-seg" />
+                    <ui:Label name="HP_Value" text="72" class="pr-bar__value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- REPARO · substitui a barra de vida no estado DANIFICADO (2.5s) -->
+            <ui:VisualElement name="Repair_Row" class="pr-row gx-11">
+                <ui:Label text="REPARO" class="pr-bar__label hud__repair-label" />
+                <ui:VisualElement class="pr-grow hud__repair-bar">
+                    <ui:VisualElement name="Repair_Fill" class="pr-stripes-repair hud__repair-fill" />
+                    <ui:Label text="DANIFICADO" class="hud__repair-text" />
+                    <ui:Label name="Repair_Timer" text="1.4s" class="hud__repair-timer" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- IMUNE · cooldown de contato (0.75s) -->
+            <ui:VisualElement name="Immune_Row" class="pr-row gx-11">
+                <ui:VisualElement class="hud__immune-spacer" />
+                <ui:VisualElement class="pr-grow hud__immune-track">
+                    <ui:VisualElement name="Immune_Fill" class="hud__immune-fill" />
+                </ui:VisualElement>
+                <ui:Label text="IMUNE" class="hud__immune-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ══════════ PODER — canto inferior DIREITO ══════════ -->
+        <ui:VisualElement name="PowerSlot" class="pr-col pr-center gy-8 hud__power">
+            <ui:VisualElement name="Power_Filled" class="pr-hs pr-hs--6">
+                <ui:VisualElement class="pr-hs__layer hud__power-shadow" />
+                <ui:VisualElement class="pr-center hud__power-box">
+                    <ui:VisualElement class="pr-stripes-gloss pr-fill" picking-mode="Ignore" />
+                    <ui:VisualElement name="Power_Icon" class="hud__power-icon" />
+                    <ui:VisualElement name="Power_Shine" class="pr-shine hud__power-shine" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="Power_Empty" class="pr-center hud__power-empty">
+                <ui:Label text="?" class="hud__power-qmark" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="Power_Key" class="pr-row gx-7 hud__e-chip">
+                <ui:Label text="E" class="hud__e-key" />
+                <ui:Label name="Power_Name" text="FOGUETE" class="hud__e-text" />
+            </ui:VisualElement>
+            <ui:Label name="Power_Empty_Label" text="SEM ITEM" class="hud__power-empty-label" />
+        </ui:VisualElement>
+
+        <!-- ══════════ NUMEROS FLUTUANTES ══════════ -->
+        <ui:Label name="Float_Damage" text="&#8722;15" class="hud__float hud__float--damage" picking-mode="Ignore" />
+        <ui:VisualElement name="Float_Heal" class="pr-row gx-12 hud__float hud__float--heal" picking-mode="Ignore">
+            <ui:VisualElement class="pr-icon pr-icon--heal pr-icon--green hud__heal-cross" />
+            <ui:Label text="+40" class="hud__float-heal-text" />
+        </ui:VisualElement>
+
+        <!-- ══════════ ESCOLHA ITEM x CURA ══════════ -->
+        <ui:VisualElement name="ChoicePrompt" class="pr-row gx-26 pr-center hud__choice">
+            <ui:VisualElement class="pr-hs pr-hs--7">
+                <ui:VisualElement class="pr-hs__layer hud__choice-shadow" />
+                <ui:VisualElement class="pr-col pr-center gy-9 hud__choice-card hud__choice-card--item">
+                    <ui:VisualElement class="hud__choice-box" />
+                    <ui:Label text="ITEM" class="hud__choice-title" />
+                    <ui:Label text="&#8592; ESQUERDA" class="hud__choice-hint" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label text="OU" class="hud__choice-or" />
+            <ui:VisualElement class="pr-hs pr-hs--7">
+                <ui:VisualElement class="pr-hs__layer hud__choice-shadow" />
+                <ui:VisualElement class="pr-col pr-center gy-9 hud__choice-card hud__choice-card--heal">
+                    <ui:VisualElement class="pr-icon pr-icon--heal pr-icon--cream hud__choice-cross" />
+                    <ui:Label text="CURA" class="hud__choice-title hud__choice-title--dark" />
+                    <ui:Label text="DIREITA &#8594;" class="hud__choice-hint hud__choice-hint--dark" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

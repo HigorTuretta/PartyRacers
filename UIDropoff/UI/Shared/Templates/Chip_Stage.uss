@@ -1,0 +1,13 @@
+/* Chip_Stage.uss — HTML linhas 533-551 */
+.stage { flex-grow: 1; flex-basis: 0; }
+.stage__box { padding: 14px 8px; border-right-width: 2px; border-right-color: var(--ink); flex-grow: 1; }
+.stage__box--done { background-color: rgba(61, 220, 151, 0.18); }
+.stage__box--now  { background-color: var(--amber); }
+.stage__box--todo { background-color: var(--fill-deep-70); }
+.stage__mark  { width: 13px; height: 10px; }
+.stage__pulse { width: 10px; height: 10px; border-radius: 5px; background-color: var(--ink-15); }
+.stage__ring  { width: 10px; height: 10px; border-radius: 5px; border-width: 2px; border-color: var(--faint-2); }
+.stage__label { font-size: 12px; letter-spacing: 0.72px; }
+.stage__label--done { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset"); color: var(--green); }
+.stage__label--now  { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");     color: var(--ink-15); }
+.stage__label--todo { -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Bold SDF.asset");      color: var(--faint); }

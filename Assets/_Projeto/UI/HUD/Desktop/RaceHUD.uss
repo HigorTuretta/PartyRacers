@@ -1,0 +1,285 @@
+/* ============================================================
+   RaceHUD.uss — HUD de corrida PC. HTML linhas 761-975.
+   Canvas 1920 x 1080.
+   ============================================================ */
+
+.hud__scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 52%;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Scrim_HudBottom.png"); }
+
+/* ---------- topo-centro ---------- */
+.hud__lap-block { position: absolute; left: 0; right: 0; top: 32px; }
+.hud__plate-shadow { border-radius: 14px; }
+.hud__time-shadow  { background-color: rgba(0, 0, 0, 0.40); }
+
+.hud__lap {
+    padding: 13px 22px;
+    border-width: 4px; border-color: var(--ink); border-radius: 14px;
+    background-color: var(--amber);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 30px; color: var(--ink-15); letter-spacing: 0.6px;
+    -unity-text-align: middle-center;
+}
+.hud__time {
+    padding: 13px 26px;
+    border-width: 4px; border-color: var(--ink); border-radius: 14px;
+    background-color: var(--ink);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 40px; color: var(--cream); letter-spacing: 0.4px;
+    -unity-text-align: middle-center;
+}
+.hud__time-chip {
+    padding: 6px 13px;
+    border-width: 3px; border-color: var(--ink); border-radius: 9px;
+    background-color: var(--glass);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 15px; color: var(--text-soft);
+}
+.hud__time-chip--best { background-color: var(--green); color: var(--ink); }
+
+/* ---------- topo-esquerda: posicao ---------- */
+.hud__pos-block { position: absolute; left: 36px; top: 32px; align-items: center; }
+.hud__pos-plate-wrap { rotate: -2deg; }
+.hud__pos-shadow { border-radius: 16px; }
+.hud__pos-plate {
+    padding: 12px 20px 14px 20px;
+    border-width: 4px; border-color: var(--ink); border-radius: 16px;
+    background-color: var(--cream);
+    align-items: flex-end;
+}
+.hud__pos-num {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 54px; color: var(--ink-15);
+}
+.hud__pos-ord {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 22px; color: var(--ink-15); margin-left: 3px; margin-bottom: 6px;
+}
+.hud__pos-total {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 13px; color: rgba(10, 12, 34, 0.62); letter-spacing: 2.08px;
+}
+.hud__pos-delta {
+    padding: 5px 11px; border-radius: 7px; background-color: var(--glass-78);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 13px; color: var(--green); letter-spacing: 0.78px;
+}
+.hud__pos-delta--down { color: var(--red-light); }
+
+/* ---------- direita: classificacao ---------- */
+.hud__standings { position: absolute; right: 36px; top: 32px; width: 328px; }
+
+/* ---------- avisos ---------- */
+.hud__toasts {
+    position: absolute; left: 36px; bottom: 172px; width: 340px;
+    flex-direction: column-reverse;
+    margin-bottom: -7px;
+}
+.hud__toasts > * { margin-bottom: 7px; }
+
+/* ============================================================
+   CLUSTER VITAL — canto inferior esquerdo [36, 34], largura 486.
+   O centro da tela permanece livre.
+   ============================================================ */
+.hud__vital { position: absolute; left: 36px; bottom: 34px; width: 486px; }
+
+/* ---- escudo ---- */
+.hud__shield-bar {
+    height: 24px;
+    border-width: 3px; border-radius: 11px;
+    padding: 3px;
+    margin-right: -3px;
+}
+.hud__shield-bar > * { margin-right: 3px; }
+.hud__shield-bar--ready  { border-color: var(--ink); }
+/* Barra ATIVA: borda clara + brilho. O brilho externo (0 0 40px) nao existe
+   em USS; use um irmao com a textura Glow, ou aceite so a borda clara.
+   Decisao: borda clara #9BE0FF + segmentos brancos ja distinguem o estado. */
+.hud__shield-bar--active { border-color: var(--sky-pale); }
+.hud__shield-bar--cool   { border-color: var(--ink); }
+.hud__shield-seg       { border-radius: 6px; }
+.hud__shield-seg-empty { flex-grow: 1; border-radius: 6px; background-color: var(--tint-mute-08); }
+
+/* varredura de luz: o controller anima translate de -120% a 320%.
+   pronto = 2.4s easeInOutSine · ativo = 1s linear · recarga = nenhuma */
+.hud__shine       { position: absolute; top: 0; bottom: 0; left: 0; width: 70px; }
+.hud__shine--fast { width: 90px; }
+
+.hud__shield-label--ready  { color: var(--sky-pale); }
+.hud__shield-label--active { color: var(--cream); }
+.hud__shield-label--cool   { color: var(--faint-2); }
+.hud__hp-label             { color: var(--green); }
+.hud__repair-label         { color: var(--red); }
+
+.hud__q-chip {
+    padding: 5px 10px;
+    border-width: 2px; border-color: var(--ink); border-radius: 8px;
+    background-color: rgb(223, 246, 255);
+    align-items: center;
+}
+.hud__q-key {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 15px; color: rgb(10, 42, 68);
+}
+.hud__q-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 11px; color: rgb(10, 42, 68); letter-spacing: 1.1px;
+}
+.hud__shield-chip--active {
+    padding: 5px 11px;
+    border-width: 2px; border-color: var(--ink); border-radius: 8px;
+    background-color: var(--sky);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 11px; color: var(--ink); letter-spacing: 1.1px;
+}
+.hud__shield-chip--cool {
+    padding: 5px 11px;
+    border-width: 2px; border-color: var(--ink); border-radius: 8px;
+    background-color: var(--glass-86);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 12px; color: var(--sky-light);
+}
+.hud__shield-cool-fill {
+    position: absolute; left: 3px; top: 3px; bottom: 3px; width: 62%;
+    border-radius: 6px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_Shield_Cool.png");
+}
+.hud__shield-cool-tick {
+    position: absolute; left: 64.5%; top: 3px; bottom: 3px; width: 2px;
+    background-color: rgba(155, 230, 255, 0.80);
+}
+
+/* ---- vida ---- */
+.hud__hp-bar {
+    height: 46px;
+    border-width: 4px; border-color: var(--ink); border-radius: 13px;
+    padding: 3px;
+    margin-right: -3px;
+}
+.hud__hp-bar > * { margin-right: 3px; }
+.hud__hp-seg { border-radius: 6px; }
+
+/* ---- reparo (estado danificado) ---- */
+.hud__repair-bar {
+    height: 46px;
+    border-width: 4px; border-color: var(--red); border-radius: 13px;
+    background-color: var(--repair-well);
+    overflow: hidden;
+}
+.hud__repair-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 44%; }
+.hud__repair-text {
+    position: absolute; left: 14px; top: 0; bottom: 0;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 20px; color: var(--cream); -unity-text-align: middle-left;
+    text-shadow: 0 2px 0 var(--ink);
+}
+.hud__repair-timer {
+    position: absolute; right: 12px; top: 0; bottom: 0;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 24px; color: var(--cream); -unity-text-align: middle-right;
+    text-shadow: 0 2px 0 var(--ink);
+}
+
+/* ---- imune ---- */
+.hud__immune-spacer { width: 58px; flex-shrink: 0; }
+.hud__immune-track  { height: 6px; border-radius: 3px; background-color: var(--glass-66); overflow: hidden; }
+.hud__immune-fill   { height: 100%; width: 38%; border-radius: 3px; background-color: var(--amber); }
+.hud__immune-label  {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 10px; color: var(--amber); letter-spacing: 0.8px;
+}
+
+/* ============================================================
+   PODER — canto inferior direito [-36, 34], 124 x 124.
+   ============================================================ */
+.hud__power { position: absolute; right: 36px; bottom: 34px; }
+.hud__power-shadow { border-radius: 24px; }
+.hud__power-box {
+    width: 124px; height: 124px;
+    border-width: 4px; border-color: var(--ink); border-radius: 24px;
+    background-color: var(--amber);
+    overflow: hidden;
+}
+/* O icone e o sprite do poder: Powers/Power_Rocket_Color.png etc.
+   O controller troca o background-image conforme o item sorteado. */
+.hud__power-icon {
+    width: 76px; height: 90px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Powers/Power_Rocket_Color.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+.hud__power-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 60px; }
+.hud__power-empty {
+    width: 124px; height: 124px; border-radius: 24px;
+    background-color: rgba(10, 12, 34, 0.24);
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Dash_Corner_R24.png");
+    -unity-background-image-tint-color: rgba(10, 12, 34, 0.42);
+}
+.hud__power-qmark {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 34px; color: rgba(255, 247, 232, 0.44);
+}
+.hud__e-chip {
+    padding: 5px 14px;
+    border-width: 2px; border-color: var(--ink); border-radius: 8px;
+    background-color: var(--cream);
+    align-items: center;
+}
+.hud__e-key {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 17px; color: var(--ink-15);
+}
+.hud__e-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 12px; color: var(--ink-15); letter-spacing: 1.2px;
+}
+.hud__power-empty-label {
+    padding: 5px 14px; border-radius: 8px; background-color: var(--glass-66);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 12px; color: rgba(255, 247, 232, 0.70); letter-spacing: 1.2px;
+}
+
+/* ============================================================
+   NUMEROS FLUTUANTES — sobem 40px em 0.9s e desaparecem.
+   ============================================================ */
+.hud__float { position: absolute; left: 0; right: 0; top: 46%; -unity-text-align: middle-center; justify-content: center; }
+.hud__float--damage {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 62px; color: var(--red); text-shadow: 0 5px 0 var(--ink);
+}
+.hud__float--heal { flex-direction: row; align-items: center; }
+.hud__heal-cross { width: 38px; height: 38px; }
+.hud__float-heal-text {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 62px; color: var(--green); text-shadow: 0 5px 0 var(--ink);
+}
+
+/* ============================================================
+   ESCOLHA ITEM x CURA
+   ============================================================ */
+.hud__choice { position: absolute; left: 0; right: 0; top: 210px; }
+.hud__choice-shadow { border-radius: 18px; }
+.hud__choice-card {
+    padding: 16px 26px;
+    border-width: 4px; border-color: var(--ink); border-radius: 18px;
+}
+.hud__choice-card--item { background-color: rgba(255, 176, 32, 0.94); }
+.hud__choice-card--heal { background-color: rgba(61, 220, 151, 0.94); }
+.hud__choice-box {
+    width: 46px; height: 46px; border-radius: 11px;
+    border-width: 4px; border-color: var(--ink);
+    background-color: var(--cream);
+}
+.hud__choice-cross { width: 46px; height: 46px; }
+.hud__choice-title {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 21px; color: var(--ink-15);
+}
+.hud__choice-title--dark { color: var(--ink); }
+.hud__choice-hint {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: rgba(21, 22, 28, 0.66); letter-spacing: 0.88px;
+}
+.hud__choice-hint--dark { color: rgba(10, 12, 34, 0.66); }
+.hud__choice-or {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 26px; color: rgba(255, 247, 232, 0.80); text-shadow: 0 3px 0 var(--ink);
+}

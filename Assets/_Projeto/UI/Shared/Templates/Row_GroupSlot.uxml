@@ -1,0 +1,52 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_GroupSlot.uss" />
+
+    <!-- Uma vaga do grupo. TRES estados, sempre exatamente um visivel:
+         State_Player  linha cheia
+         State_Empty   convidavel (tracejado)
+         State_Locked  indisponivel no modo atual (NAO tracejado) -->
+    <ui:VisualElement name="Row_GroupSlot">
+
+        <ui:VisualElement name="State_Player" class="pr-row gx-12 pr-slot pr-slot--filled">
+            <ui:VisualElement name="Avatar" class="pr-avatar pr-avatar--md" />
+            <ui:VisualElement class="pr-col gy-4 pr-grow slot__text">
+                <ui:VisualElement class="pr-row gx-7">
+                    <ui:Label name="Name" text="HIGOR (voce)" class="pr-slot__name pr-nowrap slot__name" />
+                    <ui:Label name="Badge_Leader" text="LIDER" class="pr-badge--solid" />
+                </ui:VisualElement>
+                <ui:Label name="Meta" text="nivel 42 &#183; 31ms" class="pr-slot__meta" />
+            </ui:VisualElement>
+            <ui:Label name="Badge_Ready" text="PRONTO" class="pr-badge pr-badge--ready" />
+            <ui:Label name="Badge_Waiting" text="AGUARDA" class="pr-badge pr-badge--waiting" />
+        </ui:VisualElement>
+
+        <ui:Button name="State_Empty" class="pr-row gx-12 slot__empty">
+            <ui:VisualElement class="pr-dashed pr-dashed--r13 pr-dashed--mute-22" picking-mode="Ignore">
+                <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+            </ui:VisualElement>
+            <ui:VisualElement class="slot__empty-avatar">
+                <ui:VisualElement class="pr-dashed pr-dashed--r11 pr-dashed--mute-30" picking-mode="Ignore">
+                    <ui:VisualElement class="pr-dashed__t" /><ui:VisualElement class="pr-dashed__b" />
+                    <ui:VisualElement class="pr-dashed__l" /><ui:VisualElement class="pr-dashed__r" />
+                    <ui:VisualElement class="pr-dashed__tl" /><ui:VisualElement class="pr-dashed__tr" />
+                    <ui:VisualElement class="pr-dashed__br" /><ui:VisualElement class="pr-dashed__bl" />
+                </ui:VisualElement>
+                <ui:Label text="+" class="slot__plus" />
+            </ui:VisualElement>
+            <ui:Label text="CONVIDAR" class="slot__invite" />
+        </ui:Button>
+
+        <ui:VisualElement name="State_Locked" class="pr-row gx-12 pr-slot pr-slot--locked">
+            <ui:VisualElement class="slot__lock-avatar">
+                <ui:VisualElement class="pr-icon pr-icon--lock pr-icon--muted slot__lock-icon" />
+            </ui:VisualElement>
+            <ui:Label name="Lock_Text" text="MODO SOLO" class="slot__lock-text" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,45 @@
+/* Row_CustomSlot.uss — HTML linhas 578-616.
+   Altura da linha vem do padding (10px) + conteudo (34px avatar) = 54px
+   com as bordas. NAO ligue ContentSizeFitter nem force 80px. */
+.cslot { flex-grow: 1; flex-basis: 0; }
+.cslot__box { padding: 10px 13px; border-radius: 12px; flex-grow: 1; }
+.cslot__box--player { border-width: 2px; border-color: rgba(255, 176, 32, 0.55); background-color: rgba(27, 32, 80, 0.60); }
+.cslot__box--bot    { border-width: 2px; border-color: rgba(140, 123, 255, 0.34); background-color: var(--tint-violet-10); }
+.cslot__box--empty  { border-width: 0; }
+.cslot--ready .cslot__box--player { border-color: rgba(61, 220, 151, 0.60); }
+
+.cslot__index {
+    width: 12px; flex-shrink: 0;
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 13px; color: var(--dim);
+}
+.cslot__index--empty { color: var(--faint-3); }
+.cslot__name {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 14px; color: var(--cream); min-width: 0;
+}
+.cslot__name--bot { color: var(--violet); letter-spacing: 0.56px; }
+.cslot__bot-avatar { background-color: rgb(93, 79, 195); }
+.cslot__bot-badge {
+    padding: 4px 9px; border-radius: 5px; background-color: var(--tint-violet-20);
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Black SDF.asset");
+    font-size: 9px; color: var(--violet); letter-spacing: 0.81px;
+}
+.cslot__mark    { width: 15px; height: 12px; }
+.cslot__waiting { width: 12px; height: 12px; border-radius: 6px; border-width: 2px; border-color: var(--amber); }
+.cslot__kick {
+    width: 22px; height: 22px; border-radius: 6px; border-width: 0;
+    background-color: var(--tint-red-14);
+}
+.cslot__kick:hover { background-color: var(--red); }
+.cslot__kick-icon { width: 9px; height: 9px; -unity-background-image-tint-color: var(--red-light); }
+
+.cslot__empty-avatar { width: 34px; height: 34px; flex-shrink: 0; }
+.cslot__plus {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-SemiBold SDF.asset");
+    font-size: 18px; color: var(--faint-2);
+}
+.cslot__invite {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 13px; color: var(--faint-2); letter-spacing: 1.04px;
+}

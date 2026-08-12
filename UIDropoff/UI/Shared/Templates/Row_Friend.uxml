@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/theme.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/gaps.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Core/Theme/base.uss" />
+    <Style src="project://database/Assets/_Projeto/UI/Shared/Templates/Row_Friend.uss" />
+
+    <ui:VisualElement name="Row_Friend" class="pr-row gx-11 friend__row">
+        <ui:VisualElement name="Avatar" class="pr-avatar pr-avatar--sm">
+            <ui:VisualElement name="Presence" class="pr-presence" />
+        </ui:VisualElement>
+        <ui:VisualElement class="pr-col gy-3 pr-grow friend__text">
+            <ui:Label name="Name" text="LEO_99" class="friend__name pr-nowrap" />
+            <ui:Label name="State" text="na garagem" class="friend__state" />
+        </ui:VisualElement>
+        <ui:VisualElement name="Btn_Invite" class="pr-hs pr-hs--3">
+            <ui:VisualElement class="pr-hs__layer friend__invite-shadow" />
+            <ui:Button name="Btn_Invite_Face" text="CONVIDAR" class="friend__invite" />
+        </ui:VisualElement>
+        <ui:Label name="Badge_Cant" text="NO GRUPO" class="friend__cant" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -53,6 +53,8 @@ public class KartVisualCustomizer : MonoBehaviour
 
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     private static readonly int ColorId = Shader.PropertyToID("_Color");
+    private static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
+    private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
 
     private CarCustomizer _currentRig;
     private int _carIndex;
@@ -112,6 +114,15 @@ public class KartVisualCustomizer : MonoBehaviour
         }
 
         return string.Empty;
+    }
+
+    /// <summary>Nome real do prefab de carro usado por um card da garagem.</summary>
+    public string GetCarVariantName(int index)
+    {
+        if (carRigs == null || index < 0 || index >= carRigs.Count || carRigs[index] == null)
+            return string.Empty;
+
+        return carRigs[index].name;
     }
 
     public void ApplySelection(KartVisualSelection selection)
@@ -199,6 +210,15 @@ public class KartVisualCustomizer : MonoBehaviour
 
         KartGarageSelection.ColorIndex = _colorIndex;
         KartGarageSelection.Save();
+    }
+
+    /// <summary>
+    /// Reaplica a pintura no rig inteiro. Necessario para sistemas que instanciam pecas direto no
+    /// <see cref="CarCustomizer"/> (como os bots), sem passar por <see cref="SetElement"/>.
+    /// </summary>
+    public void RefreshPaint()
+    {
+        ApplyPaintColor();
     }
 
     public int GetElementVariantCount(CarElementName element)
@@ -476,11 +496,36 @@ public class KartVisualCustomizer : MonoBehaviour
                     continue;
 
                 renderer.GetPropertyBlock(_mpb, slot);
+
+                // O atlas do pack nao e somente uma paleta: o valor de cada pixel carrega os
+                // recortes, luz e sombra autorados para as pecas. Substitui-lo por whiteTexture
+                // deixa o carro inteiro chapado. Multiplicar o atlas colorido tambem e incorreto
+                // (branco sobre a faixa rosa continua rosa). A copia neutra preserva o VALOR do
+                // atlas e remove apenas o matiz; a cor escolhida volta a ser aplicada pelo shader.
+                Texture sourceAtlas = GetPaintAtlas(mats[slot]);
+                Texture neutralAtlas = NeutralPaintAtlasCache.Get(sourceAtlas);
+                if (neutralAtlas != null)
+                {
+                    _mpb.SetTexture(BaseMapId, neutralAtlas);
+                    _mpb.SetTexture(MainTexId, neutralAtlas);
+                }
                 _mpb.SetColor(BaseColorId, color);
                 _mpb.SetColor(ColorId, color);
                 renderer.SetPropertyBlock(_mpb, slot);
             }
         }
+    }
+
+    private static Texture GetPaintAtlas(Material material)
+    {
+        if (material == null)
+            return null;
+
+        Texture atlas = material.HasProperty(BaseMapId) ? material.GetTexture(BaseMapId) : null;
+        if (atlas == null && material.HasProperty(MainTexId))
+            atlas = material.GetTexture(MainTexId);
+
+        return atlas;
     }
 
     private bool IsPaintMaterial(Material material)
@@ -494,5 +539,123 @@ public class KartVisualCustomizer : MonoBehaviour
 
         return !string.IsNullOrEmpty(paintMaterialNameContains)
             && material.name.IndexOf(paintMaterialNameContains, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    /// <summary>
+    /// Cria uma unica derivacao neutra por atlas, em runtime, sem alterar a textura nem o material
+    /// do pacote. O maior canal RGB representa o "value" do atlas HSV e conserva exatamente sua
+    /// modelagem de volume; somente o matiz original e removido.
+    /// </summary>
+    private static class NeutralPaintAtlasCache
+    {
+        private sealed class Entry
+        {
+            public Texture Source;
+            public Texture2D Neutral;
+        }
+
+        private static readonly Dictionary<int, Entry> Entries = new Dictionary<int, Entry>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Reset()
+        {
+            foreach (Entry entry in Entries.Values)
+                DestroyGenerated(entry.Neutral);
+
+            Entries.Clear();
+        }
+
+        public static Texture Get(Texture source)
+        {
+            if (source == null)
+                return null;
+
+            int id = source.GetInstanceID();
+            if (Entries.TryGetValue(id, out Entry cached) && cached.Source == source && cached.Neutral != null)
+                return cached.Neutral;
+
+            Texture2D neutral = Build(source);
+            if (neutral == null)
+                return source;
+
+            Entries[id] = new Entry { Source = source, Neutral = neutral };
+            return neutral;
+        }
+
+        private static Texture2D Build(Texture source)
+        {
+            // 512 px mantem os recortes largos do atlas e evita uma copia RGBA de 4 MiB por
+            // sessao. O proprio material usa filtragem bilinear + mipmaps, entao a leitura visual
+            // permanece igual na escala em que o carro aparece.
+            const int MaxRuntimeAtlasSize = 512;
+            float scale = Mathf.Min(1f, MaxRuntimeAtlasSize / (float)Mathf.Max(source.width, source.height));
+            int width = Mathf.Max(1, Mathf.RoundToInt(source.width * scale));
+            int height = Mathf.Max(1, Mathf.RoundToInt(source.height * scale));
+            bool mipChain = source.mipmapCount > 1;
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture temporary = RenderTexture.GetTemporary(
+                width,
+                height,
+                0,
+                RenderTextureFormat.ARGB32,
+                RenderTextureReadWrite.sRGB);
+            Texture2D readable = null;
+
+            try
+            {
+                Graphics.Blit(source, temporary);
+                RenderTexture.active = temporary;
+
+                readable = new Texture2D(width, height, TextureFormat.RGBA32, false, false);
+                readable.ReadPixels(new Rect(0f, 0f, width, height), 0, 0, false);
+                readable.Apply(false, false);
+
+                Color32[] pixels = readable.GetPixels32();
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    Color32 pixel = pixels[i];
+                    byte value = Math.Max(pixel.r, Math.Max(pixel.g, pixel.b));
+                    pixels[i] = new Color32(value, value, value, pixel.a);
+                }
+
+                var neutral = new Texture2D(width, height, TextureFormat.RGBA32, mipChain, false)
+                {
+                    name = source.name + "_PaintNeutral_Runtime",
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = source.filterMode,
+                    anisoLevel = source.anisoLevel,
+                    mipMapBias = source.mipMapBias,
+                    wrapModeU = source.wrapModeU,
+                    wrapModeV = source.wrapModeV,
+                    wrapModeW = source.wrapModeW
+                };
+
+                neutral.SetPixels32(pixels);
+                neutral.Apply(mipChain, true);
+                return neutral;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"Nao foi possivel neutralizar o atlas de pintura '{source.name}': {exception.Message}");
+                return null;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(temporary);
+                DestroyGenerated(readable);
+            }
+        }
+
+        private static void DestroyGenerated(UnityEngine.Object generated)
+        {
+            if (generated == null)
+                return;
+
+            if (Application.isPlaying)
+                UnityEngine.Object.Destroy(generated);
+            else
+                UnityEngine.Object.DestroyImmediate(generated);
+        }
     }
 }

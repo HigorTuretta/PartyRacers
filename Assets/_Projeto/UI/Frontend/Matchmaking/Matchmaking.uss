@@ -1,0 +1,128 @@
+/* ============================================================
+   Matchmaking.uss — HTML linhas 410-551. Modal 1420 de largura.
+   ============================================================ */
+
+.mm__modal-wrap   { width: 1420px; }
+.mm__modal-shadow { border-radius: 28px; }
+.mm__modal {
+    border-width: 4px; border-color: var(--ink);
+    border-radius: 28px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_Modal.png");
+    overflow: hidden;
+}
+.mm__stripe { position: absolute; left: 0; right: 0; top: 0; height: 10px; }
+
+/* ---- cabecalho ---- */
+.mm__header { padding: 34px 40px 22px 40px; }
+.mm__channel {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 12px; color: var(--amber); letter-spacing: 2.88px;
+}
+.mm__title {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 40px; color: var(--cream); letter-spacing: 0.4px;
+}
+.mm__sub {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-Regular SDF.asset");
+    font-size: 16px; color: var(--muted);
+}
+.mm__timer-block { align-items: flex-end; }
+.mm__timer-label {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Bold SDF.asset");
+    font-size: 11px; color: var(--dim); letter-spacing: 2.2px;
+}
+.mm__timer {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/TitanOne-Regular SDF.asset");
+    font-size: 56px; color: var(--cream);
+}
+.mm__timer--amber { color: var(--amber); }
+.mm__timer--danger { color: var(--red); }
+
+/* ---- dial ---- */
+.mm__dial {
+    margin-left: 40px; margin-right: 40px;
+    height: 216px;
+    border-width: 3px; border-color: var(--ink); border-radius: 18px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_DialWell.png");
+    overflow: hidden;
+}
+.mm__dial-axis  { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background-color: var(--dash-20); }
+.mm__dial-ticks { position: absolute; left: 0; right: 0; top: 14px; justify-content: space-between; padding-left: 22px; padding-right: 22px; }
+.mm__tick {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset");
+    font-size: 11px; color: var(--faint-2);
+}
+/* A agulha: o controller anima a propriedade "left" de 2% a 98%,
+   2.6s, easeInOutSine, ida e volta. */
+.mm__needle { position: absolute; top: 0; bottom: 0; width: 3px; }
+.mm__needle--scan { background-color: var(--amber); left: 2%; }
+.mm__needle--lock { background-color: var(--green); left: 66%; }
+.mm__needle-glow { position: absolute; top: 0; bottom: 0; }
+.mm__needle-glow--wide { left: -9px; width: 21px; opacity: 0.18; }
+.mm__needle-glow--near { left: -4px; width: 11px; opacity: 0.28; }
+.mm__needle-glow--scan { background-color: var(--amber); }
+.mm__needle-glow--lock { background-color: var(--green); }
+/* O bico e um triangulo: clip-path nao existe no USS, virou sprite. */
+.mm__needle-head {
+    position: absolute; left: -8px; top: -1px;
+    width: 19px; height: 15px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Tri_Down.png");
+}
+.mm__needle-head--scan { -unity-background-image-tint-color: var(--amber); }
+.mm__needle-head--lock { -unity-background-image-tint-color: var(--green); }
+
+.mm__signal { position: absolute; right: 26px; bottom: 20px; height: 38px; }
+.mm__dial .blip-host { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.mm__signal-bar { width: 6px; border-radius: 2px; }
+.mm__signal-bar--0 { height: 14px; }
+.mm__signal-bar--1 { height: 26px; }
+.mm__signal-bar--2 { height: 34px; }
+.mm__signal-bar--3 { height: 22px; }
+.mm__signal-bar--4 { height: 38px; }
+.mm__signal-bar--5 { height: 18px; }
+.mm__signal-bar--6 { height: 28px; }
+.mm__signal--idle .mm__signal-bar { background-color: var(--faint-2); }
+.mm__signal--scan .mm__signal-bar--0,
+.mm__signal--scan .mm__signal-bar--2,
+.mm__signal--scan .mm__signal-bar--4,
+.mm__signal--scan .mm__signal-bar--6 { background-color: var(--green); }
+.mm__signal--scan .mm__signal-bar--1,
+.mm__signal--scan .mm__signal-bar--3,
+.mm__signal--scan .mm__signal-bar--5 { background-color: var(--amber); }
+
+/* ---- vagas ---- */
+.mm__room { padding: 26px 40px 0 40px; }
+.mmslot-host { flex-grow: 1; flex-basis: 0; height: 99px; flex-shrink: 0; }
+.mm__room-count {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/Archivo-ExtraBold SDF.asset");
+    font-size: 15px; color: var(--cream);
+}
+
+/* ---- etapas ---- */
+.mm__stages {
+    margin: 26px 40px 0 40px;
+    border-width: 3px; border-color: var(--ink); border-radius: 14px;
+    overflow: hidden;
+}
+.stage-host { flex-grow: 1; flex-basis: 0; height: 44px; flex-shrink: 0; }
+
+/* ---- rodape ---- */
+.mm__footer { padding: 24px 40px 32px 40px; }
+.mm__progress {
+    height: 14px;
+    border-width: 3px; border-color: var(--ink); border-radius: 9px;
+    background-color: var(--ink);
+    overflow: hidden;
+}
+.mm__progress-fill {
+    height: 100%; width: 20%;
+    border-radius: 6px;
+    background-image: url("project://database/Assets/_Projeto/UI/Core/Art/Generated/Grad_Progress_Amber.png");
+}
+.mm__hint {
+    -unity-font-definition: url("project://database/Assets/_Projeto/UI/Core/Fonts/SpaceMono-Regular SDF.asset");
+    font-size: 12px; color: var(--dim);
+}
+.mm__btn-shadow { border-radius: 14px; }
+.mm__btn-cancel { padding: 16px 30px; border-radius: 14px; font-size: 20px; letter-spacing: 0.6px; }
+.mm__btn-race   { padding: 16px 40px; border-radius: 14px; font-size: 24px; letter-spacing: 0.72px; }
